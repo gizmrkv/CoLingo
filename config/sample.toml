@@ -1,0 +1,76 @@
+# 学習全体の設定
+[training]
+n_epochs = 10000
+seed = 42
+device = "cpu"
+
+
+# データセットの定義
+[datasets.onehots1]
+type = "onehots"
+[datasets.onehots1.args]
+n_attributes = 1
+n_values = 5
+
+[datasets.normal1]
+type = "normal"
+[datasets.normal1.args]
+n_dim = 2
+mean = 0.0
+std = 1.0
+
+# データーローダーの定義
+[dataloaders.onehots_loader1]
+type = "default"
+dataset = "onehots1"
+[dataloaders.onehots_loader1.args]
+batch_size = 32
+shuffle = true
+
+
+# ネットワークの定義
+[networks.custom_net1]
+type = "custom"
+[[networks.custom_net1.args.edges]]
+source = "smith"
+target = "brown"
+
+[models.single_word1]
+type = "single_word"
+[models.single_word1.args]
+n_attributes = 1
+n_values = 5
+vocab_size = 20
+hidden_size = 32
+
+# ゲームの定義
+[games.lewis1]
+type = "lewis"
+dataloader = "onehots_loader1"
+network = "custom_net1"
+play_rate = 1.0
+compute_metrics = false
+[games.lewis1.args]
+
+# エージェントの定義
+[agents.smith]
+type = "onehots_single_word"
+model = "single_word1"
+[agents.smith.args]
+optimizer_type = "adam"
+baseline_type = "mean"
+[agents.smith.args.optimizer_args]
+lr = 0.001
+[agents.smith.args.baseline_args]
+
+
+# エージェントの定義
+[agents.brown]
+type = "onehots_single_word"
+model = "single_word1"
+[agents.brown.args]
+optimizer_type = "adam"
+baseline_type = "mean"
+[agents.brown.args.optimizer_args]
+lr = 0.001
+[agents.brown.args.baseline_args]
