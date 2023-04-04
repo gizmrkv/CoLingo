@@ -24,25 +24,24 @@ class SingleWordModel(th.nn.Module):
 
     def forward(self, x: th.Tensor, input_type: str, is_training: bool = False):
         log_prob = None
+        entropy = None
         if input_type == "object":
             x = self.fc1(x)
-            x = th.nn.functional.relu(x)
             if is_training:
                 dist = th.distributions.Categorical(logits=x)
                 x = dist.sample()
                 log_prob = dist.log_prob(x).mean()
+                entropy = dist.entropy().mean()
             else:
                 x = x.argmax(dim=-1)
 
             x = th.nn.functional.one_hot(x, self.vocab_size).float()
         elif input_type == "message":
             x = self.fc2(x)
-            x = th.nn.functional.relu(x)
             batch_size = x.shape[0]
             x = x.view(batch_size * self.n_attributes, self.n_values)
-            x = th.nn.functional.softmax(x, dim=-1)
 
-        return x, log_prob
+        return x, log_prob, entropy
 
 
 def build_model(model_type: str, model_args: dict) -> th.nn.Module:
