@@ -10,5 +10,6 @@ poetry install
 
 ## TODO
 - Logging
+- Save and load
 - Multi-message model
 - Faction
