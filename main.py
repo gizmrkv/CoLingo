@@ -42,16 +42,16 @@ def main(config: dict):
     games = {
         game_name: build_game(
             game_info["type"],
-            dataloaders[game_info["dataloader"]],
             agents,
             networks[game_info["network"]],
+            dataloaders[game_info["dataloader"]],
             game_info["args"],
         )
         for game_name, game_info in config["games"].items()
     }
 
     trainer = Trainer(games)
-    trainer.train(10000, 1000)
+    trainer.train(config["training"]["n_epochs"], 1000)
 
     message = agents["smith"](datasets["onehots1"], "object", is_training=False)
     answer = agents["brown"](message, "message", is_training=False)
