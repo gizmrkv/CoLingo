@@ -5,11 +5,11 @@ from abc import ABC, abstractmethod
 class Baseline(ABC):
     @abstractmethod
     def __call__(self, state: th.Tensor) -> th.Tensor:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def update(self, state: th.Tensor, reward: th.Tensor):
-        pass
+        raise NotImplementedError
 
 
 class MeanBaseline(Baseline):
