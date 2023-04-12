@@ -12,42 +12,49 @@ class Game(ABC):
         agents: dict[str, Agent],
         network: Network,
         dataloader: DataLoader,
+        play_rate: float,
     ):
         self.dataloader = dataloader
         self.agents = agents
         self.network = network
+        self.play_rate = play_rate
+
+        self.play_pool = 0.0
 
     @abstractmethod
-    def play(self) -> float:
+    def play(self):
         raise NotImplementedError
 
 
 class LewisGame(Game):
     def __init__(
-        self, agents: dict[str, Agent], network: Network, dataloader: DataLoader
+        self,
+        agents: dict[str, Agent],
+        network: Network,
+        dataloader: DataLoader,
+        play_rate: float,
     ):
-        super().__init__(agents, network, dataloader)
+        super().__init__(agents, network, dataloader, play_rate)
 
-    def play(self) -> float:
-        reward_avg = 0
+    def play(self):
         for count, batch in enumerate(self.dataloader):
-            edge = self.network.edges[random.randint(0, len(self.network.edges) - 1)]
+            edge = random.choice(self.network.edges)
             sender = self.agents[edge["source"]]
             receiver = self.agents[edge["target"]]
 
-            message = sender(batch, "object", True)
-            answer = receiver(message, "message", True)
+            for agent in [sender, receiver]:
+                agent.train()
+
+            message = sender(batch, "object")
+            answer = receiver(message, "message")
             reward = -th.nn.functional.cross_entropy(
                 answer, batch, reduction="none"
             ).mean()
-            reward_avg += (reward.detach().item() - reward_avg) / (count + 1)
 
             for agent in [sender, receiver]:
                 agent.optimizer.zero_grad()
                 agent.loss(reward).backward(retain_graph=True)
                 agent.optimizer.step()
-
-        return reward_avg
 
 
 def build_game(
@@ -55,7 +62,8 @@ def build_game(
     agents: dict[str, Agent],
     network: Network,
     dataloader: DataLoader,
+    play_rate: float,
     game_args: dict,
 ) -> Game:
     games_dict = {"lewis": LewisGame}
-    return games_dict[game_type](agents, network, dataloader, **game_args)
+    return games_dict[game_type](agents, network, dataloader, play_rate, **game_args)
