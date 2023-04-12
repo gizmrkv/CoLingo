@@ -1,7 +1,7 @@
 # 学習全体の設定
 [training]
-n_epochs = 10000
-seed = 42
+n_epochs = 20000
+seed = 3
 device = "cpu"
 
 
@@ -32,45 +32,69 @@ shuffle = true
 [networks.custom_net1]
 type = "custom"
 [[networks.custom_net1.args.edges]]
-source = "smith"
-target = "brown"
+source = "S01"
+target = "R01"
+# [[networks.custom_net1.args.edges]]
+# source = "S01"
+# target = "R02"
 
+# モデルの定義
 [models.single_word1]
 type = "single_word"
 [models.single_word1.args]
 n_attributes = 1
 n_values = 5
 vocab_size = 20
-hidden_size = 32
+hidden_size = 512
+
+[models.sequence1]
+type = "sequence"
+[models.sequence1.args]
+n_attributes = 1
+n_values = 5
+vocab_size = 20
+max_len = 3
+
 
 # ゲームの定義
 [games.lewis1]
 type = "lewis"
+play_rate = 1.0
 dataloader = "onehots_loader1"
 network = "custom_net1"
-play_rate = 1.0
-compute_metrics = false
 [games.lewis1.args]
 
 # エージェントの定義
-[agents.smith]
+[agents.S01]
 type = "onehots_single_word"
-model = "single_word1"
-[agents.smith.args]
+model = "sequence1"
+[agents.S01.args]
 optimizer_type = "adam"
 baseline_type = "mean"
-[agents.smith.args.optimizer_args]
+[agents.S01.args.optimizer_args]
 lr = 0.001
-[agents.smith.args.baseline_args]
+[agents.S01.args.baseline_args]
 
 
 # エージェントの定義
-[agents.brown]
+[agents.R01]
 type = "onehots_single_word"
-model = "single_word1"
-[agents.brown.args]
+model = "sequence1"
+[agents.R01.args]
 optimizer_type = "adam"
 baseline_type = "mean"
-[agents.brown.args.optimizer_args]
+[agents.R01.args.optimizer_args]
 lr = 0.001
-[agents.brown.args.baseline_args]
+[agents.R01.args.baseline_args]
+
+
+# エージェントの定義
+[agents.R02]
+type = "onehots_single_word"
+model = "single_word1"
+[agents.R02.args]
+optimizer_type = "adam"
+baseline_type = "mean"
+[agents.R02.args.optimizer_args]
+lr = 0.001
+[agents.R02.args.baseline_args]
