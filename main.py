@@ -4,6 +4,8 @@ from pprint import pprint
 import torch as th
 from torch.utils.data import DataLoader
 
+from src.util import fix_seed, find_length
+
 from src.dataset import build_onthots_dataset, build_normal_dataset
 from src.model import SingleWordModel, SequenceModel
 from src.baseline import MeanBaseline
@@ -45,17 +47,6 @@ class ValidationGame(Task):
             print(f"{message} -> {answer1}")
 
         self.count += 1
-
-
-def fix_seed(seed: int):
-    import random
-    import numpy as np
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
 
 
 def update_config(config: dict) -> dict:
