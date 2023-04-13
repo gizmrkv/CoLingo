@@ -23,8 +23,3 @@ class MeanBaseline(Baseline):
     def update(self, state: th.Tensor, reward: th.Tensor):
         self.count += 1
         self.mean += (reward.detach().mean().item() - self.mean) / self.count
-
-
-def build_baseline(baseline_type: str, baseline_args: dict) -> Baseline:
-    baselines_dict = {"mean": MeanBaseline}
-    return baselines_dict[baseline_type](**baseline_args)

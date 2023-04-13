@@ -1,7 +1,7 @@
 import copy
 import torch as th
 
-from .baseline import build_baseline
+from . import baseline
 
 
 def build_optimizer_type(optimizer_type: str):
@@ -13,20 +13,19 @@ class Agent(th.nn.Module):
     def __init__(
         self,
         model: th.nn.Module,
+        baseline: baseline.Baseline,
         optimizer_type: str,
         optimizer_args: dict,
-        baseline_type: str,
-        baseline_args: dict,
     ):
         super().__init__()
         self.model = copy.deepcopy(model)
         for param in self.model.parameters():
             th.nn.init.normal_(param)
 
+        self.baseline = copy.deepcopy(baseline)
         self.optimizer = build_optimizer_type(optimizer_type)(
             self.model.parameters(), **optimizer_args
         )
-        self.baseline = build_baseline(baseline_type, baseline_args)
 
     def forward(self, x: th.Tensor, input_type: str):
         self.x, self.log_prob, self.entropy = self.model(x, input_type)

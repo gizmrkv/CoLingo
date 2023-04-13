@@ -10,7 +10,7 @@ device = "cpu"
 type = "onehots"
 [datasets.onehots1.args]
 n_attributes = 1
-n_values = 5
+n_values = 10
 
 [datasets.normal1]
 type = "normal"
@@ -22,8 +22,8 @@ std = 1.0
 # データーローダーの定義
 [dataloaders.onehots_loader1]
 type = "default"
-dataset = "onehots1"
 [dataloaders.onehots_loader1.args]
+dataset = "onehots1"
 batch_size = 32
 shuffle = true
 
@@ -51,50 +51,51 @@ hidden_size = 512
 type = "sequence"
 [models.sequence1.args]
 n_attributes = 1
-n_values = 5
+n_values = 10
 vocab_size = 20
 max_len = 3
 
+# ベースラインの定義
+[baselines.mean]
+type = "mean"
+[baselines.mean.args]
 
-# ゲームの定義
-[games.lewis1]
+
+# タスクの定義
+[tasks.lewis1]
 type = "lewis"
-play_rate = 1.0
+[tasks.lewis1.args]
 dataloader = "onehots_loader1"
 network = "custom_net1"
-[games.lewis1.args]
 
 # エージェントの定義
 [agents.S01]
-type = "onehots_single_word"
-model = "sequence1"
+type = "agent"
 [agents.S01.args]
+model = "sequence1"
+baseline = "mean"
 optimizer_type = "adam"
-baseline_type = "mean"
 [agents.S01.args.optimizer_args]
 lr = 0.001
-[agents.S01.args.baseline_args]
 
 
 # エージェントの定義
 [agents.R01]
-type = "onehots_single_word"
-model = "sequence1"
+type = "agent"
 [agents.R01.args]
+model = "sequence1"
+baseline = "mean"
 optimizer_type = "adam"
-baseline_type = "mean"
 [agents.R01.args.optimizer_args]
 lr = 0.001
-[agents.R01.args.baseline_args]
 
 
 # エージェントの定義
 [agents.R02]
-type = "onehots_single_word"
-model = "single_word1"
+type = "agent"
 [agents.R02.args]
+model = "single_word1"
+baseline = "mean"
 optimizer_type = "adam"
-baseline_type = "mean"
 [agents.R02.args.optimizer_args]
 lr = 0.001
-[agents.R02.args.baseline_args]
