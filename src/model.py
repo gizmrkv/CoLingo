@@ -91,7 +91,7 @@ class SequenceModel(th.nn.Module):
         self.sos_embedding = th.nn.Parameter(th.zeros(embed_size))
         rnn_type = rnn_type.lower()
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
-        self.rnn = rnn_type(embed_size, hidden_size, n_layers)
+        self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
 
     def forward(self, x: th.Tensor, input_type: str):
         if input_type == "object":
@@ -112,13 +112,13 @@ class SequenceModel(th.nn.Module):
         entropy = []
 
         for _ in range(self.max_len):
-            i = i.unsqueeze(0)
+            i = i.unsqueeze(1)
             if self.rnn_type == "lstm":
                 y, (h, c) = self.rnn(i, (h, c))
             else:
                 y, h = self.rnn(i, h)
 
-            logit = self.hidden_to_logit(y.squeeze(0))
+            logit = self.hidden_to_logit(y.squeeze(1))
             distr = Categorical(logits=logit)
 
             if self.training:
@@ -131,15 +131,15 @@ class SequenceModel(th.nn.Module):
             logits.append(distr.log_prob(x))
             entropy.append(distr.entropy())
 
-        sequence = th.stack(sequence)
-        logits = th.stack(logits)
-        entropy = th.stack(entropy)
+        sequence = th.stack(sequence).permute(1, 0)
+        logits = th.stack(logits).permute(1, 0)
+        entropy = th.stack(entropy).permute(1, 0)
 
-        zeros = th.zeros((1, sequence.size(1))).to(sequence.device)
+        zeros = th.zeros((sequence.size(0), 1)).to(sequence.device)
 
-        sequence = th.cat([sequence, zeros.long()], dim=0)
-        logits = th.cat([logits, zeros], dim=0)
-        entropy = th.cat([entropy, zeros], dim=0)
+        sequence = th.cat([sequence, zeros.long()], dim=1)
+        logits = th.cat([logits, zeros], dim=1)
+        entropy = th.cat([entropy, zeros], dim=1)
 
         return sequence, logits, entropy
 
@@ -150,6 +150,7 @@ class SequenceModel(th.nn.Module):
             h, _ = h
         x = h[-1]
         x = self.hidden_to_object(x)
+
         return x, None, None
 
 
