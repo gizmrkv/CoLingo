@@ -9,7 +9,15 @@ poetry install
 ```
 
 ## TODO
-- Logging
 - Save and load
-- Multi-message model
+- Variable length message
+- Loss Function
+  - Length penalty
+  - Entropy regularization
+- Metrics
+  - Topographic similarity
+  - Language syncronization
+  - Generalization
+  - Stability
 - Faction
+- Image input
