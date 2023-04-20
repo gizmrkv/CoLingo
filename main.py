@@ -37,14 +37,21 @@ class ValidationGame(Task):
             for ag in [sender, receiver1]:
                 ag.eval()
 
-            message = sender(self.dataset, "object")
-            answer1 = receiver1(message, "message")
+            message, _ = sender(self.dataset, "object")
+            answer1, _ = receiver1(message, "message")
 
             # object = self.dataset.argmax(dim=-1)
             # message = message.argmax(dim=-1)
             answer1 = answer1.argmax(dim=-1)
 
-            print(f"{message} -> {answer1}")
+            # print(f"{message} -> {answer1}")
+
+            acc = (answer1 == self.dataset.argmax(dim=-1)).float().mean()
+            print(f"Epoch: {self.count*self.interval}")
+            print(f"Accuracy: {acc:.3f}")
+            for obj, msg, ans in zip(self.dataset, message, answer1):
+                print(f"{obj.argmax(dim=-1)} -> {msg.tolist()[:-1]} -> {ans}")
+
 
         self.count += 1
 
@@ -85,7 +92,8 @@ def update_config(config: dict) -> dict:
                         args[key] = config[key + "s"][value]
 
                 if entry == "networks":
-                    instance = types[entry][type](agents=config["agents"], **args)
+                    instance = types[entry][type](
+                        agents=config["agents"], **args)
                 else:
                     instance = types[entry][type](**args)
                 config[entry][name] = instance
@@ -99,7 +107,7 @@ def main(config: dict):
     validation = ValidationGame(
         network=config["networks"]["custom_net1"],
         dataloader=config["dataloaders"]["onehots_loader1"],
-        interval=100,
+        interval=10,
     )
     config["tasks"]["validation"] = validation
 

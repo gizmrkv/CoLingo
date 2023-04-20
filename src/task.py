@@ -32,13 +32,16 @@ class LewisGame(Task):
             for agent in [sender, receiver]:
                 agent.train()
 
-            message = sender(batch, "object")
-            answer = receiver(message, "message")
+            message ,aux_s= sender(batch, "object")
+            answer,aux_r = receiver(message, "message")
             reward = -th.nn.functional.cross_entropy(
                 answer, batch, reduction="none"
             ).mean()
 
-            for agent in [sender, receiver]:
-                agent.optimizer.zero_grad()
-                agent.loss(reward).backward(retain_graph=True)
-                agent.optimizer.step()
+            sender.optimizer.zero_grad()
+            sender.loss(reward, message, aux_s).backward(retain_graph=True)
+            sender.optimizer.step()
+
+            receiver.optimizer.zero_grad()
+            receiver.loss(reward, answer, aux_r).backward(retain_graph=True)
+            receiver.optimizer.step()

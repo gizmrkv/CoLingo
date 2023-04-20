@@ -1,5 +1,6 @@
 import copy
 import torch as th
+from typing import Any
 
 from . import baseline
 
@@ -28,14 +29,10 @@ class Agent(th.nn.Module):
         )
 
     def forward(self, x: th.Tensor, input_type: str):
-        self.x, self.log_prob, self.entropy = self.model(x, input_type)
-        return self.x
+        return self.model(x, input_type)
 
-    def loss(self, reward: th.Tensor):
-        self.baseline.update(self.x, reward)
-        if self.log_prob is not None:
-            return -self.log_prob.mean() * (
-                reward - self.baseline(self.x) - 0.0 * self.entropy.mean()
-            )
-        else:
-            return -reward
+    def loss(self, reward: th.Tensor, x: th.Tensor, aux: Any):
+        self.baseline.update(x, reward)
+        return -aux.log_prob.mean() * (
+            reward - self.baseline(x) - 0.0 * aux.entropy.mean()
+        )
