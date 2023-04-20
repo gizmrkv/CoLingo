@@ -163,7 +163,3 @@ class SequenceModel(th.nn.Module):
 
         return x, self.Auxiliary(logits, entropy)
 
-
-def build_model(model_type: str, model_args: dict) -> th.nn.Module:
-    models_dict = {"single_word": SingleWordModel, "sequence": SequenceModel}
-    return models_dict[model_type](**model_args)

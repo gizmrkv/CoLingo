@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from src.util import fix_seed, find_length
 
-from src.dataset import build_onthots_dataset, build_normal_dataset
+from src.dataset import build_onehots_dataset, build_normal_dataset
 from src.model import SingleWordModel, SequenceModel
 from src.baseline import MeanBaseline
 from src.agent import Agent
@@ -59,7 +59,7 @@ class ValidationGame(Task):
 def update_config(config: dict) -> dict:
     types = {
         "datasets": {
-            "onehots": build_onthots_dataset,
+            "onehots": build_onehots_dataset,
             "normal": build_normal_dataset,
         },
         "dataloaders": {"default": th.utils.data.DataLoader},
