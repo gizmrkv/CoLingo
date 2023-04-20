@@ -2,6 +2,8 @@ import torch as th
 from torch.distributions import Categorical
 from collections import namedtuple
 
+from . import util
+
 
 class SingleWordModel(th.nn.Module):
     Auxiliary = namedtuple("Auxiliary", ["log_prob", "entropy"])
@@ -95,10 +97,8 @@ class SequenceModel(th.nn.Module):
         self.embedding = th.nn.Embedding(vocab_size, embed_size)
         self.sos_embedding = th.nn.Parameter(th.zeros(embed_size))
         rnn_type = rnn_type.lower()
-        rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM,
-                    "gru": th.nn.GRU}[rnn_type]
-        self.rnn = rnn_type(embed_size, hidden_size,
-                            n_layers, batch_first=True)
+        rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
+        self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
 
     def forward(self, x: th.Tensor, input_type: str):
         if input_type == "object":
@@ -148,6 +148,20 @@ class SequenceModel(th.nn.Module):
         logits = th.cat([logits, zeros], dim=1)
         entropy = th.cat([entropy, zeros], dim=1)
 
+        lengths = util.find_length(sequence)
+        max_len = sequence.size(1)
+        mask_eos = (
+            1
+            - th.cumsum(
+                th.nn.functional.one_hot(lengths.long(), num_classes=max_len + 1),
+                dim=1,
+            )[:, :-1]
+        )
+
+        sequence = sequence * mask_eos
+        logits = (logits * mask_eos).sum(dim=1)
+        entropy = (entropy * mask_eos).sum(dim=1) / lengths.float()
+
         return sequence, self.Auxiliary(logits, entropy)
 
     def message_to_object(self, x: th.Tensor):
@@ -162,4 +176,3 @@ class SequenceModel(th.nn.Module):
         entropy = th.zeros_like(x)
 
         return x, self.Auxiliary(logits, entropy)
-
