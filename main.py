@@ -1,4 +1,5 @@
 import toml
+import yaml
 from pprint import pprint
 
 import torch as th
@@ -31,8 +32,8 @@ class ValidationGame(Task):
 
     def run(self):
         if self.count % self.interval == 0:
-            sender = self.network.agents["S01"]
-            receiver1 = self.network.agents["R01"]
+            sender = self.network.agents["agent1"]
+            receiver1 = self.network.agents["agent2"]
 
             for ag in [sender, receiver1]:
                 ag.eval()
@@ -52,72 +53,101 @@ class ValidationGame(Task):
             for obj, msg, ans in zip(self.dataset, message, answer1):
                 print(f"{obj.argmax(dim=-1)} -> {msg.tolist()[:-1]} -> {ans}")
 
-
         self.count += 1
 
 
-def update_config(config: dict) -> dict:
-    types = {
-        "datasets": {
-            "onehots": build_onehots_dataset,
-            "normal": build_normal_dataset,
-        },
-        "dataloaders": {"default": th.utils.data.DataLoader},
-        "models": {
-            "single_word": SingleWordModel,
-            "sequence": SequenceModel,
-        },
-        "baselines": {"mean": MeanBaseline},
-        "agents": {"agent": Agent},
-        "networks": {"custom": CustomNetwork},
-        "tasks": {"lewis": LewisGame},
-    }
-    entries = [
-        "datasets",
-        "dataloaders",
-        "models",
-        "baselines",
-        "agents",
-        "networks",
-        "tasks",
-    ]
+def build_instance(types: dict[str, dict], type_params: dict[str, dict]):
+    print(type_params)
+    if "params" not in type_params.keys() or type_params["params"] is None:
+        return types[type_params["type"]]()
+    else:
+        return types[type_params["type"]](**type_params["params"])
 
-    for entry in entries:
-        if entry in config.keys():
-            for name, type_args in config[entry].items():
-                type = type_args["type"]
-                args = type_args["args"]
-                for key, value in args.items():
-                    if key + "s" in types.keys() and value in config[key + "s"].keys():
-                        args[key] = config[key + "s"][value]
 
-                if entry == "networks":
-                    instance = types[entry][type](
-                        agents=config["agents"], **args)
-                else:
-                    instance = types[entry][type](**args)
-                config[entry][name] = instance
+datasets_type = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
+models_type = {"single_word": SingleWordModel, "sequence": SequenceModel}
+baselines_type = {"mean": MeanBaseline}
+tasks_type = {"lewis": LewisGame}
+networks_type = {"custom": CustomNetwork}
+dataloaders_type = {"default": th.utils.data.DataLoader}
+
+
+def build_datasets(datasets_config: dict[str, dict]):
+    datasets = {}
+    for name, type_params in datasets_config.copy().items():
+        datasets[name] = build_instance(datasets_type, type_params)
+    return datasets
+
+
+def build_agents(agents_config: dict[str, dict]):
+    agents = {}
+    for name, params in agents_config.copy().items():
+        if "model" in params.keys():
+            params["model"] = build_instance(models_type, params["model"])
+
+        # if "loss" in params.keys():
+        #     loss_params = params["loss"]["params"]
+        #     if "baseline" in loss_params.keys():
+        #         loss_params["baseline"] = build_instance(
+        #             baselines_type, loss_params["baseline"]
+        #         )
+
+        #     params["loss"] = build_instance(losses_type, params["loss"])
+
+        if "baseline" in params.keys():
+            params["baseline"] = build_instance(baselines_type, params["baseline"])
+
+        params["name"] = name
+        agents[name] = Agent(**params)
+
+    return agents
+
+
+def build_tasks(
+    tasks_config: dict[str, dict], agents: dict[str, Agent], datasets: dict
+):
+    tasks = {}
+    for name, type_params in tasks_config.copy().items():
+        if "network" in type_params["params"].keys():
+            network_params = type_params["params"]["network"]
+            network_params["params"]["agents"] = agents
+            type_params["params"]["network"] = build_instance(
+                networks_type, network_params
+            )
+        if "dataloader" in type_params["params"].keys():
+            dataloader_params = type_params["params"]["dataloader"]
+            dataloader_params["params"]["dataset"] = datasets[
+                dataloader_params["params"]["dataset"]
+            ]
+            type_params["params"]["dataloader"] = build_instance(
+                dataloaders_type, dataloader_params
+            )
+        tasks[name] = build_instance(tasks_type, type_params)
+
+    return tasks
 
 
 def main(config: dict):
-    fix_seed(config["training"]["seed"])
+    fix_seed(config["seed"])
 
-    update_config(config)
+    datasets = build_datasets(config["datasets"])
+    agents = build_agents(config["agents"])
+    tasks = build_tasks(config["tasks"], agents, datasets)
 
     validation = ValidationGame(
-        network=config["networks"]["custom_net1"],
-        dataloader=config["dataloaders"]["onehots_loader1"],
+        network=tasks["task1"].network,
+        dataloader=tasks["task1"].dataloader,
         interval=10,
     )
-    config["tasks"]["validation"] = validation
+    tasks["validation"] = validation
 
-    for epoch in range(config["training"]["n_epochs"]):
-        for name, ts in config["tasks"].items():
-            ts.run()
+    for epoch in range(config["n_epochs"]):
+        for name, task in tasks.items():
+            task.run()
 
 
 if __name__ == "__main__":
-    with open("config/sample.toml", "r") as f:
-        config = toml.load(f)
+    with open("config/sample.yaml", "r") as f:
+        config = yaml.safe_load(f)
 
     main(config)

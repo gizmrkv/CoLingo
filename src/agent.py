@@ -15,8 +15,9 @@ class Agent(th.nn.Module):
         self,
         model: th.nn.Module,
         baseline: baseline.Baseline,
-        optimizer_type: str,
-        optimizer_args: dict,
+        optimizer: str,
+        optimizer_params: dict,
+        name: str | None = None,
     ):
         super().__init__()
         self.model = copy.deepcopy(model)
@@ -24,9 +25,10 @@ class Agent(th.nn.Module):
             th.nn.init.normal_(param)
 
         self.baseline = copy.deepcopy(baseline)
-        self.optimizer = build_optimizer_type(optimizer_type)(
-            self.model.parameters(), **optimizer_args
+        self.optimizer = build_optimizer_type(optimizer)(
+            self.model.parameters(), **optimizer_params
         )
+        self.name = name
 
     def forward(self, x: th.Tensor, input_type: str):
         return self.model(x, input_type)

@@ -1,0 +1,63 @@
+n_epochs: 20000
+seed: 3
+device: "cpu"
+
+datasets:
+  dataset1:
+    type: "onehots"
+    params:
+      n_attributes: 1
+      n_values: 10
+
+  dataset2:
+    type: "normal"
+    params:
+      n_dim: 10
+      mean: 0.0
+      std: 1.0
+
+agents:
+  agent1:
+    optimizer: "adam"
+    optimizer_params:
+      lr: 0.001
+    model:
+      type: "sequence"
+      params:
+        n_attributes: 1
+        n_values: 10
+        vocab_size: 20
+        max_len: 3
+        hidden_size: 32
+    baseline:
+      type: "mean"
+  agent2:
+    optimizer: "adam"
+    optimizer_params:
+      lr: 0.001
+    model:
+      type: "sequence"
+      params:
+        n_attributes: 1
+        n_values: 10
+        vocab_size: 20
+        max_len: 3
+        hidden_size: 512
+    baseline:
+      type: "mean"
+
+tasks:
+  task1:
+    type: "lewis"
+    params:
+      dataloader:
+        type: "default"
+        params:
+          dataset: "dataset1"
+          batch_size: 32
+          shuffle: true
+      network:
+        type: "custom"
+        params:
+          edges:
+            - { "source": "agent1", "target": "agent2" }
