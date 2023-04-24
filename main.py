@@ -13,7 +13,7 @@ from src.loss import ReinforceLoss
 from src.baseline import MeanBaseline
 from src.agent import Agent
 from src.network import Network, CustomNetwork
-from src.task import Task, LewisGame
+from src.task import Task, LewisGame, ModelSaver
 
 
 class ValidationGame(Task):
@@ -49,7 +49,7 @@ class ValidationGame(Task):
             # print(f"{message} -> {answer1}")
 
             acc = (answer1 == self.dataset.argmax(dim=-1)).float().mean()
-            print(f"Epoch: {self.count*self.interval}")
+            print(f"Epoch: {self.count}")
             print(f"Accuracy: {acc:.3f}")
             for obj, msg, ans in zip(self.dataset, message, answer1):
                 print(f"{obj.argmax(dim=-1)} -> {msg.tolist()[:-1]} -> {ans}")
@@ -58,7 +58,6 @@ class ValidationGame(Task):
 
 
 def build_instance(types: dict[str, dict], type_params: dict[str, dict]):
-    print(type_params)
     if "params" not in type_params.keys() or type_params["params"] is None:
         return types[type_params["type"]]()
     else:
@@ -139,6 +138,8 @@ def main(config: dict):
         interval=10,
     )
     tasks["validation"] = validation
+
+    tasks["model_saver"] = ModelSaver(agents, 1000, "hoge/models")
 
     for epoch in range(config["n_epochs"]):
         for name, task in tasks.items():
