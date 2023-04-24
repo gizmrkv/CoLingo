@@ -20,16 +20,19 @@ class Agent(th.nn.Module):
         name: str | None = None,
     ):
         super().__init__()
-        self.model = copy.deepcopy(model)
-        for param in self.model.parameters():
-            th.nn.init.normal_(param)
-
+        self.model = model 
+        self.loss = loss
         self.optimizer = build_optimizer_type(optimizer)(
             self.model.parameters(), **optimizer_params
         )
         self.name = name
 
-        self.loss = loss
+        for m in self.model.modules():
+            if isinstance(m, th.nn.Linear):
+                print(m)
+                th.nn.init.normal_(m.weight)
+                th.nn.init.zeros_(m.bias)
+
 
     def forward(self, x: th.Tensor, input_type: str):
         return self.model(x, input_type)
