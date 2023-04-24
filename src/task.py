@@ -15,7 +15,7 @@ class Task(ABC):
         raise NotImplementedError
 
 
-class ModelSaver(Task):
+class AgentSaver(Task):
     def __init__(
         self,
         agents: dict[str, Agent],

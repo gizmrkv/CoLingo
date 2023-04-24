@@ -13,7 +13,7 @@ from src.dataset import build_normal_dataset, build_onehots_dataset
 from src.loss import ReinforceLoss
 from src.model import SequenceModel, SingleWordModel
 from src.network import CustomNetwork, Network
-from src.task import LewisGame, ModelSaver, Task
+from src.task import AgentSaver, LewisGame, Task
 from src.util import find_length, fix_seed
 
 
@@ -144,7 +144,7 @@ def main(config: dict):
     )
     tasks["validation"] = validation
 
-    tasks["model_saver"] = ModelSaver(agents, 1000, f"{exp_dir}/models")
+    tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 
     for epoch in range(config["n_epochs"]):
         for name, task in tasks.items():
