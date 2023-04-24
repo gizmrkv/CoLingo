@@ -1,19 +1,20 @@
-import toml
-import yaml
+import datetime
+import random
 from pprint import pprint
 
+import toml
 import torch as th
+import yaml
 from torch.utils.data import DataLoader
 
-from src.util import fix_seed, find_length
-
-from src.dataset import build_onehots_dataset, build_normal_dataset
-from src.model import SingleWordModel, SequenceModel
-from src.loss import ReinforceLoss
-from src.baseline import MeanBaseline
 from src.agent import Agent
-from src.network import Network, CustomNetwork
-from src.task import Task, LewisGame, ModelSaver
+from src.baseline import MeanBaseline
+from src.dataset import build_normal_dataset, build_onehots_dataset
+from src.loss import ReinforceLoss
+from src.model import SequenceModel, SingleWordModel
+from src.network import CustomNetwork, Network
+from src.task import LewisGame, ModelSaver, Task
+from src.util import find_length, fix_seed
 
 
 class ValidationGame(Task):
@@ -128,6 +129,10 @@ def build_tasks(
 def main(config: dict):
     fix_seed(config["seed"])
 
+    date = datetime.datetime.now().strftime("%Y-%m-%d %Hh%Mm%Ss")
+    exp_id = random.randint(0, 100000)
+    exp_dir = f"exp/{config['exp_name']} {date} {exp_id}"
+
     datasets = build_datasets(config["datasets"])
     agents = build_agents(config["agents"])
     tasks = build_tasks(config["tasks"], agents, datasets)
@@ -139,7 +144,7 @@ def main(config: dict):
     )
     tasks["validation"] = validation
 
-    tasks["model_saver"] = ModelSaver(agents, 1000, "hoge/models")
+    tasks["model_saver"] = ModelSaver(agents, 1000, f"{exp_dir}/models")
 
     for epoch in range(config["n_epochs"]):
         for name, task in tasks.items():

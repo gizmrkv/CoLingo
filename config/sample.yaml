@@ -1,4 +1,5 @@
-n_epochs: 20000
+exp_name: "sample_exp"
+n_epochs: 3000
 seed: 3
 device: "cpu"
 
