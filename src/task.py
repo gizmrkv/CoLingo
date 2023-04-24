@@ -1,11 +1,12 @@
-from abc import ABC, abstractmethod
 import os
-
 import random
+from abc import ABC, abstractmethod
+
 import torch as th
 from torch.utils.data import DataLoader
-from .network import Network
+
 from .agent import Agent
+from .network import Network
 
 
 class Task(ABC):
@@ -36,7 +37,7 @@ class ModelSaver(Task):
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
                 th.save(
-                    agent.state_dict(),
+                    agent,
                     f"{save_dir}/{self.count}.pth",
                 )
 
