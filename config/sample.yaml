@@ -29,8 +29,12 @@ agents:
         vocab_size: 20
         max_len: 3
         hidden_size: 32
-    baseline:
-      type: "mean"
+    loss:
+      type: "reinforce"
+      params:
+        entropy_weight: 0.01
+        baseline:
+          type: "mean"
   agent2:
     optimizer: "adam"
     optimizer_params:
@@ -43,9 +47,12 @@ agents:
         vocab_size: 20
         max_len: 3
         hidden_size: 512
-    baseline:
-      type: "mean"
-
+    loss:
+      type: "reinforce"
+      params:
+        entropy_weight: 0.01
+        baseline:
+          type: "mean"
 tasks:
   task1:
     type: "lewis"

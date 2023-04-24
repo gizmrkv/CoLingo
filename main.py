@@ -9,6 +9,7 @@ from src.util import fix_seed, find_length
 
 from src.dataset import build_onehots_dataset, build_normal_dataset
 from src.model import SingleWordModel, SequenceModel
+from src.loss import ReinforceLoss
 from src.baseline import MeanBaseline
 from src.agent import Agent
 from src.network import Network, CustomNetwork
@@ -66,6 +67,7 @@ def build_instance(types: dict[str, dict], type_params: dict[str, dict]):
 
 datasets_type = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
 models_type = {"single_word": SingleWordModel, "sequence": SequenceModel}
+losses_type = {"reinforce": ReinforceLoss}
 baselines_type = {"mean": MeanBaseline}
 tasks_type = {"lewis": LewisGame}
 networks_type = {"custom": CustomNetwork}
@@ -85,17 +87,14 @@ def build_agents(agents_config: dict[str, dict]):
         if "model" in params.keys():
             params["model"] = build_instance(models_type, params["model"])
 
-        # if "loss" in params.keys():
-        #     loss_params = params["loss"]["params"]
-        #     if "baseline" in loss_params.keys():
-        #         loss_params["baseline"] = build_instance(
-        #             baselines_type, loss_params["baseline"]
-        #         )
+        if "loss" in params.keys():
+            loss_params = params["loss"]["params"]
+            if "baseline" in loss_params.keys():
+                loss_params["baseline"] = build_instance(
+                    baselines_type, loss_params["baseline"]
+                )
 
-        #     params["loss"] = build_instance(losses_type, params["loss"])
-
-        if "baseline" in params.keys():
-            params["baseline"] = build_instance(baselines_type, params["baseline"])
+            params["loss"] = build_instance(losses_type, params["loss"])
 
         params["name"] = name
         agents[name] = Agent(**params)
