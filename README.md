@@ -9,7 +9,6 @@ poetry install
 ```
 
 ## TODO
-- Save and load
 - Variable length message
 - Loss Function
   - Length penalty

@@ -19,41 +19,49 @@ datasets:
 
 agents:
   agent1:
-    optimizer: "adam"
-    optimizer_params:
-      lr: 0.001
-    model:
-      type: "sequence"
-      params:
-        n_attributes: 1
-        n_values: 10
-        vocab_size: 20
-        max_len: 3
-        hidden_size: 32
-    loss:
-      type: "reinforce"
-      params:
-        entropy_weight: 0.01
-        baseline:
-          type: "mean"
+    type: "create"
+    params:
+      optimizer: "adam"
+      optimizer_params:
+        lr: 0.001
+      model:
+        type: "sequence"
+        params:
+          n_attributes: 1
+          n_values: 10
+          vocab_size: 20
+          max_len: 3
+          hidden_size: 32
+      loss:
+        type: "reinforce"
+        params:
+          entropy_weight: 0.01
+          baseline:
+            type: "mean"
   agent2:
-    optimizer: "adam"
-    optimizer_params:
-      lr: 0.001
-    model:
-      type: "sequence"
-      params:
-        n_attributes: 1
-        n_values: 10
-        vocab_size: 20
-        max_len: 3
-        hidden_size: 512
-    loss:
-      type: "reinforce"
-      params:
-        entropy_weight: 0.01
-        baseline:
-          type: "mean"
+    type: "create"
+    params:
+      optimizer: "adam"
+      optimizer_params:
+        lr: 0.001
+      model:
+        type: "sequence"
+        params:
+          n_attributes: 1
+          n_values: 10
+          vocab_size: 20
+          max_len: 3
+          hidden_size: 512
+      loss:
+        type: "reinforce"
+        params:
+          entropy_weight: 0.01
+          baseline:
+            type: "mean"
+  agent3:
+    type: "load"
+    params:
+      f: "agents/sample.pth"
 tasks:
   task1:
     type: "lewis"
