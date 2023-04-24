@@ -5,11 +5,6 @@ from typing import Any
 from . import baseline
 
 
-def build_optimizer_type(optimizer_type: str):
-    optimizers_dict = {"adam": th.optim.Adam}
-    return optimizers_dict[optimizer_type]
-
-
 class Agent(th.nn.Module):
     def __init__(
         self,
@@ -20,19 +15,26 @@ class Agent(th.nn.Module):
         name: str | None = None,
     ):
         super().__init__()
-        self.model = model 
+        self.model = model
         self.loss = loss
-        self.optimizer = build_optimizer_type(optimizer)(
-            self.model.parameters(), **optimizer_params
-        )
+        self.optimizer = {
+            "adam": th.optim.Adam,
+            "sgd": th.optim.SGD,
+            "adagrad": th.optim.Adagrad,
+            "adadelta": th.optim.Adadelta,
+            "rmsprop": th.optim.RMSprop,
+            "sparseadam": th.optim.SparseAdam,
+            "adamax": th.optim.Adamax,
+            "asgd": th.optim.ASGD,
+            "lbfgs": th.optim.LBFGS,
+            "rprop": th.optim.Rprop,
+        }[optimizer.lower()](self.model.parameters(), **optimizer_params)
         self.name = name
 
         for m in self.model.modules():
             if isinstance(m, th.nn.Linear):
-                print(m)
                 th.nn.init.normal_(m.weight)
                 th.nn.init.zeros_(m.bias)
-
 
     def forward(self, x: th.Tensor, input_type: str):
         return self.model(x, input_type)
