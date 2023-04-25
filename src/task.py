@@ -66,14 +66,33 @@ class LewisGame(Task):
 
             message, aux_s = sender(batch, "object")
             answer, aux_r = receiver(message, "message")
-            reward = -th.nn.functional.cross_entropy(
-                answer, batch, reduction="none"
-            ).mean()
+            # FIX
+            n_attributes = 2
+            n_data = batch.shape[0]
+
+            answer = answer.view(n_data * n_attributes, -1)
+            labels = (
+                batch.view(n_data, n_attributes, -1)
+                .argmax(dim=-1)
+                .view(n_data * n_attributes)
+            )
+
+            reward = (
+                -th.nn.functional.cross_entropy(
+                    answer,
+                    labels,
+                    reduction="none",
+                )
+                .view(-1, n_attributes)
+                .mean()
+            )
 
             sender.optimizer.zero_grad()
-            sender.loss(reward, message, aux_s).backward(retain_graph=True)
+            sender_loss = sender.loss(reward, message, aux_s)
+            sender_loss.backward(retain_graph=True)
             sender.optimizer.step()
 
             receiver.optimizer.zero_grad()
-            receiver.loss(reward, answer, aux_r).backward(retain_graph=True)
+            receiver_loss = receiver.loss(reward, answer, aux_r)
+            receiver_loss.backward(retain_graph=True)
             receiver.optimizer.step()

@@ -41,19 +41,28 @@ class ValidationGame(Task):
                 ag.eval()
 
             message, _ = sender(self.dataset, "object")
-            answer1, _ = receiver1(message, "message")
+            answer, _ = receiver1(message, "message")
 
-            # object = self.dataset.argmax(dim=-1)
-            # message = message.argmax(dim=-1)
-            answer1 = answer1.argmax(dim=-1)
+            n_attributes = 2
+            n_data = self.dataset.shape[0]
+            dataset = (
+                self.dataset.view(n_data * n_attributes, -1)
+                .argmax(dim=-1)
+                .reshape(-1, n_attributes)
+            )
+            answer = (
+                answer.view(n_data * n_attributes, -1)
+                .argmax(dim=-1)
+                .reshape(-1, n_attributes)
+            )
 
-            # print(f"{message} -> {answer1}")
-
-            acc = (answer1 == self.dataset.argmax(dim=-1)).float().mean()
+            acc = (answer == dataset).float().mean()
             print(f"Epoch: {self.count}")
             print(f"Accuracy: {acc:.3f}")
-            for obj, msg, ans in zip(self.dataset, message, answer1):
-                print(f"{obj.argmax(dim=-1)} -> {msg.tolist()[:-1]} -> {ans}")
+            for obj, msg, ans in zip(dataset, message, answer):
+                print(
+                    f"{tuple(obj.tolist())} -> {msg.tolist()[:-1]} -> {tuple(ans.tolist())}"
+                )
 
         self.count += 1
 
@@ -116,7 +125,9 @@ def build_tasks(
             if "network" in task_spec["params"].keys():
                 network_params = task_spec["params"]["network"]
                 network_params["params"]["agents"] = agents
-                task_spec["params"]["network"] = build_instance(networks_type, network_params)
+                task_spec["params"]["network"] = build_instance(
+                    networks_type, network_params
+                )
             if "dataloader" in task_spec["params"].keys():
                 dataloader_params = task_spec["params"]["dataloader"]
                 dataloader_params["params"]["dataset"] = datasets[
@@ -131,11 +142,11 @@ def build_tasks(
 
 
 def main(config: dict):
-    fix_seed(config["seed"])
-
     date = datetime.datetime.now().strftime("%Y-%m-%d %Hh%Mm%Ss")
     exp_id = random.randint(0, 100000)
     exp_dir = f"exp/{config['exp_name']} {date} {exp_id}"
+
+    fix_seed(config["seed"])
 
     datasets = build_datasets(config["datasets"])
     agents = build_agents(config["agents"])
