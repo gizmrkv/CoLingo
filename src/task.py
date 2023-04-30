@@ -47,15 +47,12 @@ class AgentSaver(Task):
 
 
 class LewisGame(Task):
-    def __init__(
-        self,
-        network: Network,
-        dataloader: DataLoader,
-    ):
+    def __init__(self, network: Network, dataloader: DataLoader, name: str):
         super().__init__()
 
         self.network = network
         self.dataloader = dataloader
+        self.name = name
         self.length_baseline = MeanBaseline()
         self.loss_baseline = MeanBaseline()
 
@@ -111,8 +108,8 @@ class LewisGame(Task):
                 self.length_baseline.update(None, length_loss)
                 self.loss_baseline.update(None, loss)
 
-            sender.optimizer.zero_grad()
-            receiver.optimizer.zero_grad()
+            sender.tasks[self.name]["optimizer"].zero_grad()
+            receiver.tasks[self.name]["optimizer"].zero_grad()
             optimized_loss.backward()
-            sender.optimizer.step()
-            receiver.optimizer.step()
+            sender.tasks[self.name]["optimizer"].step()
+            receiver.tasks[self.name]["optimizer"].step()

@@ -74,44 +74,78 @@ def build_instance(types: dict[str, dict], spec: dict[str, dict]):
         return types[spec["type"]](**spec["params"])
 
 
-agents_type = {"create": Agent, "load": th.load}
-datasets_type = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
-models_type = {"single_word": SingleWordModel, "sequence": SequenceModel}
-losses_type = {"reinforce": ReinforceLoss}
-baselines_type = {"mean": MeanBaseline}
-tasks_type = {"lewis": LewisGame}
-networks_type = {"custom": CustomNetwork}
-dataloaders_type = {"default": th.utils.data.DataLoader}
+dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
+model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
+losse_types = {"reinforce": ReinforceLoss}
+baseline_types = {"mean": MeanBaseline}
+task_types = {"lewis": LewisGame}
+network_types = {"custom": CustomNetwork}
+dataloader_types = {"default": th.utils.data.DataLoader}
+optimizer_types = {
+    "adam": th.optim.Adam,
+    "sgd": th.optim.SGD,
+    "adagrad": th.optim.Adagrad,
+    "adadelta": th.optim.Adadelta,
+    "rmsprop": th.optim.RMSprop,
+    "sparseadam": th.optim.SparseAdam,
+    "adamax": th.optim.Adamax,
+    "asgd": th.optim.ASGD,
+    "lbfgs": th.optim.LBFGS,
+    "rprop": th.optim.Rprop,
+}
 
 
 def build_datasets(datasets_config: dict[str, dict]):
     datasets = {}
-    for name, spec in datasets_config.copy().items():
-        datasets[name] = build_instance(datasets_type, spec)
+    for name, params in datasets_config.copy().items():
+        dataset_type = params["type"]
+        dataset_params = {k: v for k, v in params.items() if k != "type"}
+        datasets[name] = dataset_types[dataset_type](**dataset_params)
     return datasets
 
 
 def build_agents(agents_config: dict[str, dict]):
     agents = {}
-    for name, agent_spec in agents_config.copy().items():
-        if "params" in agent_spec.keys():
-            if "model" in agent_spec["params"].keys():
-                agent_spec["params"]["model"] = build_instance(
-                    models_type, agent_spec["params"]["model"]
-                )
+    for name, params in agents_config.items():
+        agent_params = {k: v for k, v in params.items() if k != "type"}
 
-            if "loss" in agent_spec["params"].keys():
-                loss_spec = agent_spec["params"]["loss"]
-                if "params" in loss_spec.keys():
-                    if "baseline" in loss_spec["params"].keys():
-                        loss_spec["params"]["baseline"] = build_instance(
-                            baselines_type, loss_spec["params"]["baseline"]
-                        )
+        # build model
+        if "model" in agent_params.keys():
+            model_type = agent_params["model"]["type"]
+            model_params = {
+                k: v for k, v in agent_params["model"].items() if k != "type"
+            }
+            agent_params["model"] = model_types[model_type](**model_params)
 
-                agent_spec["params"]["loss"] = build_instance(losses_type, loss_spec)
+        # setting for each tasks
+        if "tasks" in agent_params.keys():
+            for task_name, task_params in agent_params["tasks"].items():
+                agent_params["tasks"][task_name] = task_params.copy()
 
-        agents[name] = build_instance(agents_type, agent_spec)
-        agents[name].name = name
+                # build optimizer
+                if "optimizer" in task_params.keys():
+                    optimizer_type = task_params["optimizer"]["type"]
+                    optimizer_params = {
+                        k: v for k, v in task_params["optimizer"].items() if k != "type"
+                    }
+                    agent_params["tasks"][task_name]["optimizer"] = optimizer_types[
+                        optimizer_type
+                    ]
+                    agent_params["tasks"][task_name][
+                        "optimizer_params"
+                    ] = optimizer_params
+
+                # build loss
+                if "loss" in task_params.keys():
+                    loss_type = task_params["loss"]["type"]
+                    loss_params = {
+                        k: v for k, v in task_params["loss"].items() if k != "type"
+                    }
+                    agent_params["tasks"][task_name]["loss"] = losse_types[loss_type](
+                        **loss_params
+                    )
+
+        agents[name] = Agent(name=name, **agent_params)
 
     return agents
 
@@ -120,25 +154,40 @@ def build_tasks(
     tasks_config: dict[str, dict], agents: dict[str, Agent], datasets: dict
 ):
     tasks = {}
-    for name, task_spec in tasks_config.copy().items():
-        if "params" in task_spec.keys():
-            if "network" in task_spec["params"].keys():
-                network_params = task_spec["params"]["network"]
-                network_params["params"]["agents"] = agents
-                task_spec["params"]["network"] = build_instance(
-                    networks_type, network_params
-                )
-            if "dataloader" in task_spec["params"].keys():
-                dataloader_params = task_spec["params"]["dataloader"]
-                dataloader_params["params"]["dataset"] = datasets[
-                    dataloader_params["params"]["dataset"]
-                ]
-                task_spec["params"]["dataloader"] = build_instance(
-                    dataloaders_type, dataloader_params
-                )
-        tasks[name] = build_instance(tasks_type, task_spec)
+    for name, params in tasks_config.copy().items():
+        task_type = params["type"]
+        task_params = {k: v for k, v in params.items() if k != "type"}
+
+        # build network
+        if "network" in task_params.keys():
+            network_type = task_params["network"]["type"]
+            network_params = {
+                k: v for k, v in task_params["network"].items() if k != "type"
+            }
+            task_params["network"] = network_types[network_type](
+                agents=agents, **network_params
+            )
+
+        # build dataloader
+        if "dataloader" in task_params.keys():
+            dataloader_type = task_params["dataloader"]["type"]
+            dataloader_params = {
+                k: v for k, v in task_params["dataloader"].items() if k != "type"
+            }
+            dataloader_params["dataset"] = datasets[dataloader_params["dataset"]]
+            task_params["dataloader"] = dataloader_types[dataloader_type](
+                **dataloader_params
+            )
+
+        # build task
+        tasks[name] = task_types[task_type](name=name, **task_params)
 
     return tasks
+
+
+def check_config(datasets, agents, tasks):
+    # TODO: implemnet
+    pass
 
 
 def main(config: dict):
@@ -151,6 +200,8 @@ def main(config: dict):
     datasets = build_datasets(config["datasets"])
     agents = build_agents(config["agents"])
     tasks = build_tasks(config["tasks"], agents, datasets)
+
+    check_config(datasets, agents, tasks)
 
     validation = ValidationGame(
         network=tasks["task1"].network,

@@ -3,77 +3,59 @@ n_epochs: 3000
 seed: 3
 device: "cpu"
 
+onehots_config: &onehots_config
+  n_attributes: 2
+  n_values: 5
+
 datasets:
   dataset1:
     type: "onehots"
-    params:
-      n_attributes: 1
-      n_values: 10
-
-  dataset2:
-    type: "normal"
-    params:
-      n_dim: 10
-      mean: 0.0
-      std: 1.0
+    <<: *onehots_config
 
 agents:
   agent1:
-    type: "create"
-    params:
-      optimizer: "adam"
-      optimizer_params:
-        lr: 0.001
-      model:
-        type: "sequence"
-        params:
-          n_attributes: 1
-          n_values: 10
-          vocab_size: 20
-          max_len: 3
-          hidden_size: 32
-      loss:
-        type: "reinforce"
-        params:
+    model:
+      type: "sequence"
+      <<: *onehots_config
+      vocab_size: 20
+      max_len: 3
+      hidden_size: 32
+    tasks:
+      task1:
+        optimizer:
+          type: "adam"
+          lr: 0.001
+        loss:
+          type: "reinforce"
           entropy_weight: 0.01
           baseline:
             type: "mean"
   agent2:
-    type: "create"
-    params:
-      optimizer: "adam"
-      optimizer_params:
-        lr: 0.001
-      model:
-        type: "sequence"
-        params:
-          n_attributes: 1
-          n_values: 10
-          vocab_size: 20
-          max_len: 3
-          hidden_size: 512
-      loss:
-        type: "reinforce"
-        params:
+    model:
+      type: "sequence"
+      <<: *onehots_config
+      vocab_size: 20
+      max_len: 3
+      hidden_size: 512
+    tasks:
+      task1:
+        optimizer:
+          type: "adam"
+          lr: 0.001
+        loss:
+          type: "reinforce"
           entropy_weight: 0.01
           baseline:
             type: "mean"
-  agent3:
-    type: "load"
-    params:
-      f: "agents/sample.pth"
 tasks:
   task1:
     type: "lewis"
-    params:
-      dataloader:
-        type: "default"
-        params:
-          dataset: "dataset1"
-          batch_size: 32
-          shuffle: true
-      network:
-        type: "custom"
-        params:
-          edges:
-            - { "source": "agent1", "target": "agent2" }
+    dataloader:
+      type: "default"
+      dataset: "dataset1"
+      batch_size: 32
+      shuffle: true
+    network:
+      type: "custom"
+      edges:
+        - { "source": "agent1", "target": "agent2" }
