@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader
 
 from .agent import Agent
 from .network import Network
+from .util import find_length
+from .baseline import MeanBaseline
 
 
 class Task(ABC):
@@ -54,6 +56,8 @@ class LewisGame(Task):
 
         self.network = network
         self.dataloader = dataloader
+        self.length_baseline = MeanBaseline()
+        self.loss_baseline = MeanBaseline()
 
     def run(self):
         for _, batch in enumerate(self.dataloader):
@@ -77,22 +81,38 @@ class LewisGame(Task):
                 .view(n_data * n_attributes)
             )
 
-            reward = (
-                -th.nn.functional.cross_entropy(
+            loss = (
+                th.nn.functional.cross_entropy(
                     answer,
                     labels,
                     reduction="none",
                 )
                 .view(-1, n_attributes)
-                .mean()
+                .mean(dim=-1)
+                # .mean()
             )
 
-            sender.optimizer.zero_grad()
-            sender_loss = sender.loss(reward, message, aux_s)
-            sender_loss.backward(retain_graph=True)
-            sender.optimizer.step()
+            message_lengths = find_length(message)
 
+            weighted_entropy = aux_s.entropy.mean() * 0.5 + aux_r.entropy.mean() * 0.5
+            log_prob = aux_s.log_prob + aux_r.log_prob
+            length_loss = message_lengths.float() * 0.0
+
+            policy_length_loss = (
+                (length_loss - self.length_baseline(None)) * aux_s.log_prob
+            ).mean()
+            policy_loss = ((loss.detach() - self.loss_baseline(None)) * log_prob).mean()
+
+            optimized_loss = (
+                policy_loss + policy_length_loss - weighted_entropy + loss.mean()
+            )
+
+            if True:
+                self.length_baseline.update(None, length_loss)
+                self.loss_baseline.update(None, loss)
+
+            sender.optimizer.zero_grad()
             receiver.optimizer.zero_grad()
-            receiver_loss = receiver.loss(reward, answer, aux_r)
-            receiver_loss.backward(retain_graph=True)
+            optimized_loss.backward()
+            sender.optimizer.step()
             receiver.optimizer.step()

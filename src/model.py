@@ -172,7 +172,7 @@ class SequenceModel(th.nn.Module):
         x = h[-1]
         x = self.hidden_to_object(x)
 
-        logits = th.ones_like(x)
-        entropy = th.zeros_like(x)
+        logits = th.zeros_like(x).sum(dim=1)
+        entropy = th.zeros_like(x).sum(dim=1)
 
         return x, self.Auxiliary(logits, entropy)
