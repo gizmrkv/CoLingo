@@ -46,7 +46,7 @@ class AgentSaver(Task):
         self.count += 1
 
 
-class LewisGame(Task):
+class CommunicationTraining(Task):
     def __init__(self, network: Network, dataloader: DataLoader, name: str):
         super().__init__()
 

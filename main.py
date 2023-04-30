@@ -13,7 +13,7 @@ from src.dataset import build_normal_dataset, build_onehots_dataset
 from src.loss import ReinforceLoss
 from src.model import SequenceModel, SingleWordModel
 from src.network import CustomNetwork, Network
-from src.task import AgentSaver, LewisGame, Task
+from src.task import AgentSaver, CommunicationTraining, Task
 from src.util import find_length, fix_seed
 
 
@@ -57,12 +57,12 @@ class ValidationGame(Task):
             )
 
             acc = (answer == dataset).float().mean()
-            print(f"Epoch: {self.count}")
-            print(f"Accuracy: {acc:.3f}")
             for obj, msg, ans in zip(dataset, message, answer):
                 print(
                     f"{tuple(obj.tolist())} -> {msg.tolist()[:-1]} -> {tuple(ans.tolist())}"
                 )
+            print(f"Epoch: {self.count}")
+            print(f"Accuracy: {acc:.3f}")
 
         self.count += 1
 
@@ -71,7 +71,7 @@ dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_datase
 model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
 losse_types = {"reinforce": ReinforceLoss}
 baseline_types = {"mean": MeanBaseline}
-task_types = {"lewis": LewisGame}
+task_types = {"communication": CommunicationTraining}
 network_types = {"custom": CustomNetwork}
 dataloader_types = {"default": th.utils.data.DataLoader}
 optimizer_types = {
