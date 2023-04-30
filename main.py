@@ -91,7 +91,7 @@ optimizer_types = {
 def build_datasets(datasets_config: dict[str, dict]):
     datasets = {}
     for name, params in datasets_config.copy().items():
-        dataset_type = params["type"]
+        dataset_type = params["type"].lower()
         dataset_params = {k: v for k, v in params.items() if k != "type"}
         datasets[name] = dataset_types[dataset_type](**dataset_params)
     return datasets
@@ -104,7 +104,7 @@ def build_agents(agents_config: dict[str, dict]):
 
         # build model
         if "model" in agent_params.keys():
-            model_type = agent_params["model"]["type"]
+            model_type = agent_params["model"]["type"].lower()
             model_params = {
                 k: v for k, v in agent_params["model"].items() if k != "type"
             }
@@ -117,7 +117,7 @@ def build_agents(agents_config: dict[str, dict]):
 
                 # build optimizer
                 if "optimizer" in task_params.keys():
-                    optimizer_type = task_params["optimizer"]["type"]
+                    optimizer_type = task_params["optimizer"]["type"].lower()
                     optimizer_params = {
                         k: v for k, v in task_params["optimizer"].items() if k != "type"
                     }
@@ -130,7 +130,7 @@ def build_agents(agents_config: dict[str, dict]):
 
                 # build loss
                 if "loss" in task_params.keys():
-                    loss_type = task_params["loss"]["type"]
+                    loss_type = task_params["loss"]["type"].lower()
                     loss_params = {
                         k: v for k, v in task_params["loss"].items() if k != "type"
                     }
@@ -148,12 +148,12 @@ def build_tasks(
 ):
     tasks = {}
     for name, params in tasks_config.copy().items():
-        task_type = params["type"]
+        task_type = params["type"].lower()
         task_params = {k: v for k, v in params.items() if k != "type"}
 
         # build network
         if "network" in task_params.keys():
-            network_type = task_params["network"]["type"]
+            network_type = task_params["network"]["type"].lower()
             network_params = {
                 k: v for k, v in task_params["network"].items() if k != "type"
             }
@@ -163,7 +163,7 @@ def build_tasks(
 
         # build dataloader
         if "dataloader" in task_params.keys():
-            dataloader_type = task_params["dataloader"]["type"]
+            dataloader_type = task_params["dataloader"]["type"].lower()
             dataloader_params = {
                 k: v for k, v in task_params["dataloader"].items() if k != "type"
             }
