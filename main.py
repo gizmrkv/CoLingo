@@ -67,13 +67,6 @@ class ValidationGame(Task):
         self.count += 1
 
 
-def build_instance(types: dict[str, dict], spec: dict[str, dict]):
-    if "params" not in spec.keys() or spec["params"] is None:
-        return types[spec["type"]]()
-    else:
-        return types[spec["type"]](**spec["params"])
-
-
 dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
 model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
 losse_types = {"reinforce": ReinforceLoss}
