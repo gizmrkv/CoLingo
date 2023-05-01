@@ -25,7 +25,7 @@ class Agent(th.nn.Module):
 
         for m in self.model.modules():
             if isinstance(m, th.nn.Linear):
-                th.nn.init.normal_(m.weight)
+                th.nn.init.kaiming_uniform_(m.weight)
                 th.nn.init.zeros_(m.bias)
 
     def forward(self, x: th.Tensor, input_type: str):
