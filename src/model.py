@@ -55,8 +55,6 @@ class SingleWordModel(th.nn.Module):
 
 
 class SequenceModel(th.nn.Module):
-    Auxiliary = namedtuple("Auxiliary", ["log_prob", "entropy"])
-
     def __init__(
         self,
         n_attributes: int,
@@ -148,21 +146,23 @@ class SequenceModel(th.nn.Module):
         logits = th.cat([logits, zeros], dim=1)
         entropy = th.cat([entropy, zeros], dim=1)
 
-        lengths = util.find_length(sequence)
+        length = util.find_length(sequence)
         max_len = sequence.size(1)
         mask_eos = (
             1
             - th.cumsum(
-                th.nn.functional.one_hot(lengths.long(), num_classes=max_len + 1),
+                th.nn.functional.one_hot(length.long(), num_classes=max_len + 1),
                 dim=1,
             )[:, :-1]
         )
 
         sequence = sequence * mask_eos
         logits = (logits * mask_eos).sum(dim=1)
-        entropy = (entropy * mask_eos).sum(dim=1) / lengths.float()
+        entropy = (entropy * mask_eos).sum(dim=1) / length.float()
 
-        return sequence, self.Auxiliary(logits, entropy)
+        auxiliary = {"logprob": logits, "entropy": entropy, "length": length}
+
+        return sequence, auxiliary
 
     def message_to_object(self, x: th.Tensor):
         x = self.embedding(x)
@@ -175,4 +175,6 @@ class SequenceModel(th.nn.Module):
         logits = th.zeros_like(x).sum(dim=1)
         entropy = th.zeros_like(x).sum(dim=1)
 
-        return x, self.Auxiliary(logits, entropy)
+        auxiliary = {"logprob": logits, "entropy": entropy}
+
+        return x, auxiliary
