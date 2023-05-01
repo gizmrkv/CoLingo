@@ -67,49 +67,19 @@ class CommunicationTraining(Task):
 
             message, aux_s = sender(batch, "object")
             answer, aux_r = receiver(message, "message")
-            # FIX
-            n_attributes = 2
-            n_data = batch.shape[0]
 
-            answer = answer.view(n_data * n_attributes, -1)
-            labels = (
-                batch.view(n_data, n_attributes, -1)
-                .argmax(dim=-1)
-                .view(n_data * n_attributes)
-            )
+            receiver_loss = receiver.tasks[self.name]["loss"](answer, batch)
+            sender_loss = sender.tasks[self.name]["loss"](receiver_loss, aux_s)
 
-            loss = (
-                th.nn.functional.cross_entropy(
-                    answer,
-                    labels,
-                    reduction="none",
-                )
-                .view(-1, n_attributes)
-                .mean(dim=-1)
-                # .mean()
-            )
-
-            message_lengths = find_length(message)
-
-            weighted_entropy = aux_s.entropy.mean() * 0.5 + aux_r.entropy.mean() * 0.5
-            log_prob = aux_s.log_prob + aux_r.log_prob
-            length_loss = message_lengths.float() * 0.0
-
-            policy_length_loss = (
-                (length_loss - self.length_baseline(None)) * aux_s.log_prob
-            ).mean()
-            policy_loss = ((loss.detach() - self.loss_baseline(None)) * log_prob).mean()
-
-            optimized_loss = (
-                policy_loss + policy_length_loss - weighted_entropy + loss.mean()
-            )
-
-            if True:
-                self.length_baseline.update(None, length_loss)
-                self.loss_baseline.update(None, loss)
+            loss = (sender_loss + receiver_loss).mean()
 
             sender.tasks[self.name]["optimizer"].zero_grad()
             receiver.tasks[self.name]["optimizer"].zero_grad()
-            optimized_loss.backward()
+            loss.backward()
             sender.tasks[self.name]["optimizer"].step()
             receiver.tasks[self.name]["optimizer"].step()
+
+            # for agent, loss in zip([sender, receiver], [sender_loss, receiver_loss]):
+            #     agent.tasks[self.name]["optimizer"].zero_grad()
+            #     loss.mean().backward()
+            #     agent.tasks[self.name]["optimizer"].step()

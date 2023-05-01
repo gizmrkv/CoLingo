@@ -8,9 +8,9 @@ import yaml
 from torch.utils.data import DataLoader
 
 from src.agent import Agent
-from src.baseline import MeanBaseline
+from src.baseline import MeanBaseline, BatchMeanBaseline
 from src.dataset import build_normal_dataset, build_onehots_dataset
-from src.loss import ReinforceLoss
+from src.loss import ReinforceLoss, ConceptLoss
 from src.model import SequenceModel, SingleWordModel
 from src.network import CustomNetwork, Network
 from src.task import AgentSaver, CommunicationTraining, Task
@@ -61,30 +61,29 @@ class ValidationGame(Task):
                 print(
                     f"{tuple(obj.tolist())} -> {msg.tolist()[:-1]} -> {tuple(ans.tolist())}"
                 )
-            print(f"Epoch: {self.count}")
-            print(f"Accuracy: {acc:.3f}")
+            print(f"Epoch: {self.count:4}, Accuracy: {acc:.3f}")
 
         self.count += 1
 
 
 dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
 model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
-losse_types = {"reinforce": ReinforceLoss}
-baseline_types = {"mean": MeanBaseline}
+losse_types = {"reinforce": ReinforceLoss, "concept": ConceptLoss}
+baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {"communication": CommunicationTraining}
 network_types = {"custom": CustomNetwork}
 dataloader_types = {"default": th.utils.data.DataLoader}
 optimizer_types = {
-    "adam": th.optim.Adam,
-    "sgd": th.optim.SGD,
-    "adagrad": th.optim.Adagrad,
     "adadelta": th.optim.Adadelta,
-    "rmsprop": th.optim.RMSprop,
-    "sparseadam": th.optim.SparseAdam,
+    "adagrad": th.optim.Adagrad,
+    "adam": th.optim.Adam,
     "adamax": th.optim.Adamax,
     "asgd": th.optim.ASGD,
     "lbfgs": th.optim.LBFGS,
+    "rmsprop": th.optim.RMSprop,
     "rprop": th.optim.Rprop,
+    "sgd": th.optim.SGD,
+    "sparseadam": th.optim.SparseAdam,
 }
 
 
@@ -134,6 +133,17 @@ def build_agents(agents_config: dict[str, dict]):
                     loss_params = {
                         k: v for k, v in task_params["loss"].items() if k != "type"
                     }
+                    for baseline in ["baseline", "length_baseline"]:
+                        if baseline in loss_params.keys():
+                            baseline_type = loss_params[baseline]["type"].lower()
+                            baseline_params = {
+                                k: v
+                                for k, v in loss_params[baseline].items()
+                                if k != "type"
+                            }
+                            loss_params[baseline] = baseline_types[baseline_type](
+                                **baseline_params
+                            )
                     agent_params["tasks"][task_name]["loss"] = losse_types[loss_type](
                         **loss_params
                     )
