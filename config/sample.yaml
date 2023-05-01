@@ -5,7 +5,7 @@ device: "cpu"
 
 onehots_config: &onehots_config
   n_attributes: 2
-  n_values: 10
+  n_values: 50
 
 datasets:
   dataset1:
@@ -17,9 +17,12 @@ agents:
     model:
       type: "sequence"
       <<: *onehots_config
-      vocab_size: 20
+      vocab_size: 50
       max_len: 3
-      hidden_size: 32
+      hidden_size: 512
+      rnn_type: "gru"
+      n_layers: 2
+      embed_size: 64
     tasks:
       task1:
         optimizer:
@@ -29,24 +32,27 @@ agents:
           type: "reinforce"
           entropy_weight: 0.01
           baseline:
+            type: "mean"
+          length_baseline:
             type: "mean"
   agent2:
     model:
       type: "sequence"
       <<: *onehots_config
-      vocab_size: 20
+      vocab_size: 50
       max_len: 3
       hidden_size: 512
+      rnn_type: "gru"
+      n_layers: 2
+      embed_size: 64
     tasks:
       task1:
         optimizer:
           type: "adam"
           lr: 0.001
         loss:
-          type: "reinforce"
-          entropy_weight: 0.01
-          baseline:
-            type: "mean"
+          type: "concept"
+          <<: *onehots_config
 tasks:
   task1:
     type: "communication"
