@@ -87,16 +87,16 @@ optimizer_types = {
 }
 
 
-def build_datasets(datasets_config: dict[str, dict]):
+def build_datasets(datasets_config: dict[str, dict], device: str):
     datasets = {}
     for name, params in datasets_config.copy().items():
         dataset_type = params["type"].lower()
         dataset_params = {k: v for k, v in params.items() if k != "type"}
-        datasets[name] = dataset_types[dataset_type](**dataset_params)
+        datasets[name] = dataset_types[dataset_type](**dataset_params).to(device)
     return datasets
 
 
-def build_agents(agents_config: dict[str, dict]):
+def build_agents(agents_config: dict[str, dict], device: str):
     agents = {}
     for name, params in agents_config.items():
         agent_params = {k: v for k, v in params.items() if k != "type"}
@@ -118,13 +118,13 @@ def build_agents(agents_config: dict[str, dict]):
             agent_params["optimizer"] = optimizer_types[optimizer_type]
             agent_params["optimizer_params"] = optimizer_params
 
-        agents[name] = Agent(name=name, **agent_params)
+        agents[name] = Agent(name=name, **agent_params).to(device)
 
     return agents
 
 
 def build_tasks(
-    tasks_config: dict[str, dict], agents: dict[str, Agent], datasets: dict
+    tasks_config: dict[str, dict], agents: dict[str, Agent], datasets: dict, device: str
 ):
     tasks = {}
     for name, params in tasks_config.copy().items():
@@ -162,7 +162,7 @@ def build_tasks(
                     k: v for k, v in loss_params[baseline].items() if k != "type"
                 }
                 loss_params[baseline] = baseline_types[baseline_type](**baseline_params)
-            task_params[loss] = loss_types[loss_type](**loss_params)
+            task_params[loss] = loss_types[loss_type](**loss_params).to(device)
 
         # build task
         tasks[name] = task_types[task_type](name=name, **task_params)
@@ -182,9 +182,11 @@ def main(config: dict):
 
     fix_seed(config["seed"])
 
-    datasets = build_datasets(config["datasets"])
-    agents = build_agents(config["agents"])
-    tasks = build_tasks(config["tasks"], agents, datasets)
+    device = config["device"]
+
+    datasets = build_datasets(config["datasets"], device)
+    agents = build_agents(config["agents"], device)
+    tasks = build_tasks(config["tasks"], agents, datasets, device)
 
     check_config(datasets, agents, tasks)
 
