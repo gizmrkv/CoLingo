@@ -56,9 +56,3 @@ TaskRunner executes tasks.
 
 ## Test
 TODO: how to test
-
-## TODO
-
-### gumbel softmax
-In the case of the Lewis signaling game, if Sender uses Gumbel Softmax, the back propagation of Loss extends to Sender. On the other hand, if Gumbel Softmax is not used, the receiver performs back propagation and the sender updates parameters in REINFORCE.
-If the Agent uses GumbelSoftmax, it does not compute the loss, but only updates the parameters with the optimizer.
