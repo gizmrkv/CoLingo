@@ -9,10 +9,6 @@ poetry install
 ```
 
 ## TODO
-- Variable length message
-- Loss Function
-  - Length penalty
-  - Entropy regularization
 - Metrics
   - Topographic similarity
   - Language syncronization
