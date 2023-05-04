@@ -5,7 +5,7 @@ device: "cpu"
 
 onehots_config: &onehots_config
   n_attributes: 2
-  n_values: 50
+  n_values: 10
 
 datasets:
   dataset1:
@@ -23,11 +23,11 @@ agents:
       rnn_type: "gru"
       n_layers: 2
       embed_size: 64
+    optimizer:
+      type: "adam"
+      lr: 0.001
     tasks:
       task1:
-        optimizer:
-          type: "adam"
-          lr: 0.001
         loss:
           type: "reinforce"
           entropy_weight: 0.01
@@ -45,11 +45,11 @@ agents:
       rnn_type: "gru"
       n_layers: 2
       embed_size: 64
+    optimizer:
+      type: "adam"
+      lr: 0.001
     tasks:
       task1:
-        optimizer:
-          type: "adam"
-          lr: 0.001
         loss:
           type: "concept"
           <<: *onehots_config

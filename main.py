@@ -109,23 +109,19 @@ def build_agents(agents_config: dict[str, dict]):
             }
             agent_params["model"] = model_types[model_type](**model_params)
 
+        # build optimizer
+        if "optimizer" in agent_params.keys():
+            optimizer_type = agent_params["optimizer"]["type"].lower()
+            optimizer_params = {
+                k: v for k, v in agent_params["optimizer"].items() if k != "type"
+            }
+            agent_params["optimizer"] = optimizer_types[optimizer_type]
+            agent_params["optimizer_params"] = optimizer_params
+
         # setting for each tasks
         if "tasks" in agent_params.keys():
             for task_name, task_params in agent_params["tasks"].items():
                 agent_params["tasks"][task_name] = task_params.copy()
-
-                # build optimizer
-                if "optimizer" in task_params.keys():
-                    optimizer_type = task_params["optimizer"]["type"].lower()
-                    optimizer_params = {
-                        k: v for k, v in task_params["optimizer"].items() if k != "type"
-                    }
-                    agent_params["tasks"][task_name]["optimizer"] = optimizer_types[
-                        optimizer_type
-                    ]
-                    agent_params["tasks"][task_name][
-                        "optimizer_params"
-                    ] = optimizer_params
 
                 # build loss
                 if "loss" in task_params.keys():

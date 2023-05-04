@@ -73,11 +73,17 @@ class CommunicationTraining(Task):
 
             loss = (sender_loss + receiver_loss).mean()
 
-            sender.tasks[self.name]["optimizer"].zero_grad()
-            receiver.tasks[self.name]["optimizer"].zero_grad()
+            sender.optimizer.zero_grad()
+            receiver.optimizer.zero_grad()
             loss.backward()
-            sender.tasks[self.name]["optimizer"].step()
-            receiver.tasks[self.name]["optimizer"].step()
+            sender.optimizer.step()
+            receiver.optimizer.step()
+
+            # sender.tasks[self.name]["optimizer"].zero_grad()
+            # receiver.tasks[self.name]["optimizer"].zero_grad()
+            # loss.backward()
+            # sender.tasks[self.name]["optimizer"].step()
+            # receiver.tasks[self.name]["optimizer"].step()
 
             # for agent, loss in zip([sender, receiver], [sender_loss, receiver_loss]):
             #     agent.tasks[self.name]["optimizer"].zero_grad()

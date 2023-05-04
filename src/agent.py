@@ -9,19 +9,16 @@ class Agent(th.nn.Module):
     def __init__(
         self,
         model: th.nn.Module,
+        optimizer: th.optim.Optimizer,
+        optimizer_params: dict[str, Any],
         tasks: dict[str, dict],
         name: str,
     ):
         super().__init__()
         self.model = model
+        self.optimizer = optimizer(self.model.parameters(), **optimizer_params)
         self.tasks = tasks
         self.name = name
-
-        for task_name, task_params in tasks.items():
-            if "optimizer" in task_params.keys():
-                self.tasks[task_name]["optimizer"] = task_params["optimizer"](
-                    self.model.parameters(), **task_params["optimizer_params"]
-                )
 
         for m in self.model.modules():
             if isinstance(m, th.nn.Linear):
