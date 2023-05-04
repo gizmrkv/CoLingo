@@ -68,7 +68,7 @@ class ValidationGame(Task):
 
 dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
 model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
-losse_types = {"reinforce": ReinforceLoss, "concept": ConceptLoss}
+loss_types = {"reinforce": ReinforceLoss, "concept": ConceptLoss}
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {"communication": CommunicationTraining}
 network_types = {"custom": CustomNetwork}
@@ -118,32 +118,6 @@ def build_agents(agents_config: dict[str, dict]):
             agent_params["optimizer"] = optimizer_types[optimizer_type]
             agent_params["optimizer_params"] = optimizer_params
 
-        # setting for each tasks
-        if "tasks" in agent_params.keys():
-            for task_name, task_params in agent_params["tasks"].items():
-                agent_params["tasks"][task_name] = task_params.copy()
-
-                # build loss
-                if "loss" in task_params.keys():
-                    loss_type = task_params["loss"]["type"].lower()
-                    loss_params = {
-                        k: v for k, v in task_params["loss"].items() if k != "type"
-                    }
-                    for baseline in ["baseline", "length_baseline"]:
-                        if baseline in loss_params.keys():
-                            baseline_type = loss_params[baseline]["type"].lower()
-                            baseline_params = {
-                                k: v
-                                for k, v in loss_params[baseline].items()
-                                if k != "type"
-                            }
-                            loss_params[baseline] = baseline_types[baseline_type](
-                                **baseline_params
-                            )
-                    agent_params["tasks"][task_name]["loss"] = losse_types[loss_type](
-                        **loss_params
-                    )
-
         agents[name] = Agent(name=name, **agent_params)
 
     return agents
@@ -177,6 +151,18 @@ def build_tasks(
             task_params["dataloader"] = dataloader_types[dataloader_type](
                 **dataloader_params
             )
+
+        # build losses
+        for loss in [k for k in task_params.keys() if k.endswith("loss")]:
+            loss_type = task_params[loss]["type"].lower()
+            loss_params = {k: v for k, v in task_params[loss].items() if k != "type"}
+            for baseline in [k for k in loss_params.keys() if k.endswith("baseline")]:
+                baseline_type = loss_params[baseline]["type"].lower()
+                baseline_params = {
+                    k: v for k, v in loss_params[baseline].items() if k != "type"
+                }
+                loss_params[baseline] = baseline_types[baseline_type](**baseline_params)
+            task_params[loss] = loss_types[loss_type](**loss_params)
 
         # build task
         tasks[name] = task_types[task_type](name=name, **task_params)

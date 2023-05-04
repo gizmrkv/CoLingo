@@ -47,14 +47,21 @@ class AgentSaver(Task):
 
 
 class CommunicationTraining(Task):
-    def __init__(self, network: Network, dataloader: DataLoader, name: str):
+    def __init__(
+        self,
+        network: Network,
+        dataloader: DataLoader,
+        sender_loss: th.nn.Module,
+        receiver_loss: th.nn.Module,
+        name: str,
+    ):
         super().__init__()
 
         self.network = network
         self.dataloader = dataloader
+        self.sender_loss = sender_loss
+        self.receiver_loss = receiver_loss
         self.name = name
-        self.length_baseline = MeanBaseline()
-        self.loss_baseline = MeanBaseline()
 
     def run(self):
         for _, batch in enumerate(self.dataloader):
@@ -68,8 +75,8 @@ class CommunicationTraining(Task):
             message, aux_s = sender(batch, "object")
             answer, aux_r = receiver(message, "message")
 
-            receiver_loss = receiver.tasks[self.name]["loss"](answer, batch)
-            sender_loss = sender.tasks[self.name]["loss"](receiver_loss, aux_s)
+            receiver_loss = self.receiver_loss(answer, batch)
+            sender_loss = self.sender_loss(receiver_loss, aux_s)
 
             loss = (sender_loss + receiver_loss).mean()
 

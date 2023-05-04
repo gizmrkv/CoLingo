@@ -11,13 +11,11 @@ class Agent(th.nn.Module):
         model: th.nn.Module,
         optimizer: th.optim.Optimizer,
         optimizer_params: dict[str, Any],
-        tasks: dict[str, dict],
         name: str,
     ):
         super().__init__()
         self.model = model
         self.optimizer = optimizer(self.model.parameters(), **optimizer_params)
-        self.tasks = tasks
         self.name = name
 
         for m in self.model.modules():
