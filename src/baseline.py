@@ -10,8 +10,8 @@ class MeanBaseline(th.nn.Module):
     def forward(self, loss: th.Tensor) -> th.Tensor:
         if self.training:
             self.count += 1
-            self.mean += (loss.detach().mean().item() - self.mean) / self.count
-        return self.mean
+            self.mean += (loss.mean() - self.mean) / self.count
+        return self.mean.detach()
 
 
 class BatchMeanBaseline(th.nn.Module):
@@ -19,4 +19,4 @@ class BatchMeanBaseline(th.nn.Module):
         super().__init__()
 
     def forward(self, loss: th.Tensor) -> th.Tensor:
-        return loss.mean(dim=0)
+        return loss.mean(dim=0).detach()
