@@ -46,7 +46,7 @@ class AgentSaver(Task):
         self.count += 1
 
 
-class CommunicationTraining(Task):
+class SignalingTrainer(Task):
     def __init__(
         self,
         network: Network,

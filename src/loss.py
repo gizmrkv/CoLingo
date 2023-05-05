@@ -39,11 +39,12 @@ class ConceptLoss(th.nn.Module):
     def forward(self, input: th.Tensor, target: th.Tensor):
         bsz = input.shape[0]
         input = input.view(bsz * self.n_attributes, self.n_values)
-        target = (
-            target.view(bsz, self.n_attributes, self.n_values)
-            .argmax(dim=-1)
-            .view(bsz * self.n_attributes)
-        )
+        # target = (
+        #     target.view(bsz, self.n_attributes, self.n_values)
+        #     .argmax(dim=-1)
+        #     .view(bsz * self.n_attributes)
+        # )
+        target = target.view(bsz * self.n_attributes)
         return (
             th.nn.functional.cross_entropy(input, target, reduction="none")
             .view(-1, self.n_attributes)

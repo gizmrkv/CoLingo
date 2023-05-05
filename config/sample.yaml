@@ -1,21 +1,21 @@
 exp_name: "sample_exp"
-n_epochs: 3000
+n_epochs: 30000
 seed: 3
-device: "cpu"
+device: "cuda"
 
 onehots_config: &onehots_config
   n_attributes: 2
-  n_values: 10
+  n_values: 50
 
 datasets:
   dataset1:
-    type: "onehots"
+    type: "concept"
     <<: *onehots_config
 
 agents:
   agent1:
     model:
-      type: "sequence"
+      type: "ecsem"
       <<: *onehots_config
       vocab_size: 50
       max_len: 3
@@ -26,18 +26,9 @@ agents:
     optimizer:
       type: "adam"
       lr: 0.001
-    tasks:
-      task1:
-        loss:
-          type: "reinforce"
-          entropy_weight: 0.01
-          baseline:
-            type: "mean"
-          length_baseline:
-            type: "mean"
   agent2:
     model:
-      type: "sequence"
+      type: "ecsem"
       <<: *onehots_config
       vocab_size: 50
       max_len: 3
@@ -48,16 +39,11 @@ agents:
     optimizer:
       type: "adam"
       lr: 0.001
-    tasks:
-      task1:
-        loss:
-          type: "concept"
-          <<: *onehots_config
 tasks:
   task1:
-    type: "communication"
+    type: "signaling"
     dataloader:
-      type: "default"
+      type: "builtin"
       dataset: "dataset1"
       batch_size: 32
       shuffle: true
@@ -65,3 +51,13 @@ tasks:
       type: "custom"
       edges:
         - { "source": "agent1", "target": "agent2" }
+    sender_loss:
+      type: "reinforce"
+      entropy_weight: 0.5
+      baseline:
+        type: "batch_mean"
+      length_baseline:
+        type: "batch_mean"
+    receiver_loss:
+      type: "concept"
+      <<: *onehots_config

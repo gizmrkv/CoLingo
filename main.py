@@ -9,11 +9,19 @@ from torch.utils.data import DataLoader
 
 from src.agent import Agent
 from src.baseline import MeanBaseline, BatchMeanBaseline
-from src.dataset import build_normal_dataset, build_onehots_dataset
+from src.dataset import (
+    build_normal_dataset,
+    build_onehot_concept_dataset,
+    build_concept_dataset,
+)
 from src.loss import ReinforceLoss, ConceptLoss
-from src.model import SequenceModel, SingleWordModel
+from src.model import (
+    OnehotConceptSequntialMessageModel,
+    OnehotConceptSymbolMessageModel,
+    EmbeddingConceptSequentialMessageModel,
+)
 from src.network import CustomNetwork, Network
-from src.task import AgentSaver, CommunicationTraining, Task
+from src.task import AgentSaver, SignalingTrainer, Task
 from src.util import find_length, fix_seed
 
 
@@ -45,11 +53,12 @@ class ValidationGame(Task):
 
             n_attributes = 2
             n_data = self.dataset.shape[0]
-            dataset = (
-                self.dataset.view(n_data * n_attributes, -1)
-                .argmax(dim=-1)
-                .reshape(-1, n_attributes)
-            )
+            # dataset = (
+            #     self.dataset.view(n_data * n_attributes, -1)
+            #     .argmax(dim=-1)
+            #     .reshape(-1, n_attributes)
+            # )
+            dataset = self.dataset
             answer = (
                 answer.view(n_data * n_attributes, -1)
                 .argmax(dim=-1)
@@ -66,13 +75,21 @@ class ValidationGame(Task):
         self.count += 1
 
 
-dataset_types = {"onehots": build_onehots_dataset, "normal": build_normal_dataset}
-model_types = {"single_word": SingleWordModel, "sequence": SequenceModel}
+dataset_types = {
+    "concept": build_concept_dataset,
+    "onehot_concept": build_onehot_concept_dataset,
+    "normal": build_normal_dataset,
+}
+model_types = {
+    "ocsym": OnehotConceptSymbolMessageModel,
+    "ocsem": OnehotConceptSequntialMessageModel,
+    "ecsem": EmbeddingConceptSequentialMessageModel,
+}
 loss_types = {"reinforce": ReinforceLoss, "concept": ConceptLoss}
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
-task_types = {"communication": CommunicationTraining}
+task_types = {"signaling": SignalingTrainer}
 network_types = {"custom": CustomNetwork}
-dataloader_types = {"default": th.utils.data.DataLoader}
+dataloader_types = {"builtin": th.utils.data.DataLoader}
 optimizer_types = {
     "adadelta": th.optim.Adadelta,
     "adagrad": th.optim.Adagrad,
@@ -84,6 +101,9 @@ optimizer_types = {
     "rprop": th.optim.Rprop,
     "sgd": th.optim.SGD,
     "sparseadam": th.optim.SparseAdam,
+    "adamw": th.optim.AdamW,
+    "nadam": th.optim.NAdam,
+    "radam": th.optim.RAdam,
 }
 
 
