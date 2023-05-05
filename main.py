@@ -14,7 +14,7 @@ from src.dataset import (
     build_onehot_concept_dataset,
     build_concept_dataset,
 )
-from src.loss import ReinforceLoss, ConceptLoss
+from src.loss import ReinforceLoss, ConceptLoss, OnehotConceptLoss
 from src.model import (
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
@@ -85,7 +85,11 @@ model_types = {
     "ocsem": OnehotConceptSequntialMessageModel,
     "ecsem": EmbeddingConceptSequentialMessageModel,
 }
-loss_types = {"reinforce": ReinforceLoss, "concept": ConceptLoss}
+loss_types = {
+    "reinforce": ReinforceLoss,
+    "concept": ConceptLoss,
+    "onehot_concept": OnehotConceptLoss,
+}
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {"signaling": SignalingTrainer}
 network_types = {"custom": CustomNetwork}
