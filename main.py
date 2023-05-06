@@ -13,6 +13,7 @@ from src.dataset import (
     build_normal_dataset,
     build_onehot_concept_dataset,
     build_concept_dataset,
+    random_split,
 )
 from src.loss import ReinforceLoss, ConceptLoss, OnehotConceptLoss
 from src.model import (
@@ -79,6 +80,7 @@ dataset_types = {
     "concept": build_concept_dataset,
     "onehot_concept": build_onehot_concept_dataset,
     "normal": build_normal_dataset,
+    "random_split": random_split,
 }
 model_types = {
     "ocsym": OnehotConceptSymbolMessageModel,
@@ -115,8 +117,16 @@ def build_datasets(datasets_config: dict[str, dict], device: str):
     datasets = {}
     for name, params in datasets_config.copy().items():
         dataset_type = params["type"].lower()
-        dataset_params = {k: v for k, v in params.items() if k != "type"}
+        dataset_params = {k: v for k, v in params.items() if k not in ["type", "split"]}
         datasets[name] = dataset_types[dataset_type](**dataset_params).to(device)
+        if "split" in params.keys():
+            splitted_dataset_names = params["split"].keys()
+            splitted_dataset_ratios = params["split"].values()
+            splitted_datasets = random_split(datasets[name], splitted_dataset_ratios)
+            for splitted_dataset_name, splitted_dataset in zip(
+                splitted_dataset_names, splitted_datasets
+            ):
+                datasets["_".join([name, splitted_dataset_name])] = splitted_dataset
     return datasets
 
 
