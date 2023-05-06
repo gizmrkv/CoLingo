@@ -48,7 +48,7 @@ class SignalingEvaluator(Callback):
         receiver: th.nn.Module,
         dataset: th.Tensor,
         evaluator: dict,
-        logger: Logger,
+        loggers: list[Logger],
         interval: int = 10,
         name: str = "eval",
     ):
@@ -57,7 +57,7 @@ class SignalingEvaluator(Callback):
         self.receiver = receiver
         self.dataset = dataset
         self.evaluator = evaluator
-        self.logger = logger
+        self.loggers = loggers
         self.interval = interval
         self.name = name
 
@@ -77,4 +77,6 @@ class SignalingEvaluator(Callback):
         for name, func in self.evaluator.items():
             value = func(self.dataset, message, output, aux_s, aux_r)
             logs[name] = value
-        self.logger.log({self.name: logs})
+
+        for logger in self.loggers:
+            logger.log({self.name: logs})

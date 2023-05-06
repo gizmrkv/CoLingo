@@ -17,7 +17,7 @@ from src.dataset import (
     random_split,
 )
 from src.evaluator import ModuleEvaluator, SignalingEvaluator
-from src.logger import ConsoleLogger
+from src.logger import ConsoleLogger, WandBLogger
 from src.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
 from src.model import (
     EmbeddingConceptSequentialMessageModel,
@@ -206,7 +206,7 @@ def main(config: dict):
         agents["agent2"],
         datasets["dataset1"],
         evaluators,
-        ConsoleLogger(),
+        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
         interval=1,
     )
     tasks["signaling_evaluator"] = signaling_evaluator
