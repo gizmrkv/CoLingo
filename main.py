@@ -1,33 +1,28 @@
 import datetime
 import random
-from pprint import pprint
 
-import toml
 import torch as th
 import yaml
-from torch.utils.data import DataLoader
 
-from src.agent import Agent
-from src.baseline import BatchMeanBaseline, MeanBaseline
-from src.callback import Callback
-from src.dataset import (
+from src.core.agent import Agent
+from src.core.baseline import BatchMeanBaseline, MeanBaseline
+from src.core.dataset import (
     build_concept_dataset,
     build_normal_dataset,
     build_onehot_concept_dataset,
     random_split,
 )
-from src.evaluator import ModuleEvaluator, SignalingEvaluator
-from src.logger import ConsoleLogger, WandBLogger
-from src.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.model import (
+from src.core.logger import ConsoleLogger, WandBLogger
+from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
+from src.core.model import (
     EmbeddingConceptSequentialMessageModel,
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
 )
-from src.network import CustomNetwork, Network
-from src.task import AgentSaver, SignalingTrainer
-from src.task_runner import TaskRunner
-from src.util import find_length, fix_seed
+from src.core.network import CustomNetwork
+from src.core.task_runner import TaskRunner
+from src.core.util import AgentSaver, fix_seed
+from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
 
 class ConceptAccuracy:
