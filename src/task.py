@@ -1,15 +1,12 @@
 import os
 import random
-from abc import ABC, abstractmethod
 
 import torch as th
 from torch.utils.data import DataLoader
 
 from .agent import Agent
-from .network import Network
-from .util import find_length
-from .baseline import MeanBaseline
 from .callback import Callback
+from .network import Network
 
 
 class AgentSaver(Callback):
@@ -67,8 +64,8 @@ class SignalingTrainer(Callback):
             for agent in [sender, receiver]:
                 agent.train()
 
-            message, aux_s = sender(batch, "object")
-            answer, aux_r = receiver(message, "message")
+            message, aux_s = sender(batch, "sender")
+            answer, aux_r = receiver(message, "receiver")
 
             receiver_loss = self.receiver_loss(answer, batch)
             sender_loss = self.sender_loss(receiver_loss, aux_s)

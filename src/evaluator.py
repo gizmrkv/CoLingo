@@ -1,5 +1,3 @@
-from typing import Callable
-
 import torch as th
 
 from .callback import Callback
@@ -71,8 +69,8 @@ class SignalingEvaluator(Callback):
 
         for agent in [self.sender, self.receiver]:
             agent.eval()
-        message, aux_s = self.sender(self.dataset, "object")
-        output, aux_r = self.receiver(message, "message")
+        message, aux_s = self.sender(self.dataset, "sender")
+        output, aux_r = self.receiver(message, "receiver")
         logs = {}
         for name, func in self.evaluator.items():
             value = func(self.dataset, message, output, aux_s, aux_r)

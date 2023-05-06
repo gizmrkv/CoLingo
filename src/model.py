@@ -1,6 +1,7 @@
+from collections import namedtuple
+
 import torch as th
 from torch.distributions import Categorical
-from collections import namedtuple
 
 from . import util
 
@@ -32,10 +33,10 @@ class OnehotConceptSymbolMessageModel(th.nn.Module):
             th.nn.Linear(hidden_size, n_attributes * n_values),
         )
 
-    def forward(self, x: th.Tensor, input_type: str):
+    def forward(self, x: th.Tensor, role: str):
         log_prob = None
         entropy = None
-        if input_type == "object":
+        if role == "sender":
             x = self.fc1(x)
             if self.training:
                 dist = th.distributions.Categorical(logits=x)
@@ -46,7 +47,7 @@ class OnehotConceptSymbolMessageModel(th.nn.Module):
                 x = x.argmax(dim=-1)
 
             x = th.nn.functional.one_hot(x, self.vocab_size).float()
-        elif input_type == "message":
+        elif role == "receiver":
             x = self.fc2(x)
             batch_size = x.shape[0]
             x = x.view(batch_size * self.n_attributes, self.n_values)
@@ -98,10 +99,10 @@ class OnehotConceptSequntialMessageModel(th.nn.Module):
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
         self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
 
-    def forward(self, x: th.Tensor, input_type: str):
-        if input_type == "object":
+    def forward(self, x: th.Tensor, role: str):
+        if role == "sender":
             return self.object_to_message(x)
-        if input_type == "message":
+        if role == "receiver":
             return self.message_to_object(x)
 
     def object_to_message(self, x: th.Tensor):
@@ -227,10 +228,10 @@ class EmbeddingConceptSequentialMessageModel(th.nn.Module):
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
         self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
 
-    def forward(self, x: th.Tensor, input_type: str):
-        if input_type == "object":
+    def forward(self, x: th.Tensor, role: str):
+        if role == "sender":
             return self.object_to_message(x)
-        if input_type == "message":
+        if role == "receiver":
             return self.message_to_object(x)
 
     def object_to_message(self, x: th.Tensor):

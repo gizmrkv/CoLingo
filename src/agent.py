@@ -1,8 +1,6 @@
-import copy
-import torch as th
 from typing import Any
 
-from . import baseline
+import torch as th
 
 
 class Agent(th.nn.Module):
@@ -23,5 +21,5 @@ class Agent(th.nn.Module):
                 th.nn.init.kaiming_uniform_(m.weight)
                 th.nn.init.zeros_(m.bias)
 
-    def forward(self, x: th.Tensor, input_type: str):
-        return self.model(x, input_type)
+    def forward(self, x: th.Tensor, role: str):
+        return self.model(x, role)

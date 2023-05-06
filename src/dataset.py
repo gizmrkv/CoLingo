@@ -1,6 +1,7 @@
+import itertools
+
 import numpy as np
 import torch as th
-import itertools
 
 
 def build_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:

@@ -1,7 +1,4 @@
 import torch as th
-from typing import Any
-
-from .baseline import MeanBaseline
 
 
 class ReinforceLoss(th.nn.Module):
