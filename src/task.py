@@ -9,15 +9,10 @@ from .agent import Agent
 from .network import Network
 from .util import find_length
 from .baseline import MeanBaseline
+from .callback import Callback
 
 
-class Task(ABC):
-    @abstractmethod
-    def run(self):
-        raise NotImplementedError
-
-
-class AgentSaver(Task):
+class AgentSaver(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
@@ -32,7 +27,7 @@ class AgentSaver(Task):
 
         self.count = 0
 
-    def run(self):
+    def on_update(self):
         if self.count % self.interval == 0:
             for agent_name, agent in self.agents.items():
                 save_dir = f"{self.path}/{agent_name}"
@@ -46,7 +41,7 @@ class AgentSaver(Task):
         self.count += 1
 
 
-class SignalingTrainer(Task):
+class SignalingTrainer(Callback):
     def __init__(
         self,
         network: Network,
@@ -63,7 +58,7 @@ class SignalingTrainer(Task):
         self.receiver_loss = receiver_loss
         self.name = name
 
-    def run(self):
+    def on_update(self):
         for _, batch in enumerate(self.dataloader):
             edge = random.choice(self.network.edges)
             sender = self.network.agents[edge["source"]]
