@@ -12,7 +12,7 @@ poetry install
 - Metrics
   - Topographic similarity
   - Language syncronization
-  - Generalization
   - Stability
+- Periodic model initializer
 - Faction
 - Image input
