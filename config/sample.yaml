@@ -1,11 +1,11 @@
 exp_name: "sample_exp"
-n_epochs: 30000
+n_iterations: 30000
 seed: 3
 device: "cuda"
 
 onehots_config: &onehots_config
   n_attributes: 2
-  n_values: 6
+  n_values: 10
 
 datasets:
   dataset1:
@@ -48,7 +48,7 @@ tasks:
     type: "signaling"
     dataloader:
       type: "builtin"
-      dataset: "dataset1"
+      dataset: "dataset1_train"
       batch_size: 32
       shuffle: true
     network:

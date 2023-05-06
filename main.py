@@ -8,72 +8,42 @@ import yaml
 from torch.utils.data import DataLoader
 
 from src.agent import Agent
-from src.baseline import MeanBaseline, BatchMeanBaseline
+from src.baseline import BatchMeanBaseline, MeanBaseline
+from src.callback import Callback
 from src.dataset import (
+    build_concept_dataset,
     build_normal_dataset,
     build_onehot_concept_dataset,
-    build_concept_dataset,
     random_split,
 )
-from src.loss import ReinforceLoss, ConceptLoss, OnehotConceptLoss
+from src.evaluator import ModuleEvaluator, SignalingEvaluator
+from src.logger import ConsoleLogger
+from src.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
 from src.model import (
+    EmbeddingConceptSequentialMessageModel,
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
-    EmbeddingConceptSequentialMessageModel,
 )
 from src.network import CustomNetwork, Network
-from src.task import AgentSaver, SignalingTrainer, Task
+from src.task import AgentSaver, SignalingTrainer
+from src.task_runner import TaskRunner
 from src.util import find_length, fix_seed
 
 
-class ValidationGame(Task):
-    def __init__(
-        self,
-        network: Network,
-        dataloader: DataLoader,
-        interval: float,
-    ):
-        super().__init__()
+class ConceptAccuracy:
+    def __init__(self, n_attributes: int, n_values: int):
+        self.n_attributes = n_attributes
+        self.n_values = n_values
 
-        self.network = network
-        self.dataset = dataloader.dataset
-        self.interval = interval
-
-        self.count = 0
-
-    def run(self):
-        if self.count % self.interval == 0:
-            sender = self.network.agents["agent1"]
-            receiver1 = self.network.agents["agent2"]
-
-            for ag in [sender, receiver1]:
-                ag.eval()
-
-            message, _ = sender(self.dataset, "object")
-            answer, _ = receiver1(message, "message")
-
-            n_attributes = 2
-            n_data = self.dataset.shape[0]
-            # dataset = (
-            #     self.dataset.view(n_data * n_attributes, -1)
-            #     .argmax(dim=-1)
-            #     .reshape(-1, n_attributes)
-            # )
-            dataset = self.dataset
-            answer = (
-                answer.view(n_data * n_attributes, -1)
-                .argmax(dim=-1)
-                .reshape(-1, n_attributes)
-            )
-
-            acc = (answer == dataset).float().mean()
-            for obj, msg, ans in zip(dataset, message, answer):
-                print(
-                    f"{tuple(obj.tolist())} -> {msg.tolist()[:-1]} -> {tuple(ans.tolist())}"
-                )
-            print(f"Epoch: {self.count:4}, Accuracy: {acc:.3f}")
-
-        self.count += 1
+    def __call__(self, dataset: th.Tensor, output: th.Tensor):
+        batch_size = dataset.shape[0]
+        output = (
+            output.view(batch_size * self.n_attributes, -1)
+            .argmax(dim=-1)
+            .reshape(-1, self.n_attributes)
+        )
+        acc = (output == dataset).float().mean().item()
+        return acc
 
 
 dataset_types = {
@@ -224,18 +194,27 @@ def main(config: dict):
 
     check_config(datasets, agents, tasks)
 
-    validation = ValidationGame(
-        network=tasks["task1"].network,
-        dataloader=tasks["task1"].dataloader,
-        interval=10,
+    n_attributes = config["onehots_config"]["n_attributes"]
+    n_values = config["onehots_config"]["n_values"]
+    evaluators = {
+        "acc": lambda dataset, message, output, aux_s, aux_r: ConceptAccuracy(
+            n_attributes, n_values
+        )(dataset, output),
+    }
+    signaling_evaluator = SignalingEvaluator(
+        agents["agent1"],
+        agents["agent2"],
+        datasets["dataset1"],
+        evaluators,
+        ConsoleLogger(),
+        interval=1,
     )
-    tasks["validation"] = validation
+    tasks["signaling_evaluator"] = signaling_evaluator
 
     tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 
-    for epoch in range(config["n_epochs"]):
-        for name, task in tasks.items():
-            task.run()
+    runner = TaskRunner(tasks)
+    runner.run(config["n_iterations"])
 
 
 if __name__ == "__main__":
