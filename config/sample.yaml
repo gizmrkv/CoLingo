@@ -3,26 +3,29 @@ n_iterations: 30000
 seed: 3
 device: "cuda"
 
-onehots_config: &onehots_config
+concept_config: &concept_config
   n_attributes: 2
-  n_values: 10
+  n_values: 50
+
+channel_config: &channel_config
+  type: "ecsem"
+  <<: *concept_config
+  vocab_size: 50
+  max_len: 3
 
 datasets:
   dataset1:
     type: "concept"
-    <<: *onehots_config
+    <<: *concept_config
     split:
       train: 8
-      val: 1
-      test: 1
+      val: 2
 
 agents:
   agent1:
     model:
       type: "ecsem"
-      <<: *onehots_config
-      vocab_size: 50
-      max_len: 3
+      <<: *channel_config
       hidden_size: 512
       rnn_type: "gru"
       n_layers: 2
@@ -33,9 +36,7 @@ agents:
   agent2:
     model:
       type: "ecsem"
-      <<: *onehots_config
-      vocab_size: 50
-      max_len: 3
+      <<: *channel_config
       hidden_size: 512
       rnn_type: "gru"
       n_layers: 2
@@ -64,4 +65,4 @@ tasks:
         type: "batch_mean"
     receiver_loss:
       type: "concept"
-      <<: *onehots_config
+      <<: *concept_config
