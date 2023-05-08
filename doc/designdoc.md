@@ -1,58 +1,45 @@
 # CoLingo (Cooperative Language Emergence Library)
 
-## Authors
+## TODO
+- Network
+  - Empty network
+  - Complete network
+  - Bipartite network
+- Metrics
+  - Topographic similarity
+  - Language syncronization
+  - Stability
+  - (Async)
+- Periodic model initializer
+- Faction
+- Image input
+
+## 著者
 - gizmrkv
 
-## Purpose
-This is a library designed to support experiments in language emergence within environments containing multiple agents.
+## 目的
+本ライブラリは、複数のエージェントを含む環境での言語創発実験を支援し、言語創発研究の新たな領域を探求することを目的としています。
 
-## Background
-There is already an open-source library available for conducting language emergence experiments between two agents, Sender and Receiver ([EGG, 2019](https://github.com/facebookresearch/EGG)). However, this library is not suitable for implementing experiments with three or more agents. On the other hand, there is growing interest in simulating language emergence in environments with a large number of agents, and there is a demand for tools that support this type of experimentation.
+## 背景
+既存の言語創発研究では、通常、2人のAgent間のシグナリングゲームに基づく実験が行われています。Lewisのシグナリングゲームをもとにした2人の間の言語創発実験のためのオープンソースライブラリ（EGG, 2019）も存在します。しかし、現実世界では3人以上のAgentが協力する状況が一般的であり、このような状況を模倣する言語創発実験の需要が高まっています。
 
-## Architecture
-The experiments conducted using this library are expected to follow the following process:
+CoLingoは、3人以上のAgentが参加する環境での言語創発実験を容易に行えるよう設計されており、研究者がより現実に近い状況で言語創発を研究できる利点を持っています。また、既存の言語創発研究やライブラリと比較して、より柔軟で拡張性に優れた設計が特徴です。
 
-1. Generate the agents present in the environment, the dataset to be used in the experiment, and the tasks to be performed in each iteration.
-2. Execute the generated tasks repeatedly in an alternating fashion.
+## 概要
+本ライブラリを用いて行われる実験では，まず
 
-It is possible to have multiple agents, datasets, and tasks generated. If multiple tasks are generated, each task is executed once per iteration.
+1. 環境に存在するAgent，実験に用いるデータセット，各イテレーションで行うTaskを生成する．
+2. 生成されたTaskを繰り返し実行する．
 
-
-
-## Components
+## 要素
 
 ### Agent
-Each agent has a model, a loss function, and an optimizer. Agents are given various types of input depending on the task and are expected to produce various types of output.
-
-### Model
-The model is responsible for processing this input and output.
-
-### Loss
-The loss function calculates the loss by combining the previous model call result with the reward calculated by the task.
-
-### Baseline
-Baseline is a function used to speed up learning convergence, and is a common technique in reinforcement learning.
-
-### Dataset
-The dataset is the input data that the task gives to the agent. Various types of data are assumed, including concepts combined with one-hot vectors, strings, and images.
-
-### DataLoader
-DataLoader provides a way to create mini-batches by sampling from a specified Dataset in an arbitrary manner.
-
-### Network
-Network defines the communication path between Agents. It is a graph structure, managed by an adjacency list and an edge list. Edges can have arbitrary information. Some Tasks require Network.
+Agentはモデルを持ち，これを使ってTaskからの入力を処理して出力を返します．Taskから入力を受け取る際，そのTaskでのAgentの役割も受け取り，これに従ってモデルの振る舞いを切り替えます．例えばLewisのシグナリングゲームでは，Senderとして振る舞うAgentには"sender"，Receiverとして振る舞うReceiverには"receiver"という役割を与えます．これら以外にも任意の役割とTaskを定義することができます．
 
 ### Task
-The task processing can be freely defined. It is assumed that any task can be executed as a task, including agent learning, metric calculation, model saving, and any other processing that is periodically executed.
+Taskは実験全体の反復で繰り返し実行される処理です．Agentの学習，メトリクスの計算，モデルの保存など，任意の処理をTaskとして実行できます．例えばLewisのシグナリングゲームでは，Agentの中からランダムにSenderとReceiverを選び，学習を行います．
 
-### Reward
-Reward calculates the reward. Reward allows Tasks not to know the dimensions of the data being passed between Agents.(It might as well be combined with Loss...).
+### Network
+NetworkはAgent間の通信路を定義します．これはグラフ構造であり，ノードはAgentを表し，エッジはAgent間の通信路を表します．TaskによってはNetworkを必要とします．
 
-### Logger
-Logger logs various values.
 
-### TaskRunner
-TaskRunner executes tasks.
-
-## Test
-TODO: how to test
