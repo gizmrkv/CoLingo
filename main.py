@@ -14,14 +14,15 @@ from src.core.dataset import (
 )
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.model import (
+from src.core.network import CustomNetwork
+from src.core.task_runner import TaskRunner
+from src.core.util import AgentSaver, fix_seed
+from src.model.internal_representation import InternalRepresentaionModel
+from src.model.misc import (
     EmbeddingConceptSequentialMessageModel,
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
 )
-from src.core.network import CustomNetwork
-from src.core.task_runner import TaskRunner
-from src.core.util import AgentSaver, fix_seed
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
 
@@ -51,6 +52,7 @@ model_types = {
     "ocsym": OnehotConceptSymbolMessageModel,
     "ocsem": OnehotConceptSequntialMessageModel,
     "ecsem": EmbeddingConceptSequentialMessageModel,
+    "internal": InternalRepresentaionModel,
 }
 loss_types = {
     "reinforce": ReinforceLoss,
@@ -189,22 +191,33 @@ def main(config: dict):
 
     check_config(datasets, agents, tasks)
 
-    n_attributes = config["onehots_config"]["n_attributes"]
-    n_values = config["onehots_config"]["n_values"]
+    n_attributes = config["concept_config"]["n_attributes"]
+    n_values = config["concept_config"]["n_values"]
     evaluators = {
         "acc": lambda dataset, message, output, aux_s, aux_r: ConceptAccuracy(
             n_attributes, n_values
         )(dataset, output),
     }
-    signaling_evaluator = SignalingEvaluator(
+    train_evaluator = SignalingEvaluator(
         agents["agent1"],
         agents["agent2"],
-        datasets["dataset1"],
+        datasets["dataset1_train"],
         evaluators,
         [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
         interval=1,
+        name="train_acc",
     )
-    tasks["signaling_evaluator"] = signaling_evaluator
+    tasks["train_evaluator"] = train_evaluator
+    val_evaluator = SignalingEvaluator(
+        agents["agent1"],
+        agents["agent2"],
+        datasets["dataset1_val"],
+        evaluators,
+        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
+        interval=1,
+        name="val_acc",
+    )
+    tasks["val_evaluator"] = val_evaluator
 
     tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 

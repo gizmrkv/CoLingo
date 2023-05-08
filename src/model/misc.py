@@ -3,7 +3,7 @@ from collections import namedtuple
 import torch as th
 from torch.distributions import Categorical
 
-from . import util
+from ..core import util
 
 
 class OnehotConceptSymbolMessageModel(th.nn.Module):

@@ -24,23 +24,25 @@ datasets:
 agents:
   agent1:
     model:
-      type: "ecsem"
+      type: "internal"
       <<: *channel_config
-      hidden_size: 512
-      rnn_type: "gru"
-      n_layers: 2
+      internal_size: 64
       embed_size: 64
+      hidden_size: 64
+      rnn_type: "gru"
+      n_layers: 3
     optimizer:
       type: "adam"
       lr: 0.001
   agent2:
     model:
-      type: "ecsem"
+      type: "internal"
       <<: *channel_config
-      hidden_size: 512
-      rnn_type: "gru"
-      n_layers: 2
+      internal_size: 64
       embed_size: 64
+      hidden_size: 64
+      rnn_type: "gru"
+      n_layers: 3
     optimizer:
       type: "adam"
       lr: 0.001

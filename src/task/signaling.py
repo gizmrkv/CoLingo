@@ -45,7 +45,7 @@ class SignalingTrainer(Callback):
 
             sender.optimizer.zero_grad()
             receiver.optimizer.zero_grad()
-            loss.backward()
+            loss.backward(retain_graph=True)
             sender.optimizer.step()
             receiver.optimizer.step()
 
