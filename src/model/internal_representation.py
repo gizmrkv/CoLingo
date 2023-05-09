@@ -281,3 +281,7 @@ class InternalRepresentaionModel(th.nn.Module):
         if role == "receiver":
             internal = self.message_encoder(x)
             return self.concept_decoder(internal)
+
+        if role == "identity":
+            internal = self.concept_encoder(x)
+            return self.concept_decoder(internal)[0]

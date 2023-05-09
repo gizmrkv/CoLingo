@@ -23,6 +23,7 @@ from src.model.misc import (
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
 )
+from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
 
@@ -31,14 +32,14 @@ class ConceptAccuracy:
         self.n_attributes = n_attributes
         self.n_values = n_values
 
-    def __call__(self, dataset: th.Tensor, output: th.Tensor):
-        batch_size = dataset.shape[0]
-        output = (
-            output.view(batch_size * self.n_attributes, -1)
+    def __call__(self, input: th.Tensor, target: th.Tensor):
+        batch_size = target.shape[0]
+        input = (
+            input.view(batch_size * self.n_attributes, -1)
             .argmax(dim=-1)
             .reshape(-1, self.n_attributes)
         )
-        acc = (output == dataset).float().mean().item()
+        acc = (input == target).float().mean().item()
         return acc
 
 
@@ -60,7 +61,7 @@ loss_types = {
     "onehot_concept": OnehotConceptLoss,
 }
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
-task_types = {"signaling": SignalingTrainer}
+task_types = {"signaling": SignalingTrainer, "identity": IdentityTrainer}
 network_types = {"custom": create_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
 optimizer_types = {
@@ -191,31 +192,56 @@ def main(config: dict):
 
     n_attributes = config["concept_config"]["n_attributes"]
     n_values = config["concept_config"]["n_values"]
-    evaluators = {
+
+    signaling_metrics = {
         "acc": lambda dataset, message, output, aux_s, aux_r: ConceptAccuracy(
             n_attributes, n_values
-        )(dataset, output),
+        )(output, dataset),
     }
-    train_evaluator = SignalingEvaluator(
-        agents["agent1"],
-        agents["agent2"],
+    signaling_train_evaluator = SignalingEvaluator(
+        agents,
+        tasks["signaling1"].network,
         datasets["dataset1_train"],
-        evaluators,
+        signaling_metrics,
         [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
         interval=1,
-        name="train_acc",
+        name="signaling_train",
     )
-    tasks["train_evaluator"] = train_evaluator
-    val_evaluator = SignalingEvaluator(
-        agents["agent1"],
-        agents["agent2"],
+    tasks["signaling_train_evaluator"] = signaling_train_evaluator
+    signaling_val_evaluator = SignalingEvaluator(
+        agents,
+        tasks["signaling1"].network,
         datasets["dataset1_val"],
-        evaluators,
+        signaling_metrics,
         [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
         interval=1,
-        name="val_acc",
+        name="signaling_val",
     )
-    tasks["val_evaluator"] = val_evaluator
+    tasks["signaling_val_evaluator"] = signaling_val_evaluator
+
+    identity_metrics = {
+        "acc": ConceptAccuracy(n_attributes, n_values),
+    }
+    identity_train_evaluator = IdentityEvaluator(
+        agents,
+        tasks["identity1"].network,
+        datasets["dataset1_train"],
+        identity_metrics,
+        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
+        interval=1,
+        name="identity_train",
+    )
+    tasks["identity_train_evaluator"] = identity_train_evaluator
+    identity_val_evaluator = IdentityEvaluator(
+        agents,
+        tasks["identity1"].network,
+        datasets["dataset1_val"],
+        identity_metrics,
+        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
+        interval=1,
+        name="identity_val",
+    )
+    tasks["identity_val_evaluator"] = identity_val_evaluator
 
     tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 

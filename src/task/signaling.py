@@ -57,23 +57,24 @@ class SignalingTrainer(Callback):
 class SignalingEvaluator(Callback):
     def __init__(
         self,
-        sender: th.nn.Module,
-        receiver: th.nn.Module,
+        agents: dict[str, Agent],
+        network: Graph,
         dataset: th.Tensor,
-        evaluator: dict,
+        metrics: dict[str, callable],
         loggers: list[Logger],
         interval: int = 10,
         name: str = "eval",
     ):
         super().__init__()
-        self.sender = sender
-        self.receiver = receiver
+        self.agents = agents
+        self.network = network
         self.dataset = dataset
-        self.evaluator = evaluator
+        self.metircs = metrics
         self.loggers = loggers
         self.interval = interval
         self.name = name
 
+        self._edges = list(self.network.edges)
         self._count = 0
 
     def on_update(self):
@@ -82,14 +83,21 @@ class SignalingEvaluator(Callback):
 
         self._count += 1
 
-        for agent in [self.sender, self.receiver]:
-            agent.eval()
-        message, aux_s = self.sender(self.dataset, "sender")
-        output, aux_r = self.receiver(message, "receiver")
-        logs = {}
-        for name, func in self.evaluator.items():
-            value = func(self.dataset, message, output, aux_s, aux_r)
-            logs[name] = value
+        logs = {f"{edge[0]} -> {edge[1]}": {} for edge in self._edges}
+        for edge in self._edges:
+            sender = self.agents[edge[0]]
+            receiver = self.agents[edge[1]]
+
+            for agent in [sender, receiver]:
+                agent.eval()
+
+            with th.no_grad():
+                message, aux_s = sender(self.dataset, "sender")
+                output, aux_r = receiver(message, "receiver")
+
+            for metric_name, metric in self.metircs.items():
+                value = metric(self.dataset, message, output, aux_s, aux_r)
+                logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
 
         for logger in self.loggers:
             logger.log({self.name: logs})

@@ -26,11 +26,11 @@ agents:
     model:
       type: "internal"
       <<: *channel_config
-      internal_size: 64
-      embed_size: 64
-      hidden_size: 64
+      internal_size: 256
+      embed_size: 256
+      hidden_size: 256
       rnn_type: "gru"
-      n_layers: 3
+      n_layers: 2
     optimizer:
       type: "adam"
       lr: 0.001
@@ -38,21 +38,21 @@ agents:
     model:
       type: "internal"
       <<: *channel_config
-      internal_size: 64
-      embed_size: 64
-      hidden_size: 64
+      internal_size: 256
+      embed_size: 256
+      hidden_size: 256
       rnn_type: "gru"
-      n_layers: 3
+      n_layers: 2
     optimizer:
       type: "adam"
       lr: 0.001
 tasks:
-  task1:
+  signaling1:
     type: "signaling"
     dataloader:
       type: "builtin"
       dataset: "dataset1_train"
-      batch_size: 32
+      batch_size: 1024
       shuffle: true
     network:
       type: "custom"
@@ -66,5 +66,21 @@ tasks:
       length_baseline:
         type: "batch_mean"
     receiver_loss:
+      type: "concept"
+      <<: *concept_config
+
+  identity1:
+    type: "identity"
+    dataloader:
+      type: "builtin"
+      dataset: "dataset1_train"
+      batch_size: 1024
+      shuffle: true
+    network:
+      type: "custom"
+      nodes:
+        - "agent1"
+        - "agent2"
+    loss:
       type: "concept"
       <<: *concept_config
