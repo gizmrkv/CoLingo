@@ -13,6 +13,9 @@ numpy = "^1.24.2"
 ipykernel = "^6.22.0"
 PyYAML = "^6.0"
 isort = "^5.12.0"
+Faker = "^18.6.2"
+torchviz = "^0.0.2"
+network = "^0.1"
 
 [tool.poetry.dev-dependencies]
 

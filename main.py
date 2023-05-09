@@ -14,7 +14,7 @@ from src.core.dataset import (
 )
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.network import CustomNetwork
+from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
@@ -61,7 +61,7 @@ loss_types = {
 }
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {"signaling": SignalingTrainer}
-network_types = {"custom": CustomNetwork}
+network_types = {"custom": create_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
 optimizer_types = {
     "adadelta": th.optim.Adadelta,
@@ -138,9 +138,7 @@ def build_tasks(
             network_params = {
                 k: v for k, v in task_params["network"].items() if k != "type"
             }
-            task_params["network"] = network_types[network_type](
-                agents=agents, **network_params
-            )
+            task_params["network"] = network_types[network_type](**network_params)
 
         # build dataloader
         if "dataloader" in task_params.keys():
@@ -166,7 +164,7 @@ def build_tasks(
             task_params[loss] = loss_types[loss_type](**loss_params).to(device)
 
         # build task
-        tasks[name] = task_types[task_type](name=name, **task_params)
+        tasks[name] = task_types[task_type](agents=agents, name=name, **task_params)
 
     return tasks
 

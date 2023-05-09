@@ -57,7 +57,7 @@ tasks:
     network:
       type: "custom"
       edges:
-        - { "source": "agent1", "target": "agent2" }
+        - ["agent1", "agent2"]
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5

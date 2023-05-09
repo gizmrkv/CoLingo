@@ -1,18 +1,19 @@
 import random
 
 import torch as th
+from networkx import Graph
 from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
 from ..core.logger import Logger
-from ..core.network import Network
 
 
 class SignalingTrainer(Callback):
     def __init__(
         self,
-        network: Network,
+        agents: dict[str, Agent],
+        network: Graph,
         dataloader: DataLoader,
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
@@ -20,17 +21,20 @@ class SignalingTrainer(Callback):
     ):
         super().__init__()
 
+        self.agents = agents
         self.network = network
         self.dataloader = dataloader
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
         self.name = name
 
+        self._edges = list(self.network.edges)
+
     def on_update(self):
         for _, batch in enumerate(self.dataloader):
-            edge = random.choice(self.network.edges)
-            sender = self.network.agents[edge["source"]]
-            receiver = self.network.agents[edge["target"]]
+            edge = random.choice(self._edges)
+            sender = self.agents[edge[0]]
+            receiver = self.agents[edge[1]]
 
             for agent in [sender, receiver]:
                 agent.train()
