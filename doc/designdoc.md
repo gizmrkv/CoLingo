@@ -1,19 +1,26 @@
 # CoLingo (Cooperative Language Emergence Library)
 
 ## TODO
-- Network
-  - Empty network
-  - Complete network
-  - Bipartite network
 - Metrics
   - Topographic similarity
   - Language syncronization
   - Stability
   - (Async)
+  - テストのためにハンドメイド言語を用意する
+- Taskの実行時に何バッチ使用するか指定する(n_training_batches or max_batches or n_batches)
+- 文字列を生成時と受付時でembeddingを共有するかどうか
+- Task Scheduler（複数のTaskの実行開始判定，終了判定，順序を計画する）
+- ハンドメイド言語
+  - 整数と記号が1対1
+  - 常に同じ1文字
+- config.yamlからevaluator, loggerの設定をできるようにする
+- Network
+  - Complete network
+  - Bipartite network
 - Periodic model initializer
 - Faction
 - Image input
-
+- 
 ## 著者
 - gizmrkv
 
