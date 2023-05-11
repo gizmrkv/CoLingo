@@ -4,9 +4,9 @@ import networkx as nx
 def create_custom_graph(
     nodes: list | None = None, edges: list | None = None
 ) -> nx.Graph:
-    G = nx.Graph()
+    g = nx.DiGraph()
     if nodes is not None:
-        G.add_nodes_from(nodes)
+        g.add_nodes_from(nodes)
     if edges is not None:
-        G.add_edges_from(edges)
-    return G
+        g.add_edges_from(edges)
+    return g
