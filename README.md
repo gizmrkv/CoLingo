@@ -5,8 +5,6 @@
   - 整数と記号が1対1
   - 常に同じ1文字
 - Metrics
-  - Topographic similarity
-  - Language syncronization
   - Stability
   - (Async)
   - テストのためにハンドメイド言語を用意する
@@ -16,6 +14,8 @@
   - 順番に1回ずつ実行するScheduler
 - Evaluator
   - 学習中に定期的に実行する？セーブしたモデルをロードして計算する？
+  - Agent一人にdatasetとrole与えてoutput出力
+  - Agent複数人にdatasetとrole与えてoutput出力
 - Network
   - Complete network
   - Bipartite network

@@ -1,5 +1,6 @@
 import datetime
 import random
+from typing import Any
 
 import torch as th
 import yaml
@@ -8,34 +9,19 @@ from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
 from src.core.dataset import (build_concept_dataset, build_normal_dataset,
                               build_onehot_concept_dataset, random_split)
+from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
-from src.core.util import AgentSaver, fix_seed
+from src.core.util import (AgentSaver, ConceptAccuracy, LanguageSimilarity,
+                           TopographicSimilarity, fix_seed)
 from src.model.internal_representation import InternalRepresentaionModel
 from src.model.misc import (EmbeddingConceptSequentialMessageModel,
                             OnehotConceptSequntialMessageModel,
                             OnehotConceptSymbolMessageModel)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
-
-
-class ConceptAccuracy:
-    def __init__(self, n_attributes: int, n_values: int):
-        self.n_attributes = n_attributes
-        self.n_values = n_values
-
-    def __call__(self, input: th.Tensor, target: th.Tensor, *args, **kwargs):
-        batch_size = target.shape[0]
-        input = (
-            input.view(batch_size * self.n_attributes, -1)
-            .argmax(dim=-1)
-            .reshape(-1, self.n_attributes)
-        )
-        acc = (input == target).float().mean().item()
-        return acc
-
 
 dataset_types = {
     "concept": build_concept_dataset,
@@ -60,6 +46,7 @@ task_types = {
     "identity": IdentityTrainer,
     "signaling_eval": SignalingEvaluator,
     "identity_eval": IdentityEvaluator,
+    "language_eval": LanguageEvaluator,
 }
 network_types = {"custom": create_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
@@ -78,7 +65,11 @@ optimizer_types = {
     "nadam": th.optim.NAdam,
     "radam": th.optim.RAdam,
 }
-metric_types = {"concept_accuracy": ConceptAccuracy}
+metric_types = {
+    "concept_accuracy": ConceptAccuracy,
+    "topsim": TopographicSimilarity,
+    "langsim": LanguageSimilarity,
+}
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
 

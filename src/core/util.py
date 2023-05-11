@@ -3,6 +3,8 @@ import os
 import editdistance
 import numpy as np
 import torch as th
+from scipy.spatial.distance import pdist
+from scipy.stats import spearmanr
 
 from .agent import Agent
 from .callback import Callback
@@ -76,7 +78,7 @@ def find_length(messages: th.Tensor) -> th.Tensor:
     return lengths
 
 
-def messeage_similarity(
+def message_similarity(
     message1: th.Tensor,
     message2: th.Tensor,
     length1: th.Tensor | None = None,
@@ -105,3 +107,44 @@ def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
     concept1 = th.tensor(concept1)
     concept2 = th.tensor(concept2)
     return (concept1 != concept2).float().mean(dim=-1)
+
+
+class ConceptAccuracy:
+    def __init__(self, n_attributes: int, n_values: int):
+        self.n_attributes = n_attributes
+        self.n_values = n_values
+
+    def __call__(self, input: th.Tensor, target: th.Tensor, *args, **kwargs):
+        batch_size = target.shape[0]
+        input = (
+            input.view(batch_size * self.n_attributes, -1)
+            .argmax(dim=-1)
+            .reshape(-1, self.n_attributes)
+        )
+        acc = (input == target).float().mean().item()
+        return acc
+
+
+class TopographicSimilarity:
+    def __call__(
+        self, concept: th.Tensor, languages: dict[str, th.Tensor], *args, **kwds
+    ):
+        topsims = {}
+        concept_pdist = pdist(concept.detach().numpy(), concept_distance)
+        for agent_name, language in languages.items():
+            language_pdist = pdist(language.detach().numpy(), editdistance.eval)
+            topsims[agent_name] = spearmanr(language_pdist, concept_pdist).correlation
+
+        return topsims
+
+
+class LanguageSimilarity:
+    def __call__(self, languages: dict[str, th.Tensor], *args, **kwds):
+        langs = list(languages.values())
+        n_langs = len(langs)
+        langsim = 0
+        for i in range(n_langs):
+            for j in range(i + 1, n_langs):
+                langsim += message_similarity(langs[i], langs[j]).mean().item()
+
+        return langsim / n_langs * (n_langs - 1) / 2

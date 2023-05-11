@@ -9,8 +9,8 @@ concept_config: &concept_config
 
 channel_config: &channel_config
   <<: *concept_config
-  vocab_size: 50
   max_len: 3
+  vocab_size: 50
 
 model_config: &model_config
   type: "internal"
@@ -38,8 +38,8 @@ network_config: &network_config
     - "agent1"
     - "agent2"
   edges:
-    - ["agent1", "agent2"]
-    - ["agent2", "agent1"]
+    - ["agent1", "agent1"]
+    - ["agent2", "agent2"]
 
 metrics_config: &metrics_config
   acc:
@@ -147,6 +147,20 @@ tasks:
     dataset: "dataset1_val"
     metrics:
       <<: *metrics_config
+    loggers:
+      <<: *loggers_config
+    interval: 1
+  
+  language_eval:
+    type: "language_eval"
+    network:
+      <<: *network_config
+    dataset: "dataset1"
+    metrics:
+      topsim:
+        type: "topsim"
+      langsim:
+        type: "langsim"
     loggers:
       <<: *loggers_config
     interval: 1
