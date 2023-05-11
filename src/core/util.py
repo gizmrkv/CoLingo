@@ -1,5 +1,7 @@
 import os
 
+import editdistance
+import numpy as np
 import torch as th
 
 from .agent import Agent
@@ -72,3 +74,34 @@ def find_length(messages: th.Tensor) -> th.Tensor:
     lengths.add_(1).clamp_(max=max_k)
 
     return lengths
+
+
+def messeage_similarity(
+    message1: th.Tensor,
+    message2: th.Tensor,
+    length1: th.Tensor | None = None,
+    length2: th.Tensor | None = None,
+):
+    if length1 is None:
+        length1 = find_length(message1)
+    if length2 is None:
+        length2 = find_length(message2)
+
+    message1 = message1.cpu().numpy()
+    message2 = message2.cpu().numpy()
+
+    tensor1_trimmed = [np.trim_zeros(seq, trim="b") for seq in message1]
+    tensor2_trimmed = [np.trim_zeros(seq, trim="b") for seq in message2]
+
+    edit_distances = [
+        editdistance.eval(seq1, seq2)
+        for seq1, seq2 in zip(tensor1_trimmed, tensor2_trimmed)
+    ]
+
+    return 1 - th.tensor(edit_distances, dtype=th.int) / th.max(length1, length2)
+
+
+def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
+    concept1 = th.tensor(concept1)
+    concept2 = th.tensor(concept2)
+    return (concept1 != concept2).float().mean(dim=-1)
