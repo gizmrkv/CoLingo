@@ -82,6 +82,7 @@ class MessageEncoder(th.nn.Module):
         hidden_size: int,
         rnn_type: str,
         n_layers: int,
+        embedding: th.nn.Embedding | None = None,
     ):
         super().__init__()
         self.max_len = max_len
@@ -92,7 +93,9 @@ class MessageEncoder(th.nn.Module):
         self.rnn_type = rnn_type
         self.n_layers = n_layers
 
-        self.embedding = th.nn.Embedding(vocab_size, embed_size)
+        self.embedding = (
+            th.nn.Embedding(vocab_size, embed_size) if embedding is None else embedding
+        )
         rnn_type = rnn_type.lower()
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
         self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
@@ -120,6 +123,7 @@ class MessageDecoder(th.nn.Module):
         hidden_size: int,
         rnn_type: str,
         n_layers: int,
+        embedding: th.nn.Embedding | None = None,
     ):
         super().__init__()
         self.max_len = max_len
@@ -143,7 +147,9 @@ class MessageDecoder(th.nn.Module):
             ]
         )
 
-        self.embedding = th.nn.Embedding(vocab_size, embed_size)
+        self.embedding = (
+            th.nn.Embedding(vocab_size, embed_size) if embedding is None else embedding
+        )
         self.sos_embedding = th.nn.Parameter(th.zeros(embed_size))
 
         self.hidden2vocab = th.nn.Sequential(
@@ -229,6 +235,7 @@ class InternalRepresentaionModel(th.nn.Module):
         hidden_size: int,
         rnn_type: str,
         n_layers: int,
+        share_message_embedding: bool = False,
     ):
         super().__init__()
         self.n_attributes = n_attributes
@@ -240,6 +247,11 @@ class InternalRepresentaionModel(th.nn.Module):
         self.hidden_size = hidden_size
         self.rnn_type = rnn_type
         self.n_layers = n_layers
+
+        if share_message_embedding:
+            self.embedding = th.nn.Embedding(vocab_size, embed_size)
+        else:
+            self.embedding = None
 
         self.concept_encoder = ConceptEncoder(
             n_attributes,
@@ -262,6 +274,7 @@ class InternalRepresentaionModel(th.nn.Module):
             hidden_size,
             rnn_type,
             n_layers,
+            embedding=self.embedding,
         )
         self.message_decoder = MessageDecoder(
             max_len,
@@ -271,6 +284,7 @@ class InternalRepresentaionModel(th.nn.Module):
             hidden_size,
             rnn_type,
             n_layers,
+            embedding=self.embedding,
         )
 
     def forward(self, x: th.Tensor, role: str):

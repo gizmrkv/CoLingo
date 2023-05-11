@@ -13,6 +13,20 @@ channel_config: &channel_config
   vocab_size: 50
   max_len: 3
 
+model_config: &model_config
+  type: "internal"
+  <<: *channel_config
+  internal_size: 256
+  embed_size: 256
+  hidden_size: 256
+  rnn_type: "gru"
+  n_layers: 2
+  share_message_embedding: true
+
+optimizer_config: &optimizer_config
+  type: "adam"
+  lr: 0.001
+
 dataloader_config: &dataloader_config
   type: "builtin"
   dataset: "dataset1_train"
@@ -30,28 +44,14 @@ datasets:
 agents:
   agent1:
     model:
-      type: "internal"
-      <<: *channel_config
-      internal_size: 256
-      embed_size: 256
-      hidden_size: 256
-      rnn_type: "gru"
-      n_layers: 2
+      <<: *model_config
     optimizer:
-      type: "adam"
-      lr: 0.001
+      <<: *optimizer_config
   agent2:
     model:
-      type: "internal"
-      <<: *channel_config
-      internal_size: 256
-      embed_size: 256
-      hidden_size: 256
-      rnn_type: "gru"
-      n_layers: 2
+      <<: *model_config
     optimizer:
-      type: "adam"
-      lr: 0.001
+      <<: *optimizer_config
 tasks:
   signaling1:
     type: "signaling"
@@ -62,6 +62,7 @@ tasks:
       type: "custom"
       edges:
         - ["agent1", "agent2"]
+        - ["agent2", "agent1"]
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5
