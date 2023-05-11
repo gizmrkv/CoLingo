@@ -13,6 +13,12 @@ channel_config: &channel_config
   vocab_size: 50
   max_len: 3
 
+dataloader_config: &dataloader_config
+  type: "builtin"
+  dataset: "dataset1_train"
+  batch_size: 8192
+  shuffle: true
+
 datasets:
   dataset1:
     type: "concept"
@@ -50,10 +56,8 @@ tasks:
   signaling1:
     type: "signaling"
     dataloader:
-      type: "builtin"
+      <<: *dataloader_config
       dataset: "dataset1_train"
-      batch_size: 1024
-      shuffle: true
     network:
       type: "custom"
       edges:
@@ -68,14 +72,12 @@ tasks:
     receiver_loss:
       type: "concept"
       <<: *concept_config
+    max_batches: 1
 
   identity1:
     type: "identity"
     dataloader:
-      type: "builtin"
-      dataset: "dataset1_train"
-      batch_size: 1024
-      shuffle: true
+      <<: *dataloader_config
     network:
       type: "custom"
       nodes:
@@ -84,3 +86,4 @@ tasks:
     loss:
       type: "concept"
       <<: *concept_config
+    max_batches: 1

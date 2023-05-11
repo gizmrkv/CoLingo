@@ -1,4 +1,5 @@
 import random
+from itertools import islice
 
 import torch as th
 from networkx import Graph
@@ -16,7 +17,8 @@ class IdentityTrainer(Callback):
         network: Graph,
         dataloader: DataLoader,
         loss: th.nn.Module,
-        name: str,
+        max_batches: int = 1,
+        name: str | None = None,
     ):
         super().__init__()
 
@@ -24,12 +26,13 @@ class IdentityTrainer(Callback):
         self.network = network
         self.dataloader = dataloader
         self.loss = loss
+        self.max_batches = max_batches
         self.name = name
 
         self._nodes = list(self.network.nodes)
 
     def on_update(self):
-        for _, batch in enumerate(self.dataloader):
+        for batch in islice(self.dataloader, self.max_batches):
             agent = self.agents[random.choice(self._nodes)]
             agent.train()
             output = agent(batch, "identity")

@@ -1,4 +1,5 @@
 import random
+from itertools import islice
 
 import torch as th
 from networkx import Graph
@@ -17,7 +18,8 @@ class SignalingTrainer(Callback):
         dataloader: DataLoader,
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
-        name: str,
+        max_batches: int = 1,
+        name: str | None = None,
     ):
         super().__init__()
 
@@ -26,12 +28,13 @@ class SignalingTrainer(Callback):
         self.dataloader = dataloader
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
+        self.max_batches = max_batches
         self.name = name
 
         self._edges = list(self.network.edges)
 
     def on_update(self):
-        for _, batch in enumerate(self.dataloader):
+        for batch in islice(self.dataloader, self.max_batches):
             edge = random.choice(self._edges)
             sender = self.agents[edge[0]]
             receiver = self.agents[edge[1]]
