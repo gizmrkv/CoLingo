@@ -14,7 +14,6 @@
 - Task Scheduler（複数のTaskの実行開始判定，終了判定，順序を計画する.）
   - ランダムに選んで1個実行するScheduler
   - 順番に1回ずつ実行するScheduler
-- config.yamlからevaluator, loggerの設定をできるようにする
 - Evaluator
   - 学習中に定期的に実行する？セーブしたモデルをロードして計算する？
 - Network

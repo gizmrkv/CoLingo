@@ -49,7 +49,7 @@ class IdentityEvaluator(Callback):
         network: Graph,
         dataset: th.Tensor,
         metrics: dict[str, callable],
-        loggers: list[Logger],
+        loggers: dict[str, Logger],
         interval: int = 10,
         name: str = "eval",
     ):
@@ -79,8 +79,8 @@ class IdentityEvaluator(Callback):
                 output = agent(self.dataset, "identity")
 
             for metric_name, metric in self.metrics.items():
-                value = metric(output, self.dataset)
+                value = metric(input=output, target=self.dataset)
                 logs[agent_name][metric_name] = value
 
-        for logger in self.loggers:
+        for logger in self.loggers.values():
             logger.log({self.name: logs})

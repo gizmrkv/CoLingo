@@ -6,23 +6,17 @@ import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
-from src.core.dataset import (
-    build_concept_dataset,
-    build_normal_dataset,
-    build_onehot_concept_dataset,
-    random_split,
-)
+from src.core.dataset import (build_concept_dataset, build_normal_dataset,
+                              build_onehot_concept_dataset, random_split)
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (
-    EmbeddingConceptSequentialMessageModel,
-    OnehotConceptSequntialMessageModel,
-    OnehotConceptSymbolMessageModel,
-)
+from src.model.misc import (EmbeddingConceptSequentialMessageModel,
+                            OnehotConceptSequntialMessageModel,
+                            OnehotConceptSymbolMessageModel)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
@@ -32,7 +26,7 @@ class ConceptAccuracy:
         self.n_attributes = n_attributes
         self.n_values = n_values
 
-    def __call__(self, input: th.Tensor, target: th.Tensor):
+    def __call__(self, input: th.Tensor, target: th.Tensor, *args, **kwargs):
         batch_size = target.shape[0]
         input = (
             input.view(batch_size * self.n_attributes, -1)
@@ -61,7 +55,12 @@ loss_types = {
     "onehot_concept": OnehotConceptLoss,
 }
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
-task_types = {"signaling": SignalingTrainer, "identity": IdentityTrainer}
+task_types = {
+    "signaling": SignalingTrainer,
+    "identity": IdentityTrainer,
+    "signaling_eval": SignalingEvaluator,
+    "identity_eval": IdentityEvaluator,
+}
 network_types = {"custom": create_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
 optimizer_types = {
@@ -79,6 +78,8 @@ optimizer_types = {
     "nadam": th.optim.NAdam,
     "radam": th.optim.RAdam,
 }
+metric_types = {"concept_accuracy": ConceptAccuracy}
+logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
 
 def build_datasets(datasets_config: dict[str, dict], device: str):
@@ -141,6 +142,10 @@ def build_tasks(
             }
             task_params["network"] = network_types[network_type](**network_params)
 
+        # assign dataset
+        if "dataset" in task_params.keys():
+            task_params["dataset"] = datasets[task_params["dataset"]]
+
         # build dataloader
         if "dataloader" in task_params.keys():
             dataloader_type = task_params["dataloader"]["type"].lower()
@@ -163,6 +168,24 @@ def build_tasks(
                 }
                 loss_params[baseline] = baseline_types[baseline_type](**baseline_params)
             task_params[loss] = loss_types[loss_type](**loss_params).to(device)
+
+        # build metrics
+        if "metrics" in task_params.keys():
+            for metric_name, metric in task_params["metrics"].items():
+                metric_type = metric["type"].lower()
+                metric_params = {k: v for k, v in metric.items() if k != "type"}
+                task_params["metrics"][metric_name] = metric_types[metric_type](
+                    **metric_params
+                )
+
+        # build logger
+        if "loggers" in task_params.keys():
+            for logger_name, logger in task_params["loggers"].items():
+                logger_type = logger["type"].lower()
+                logger_params = {k: v for k, v in logger.items() if k != "type"}
+                task_params["loggers"][logger_name] = logger_types[logger_type](
+                    **logger_params
+                )
 
         # build task
         tasks[name] = task_types[task_type](agents=agents, name=name, **task_params)
@@ -189,59 +212,6 @@ def main(config: dict):
     tasks = build_tasks(config["tasks"], agents, datasets, device)
 
     check_config(datasets, agents, tasks)
-
-    n_attributes = config["concept_config"]["n_attributes"]
-    n_values = config["concept_config"]["n_values"]
-
-    signaling_metrics = {
-        "acc": lambda dataset, message, output, aux_s, aux_r: ConceptAccuracy(
-            n_attributes, n_values
-        )(output, dataset),
-    }
-    signaling_train_evaluator = SignalingEvaluator(
-        agents,
-        tasks["signaling1"].network,
-        datasets["dataset1_train"],
-        signaling_metrics,
-        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
-        interval=1,
-        name="signaling_train",
-    )
-    tasks["signaling_train_evaluator"] = signaling_train_evaluator
-    signaling_val_evaluator = SignalingEvaluator(
-        agents,
-        tasks["signaling1"].network,
-        datasets["dataset1_val"],
-        signaling_metrics,
-        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
-        interval=1,
-        name="signaling_val",
-    )
-    tasks["signaling_val_evaluator"] = signaling_val_evaluator
-
-    identity_metrics = {
-        "acc": ConceptAccuracy(n_attributes, n_values),
-    }
-    identity_train_evaluator = IdentityEvaluator(
-        agents,
-        tasks["identity1"].network,
-        datasets["dataset1_train"],
-        identity_metrics,
-        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
-        interval=1,
-        name="identity_train",
-    )
-    tasks["identity_train_evaluator"] = identity_train_evaluator
-    identity_val_evaluator = IdentityEvaluator(
-        agents,
-        tasks["identity1"].network,
-        datasets["dataset1_val"],
-        identity_metrics,
-        [WandBLogger(project="hoge", name="fuga"), ConsoleLogger()],
-        interval=1,
-        name="identity_val",
-    )
-    tasks["identity_val_evaluator"] = identity_val_evaluator
 
     tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 

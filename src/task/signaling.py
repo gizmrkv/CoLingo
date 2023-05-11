@@ -64,7 +64,7 @@ class SignalingEvaluator(Callback):
         network: Graph,
         dataset: th.Tensor,
         metrics: dict[str, callable],
-        loggers: list[Logger],
+        loggers: dict[str, Logger],
         interval: int = 10,
         name: str = "eval",
     ):
@@ -99,8 +99,14 @@ class SignalingEvaluator(Callback):
                 output, aux_r = receiver(message, "receiver")
 
             for metric_name, metric in self.metircs.items():
-                value = metric(self.dataset, message, output, aux_s, aux_r)
+                value = metric(
+                    input=output,
+                    message=message,
+                    target=self.dataset,
+                    aux_s=aux_s,
+                    aux_r=aux_r,
+                )
                 logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
 
-        for logger in self.loggers:
+        for logger in self.loggers.values():
             logger.log({self.name: logs})

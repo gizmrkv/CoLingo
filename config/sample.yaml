@@ -8,7 +8,6 @@ concept_config: &concept_config
   n_values: 50
 
 channel_config: &channel_config
-  type: "ecsem"
   <<: *concept_config
   vocab_size: 50
   max_len: 3
@@ -32,6 +31,31 @@ dataloader_config: &dataloader_config
   dataset: "dataset1_train"
   batch_size: 8192
   shuffle: true
+
+network_config: &network_config
+  type: "custom"
+  nodes:
+    - "agent1"
+    - "agent2"
+  edges:
+    - ["agent1", "agent2"]
+    - ["agent2", "agent1"]
+
+metrics_config: &metrics_config
+  acc:
+    type: "concept_accuracy"
+    <<: *concept_config
+
+loggers_config: &loggers_config
+  console:
+    type: "console"
+  wandb:
+    type: "wandb"
+    project: "hoge"
+    name: "huga"
+    tags:
+      - "piyo_tag"
+      - "fuga_tag"
 
 datasets:
   dataset1:
@@ -59,10 +83,7 @@ tasks:
       <<: *dataloader_config
       dataset: "dataset1_train"
     network:
-      type: "custom"
-      edges:
-        - ["agent1", "agent2"]
-        - ["agent2", "agent1"]
+      <<: *network_config
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5
@@ -80,11 +101,52 @@ tasks:
     dataloader:
       <<: *dataloader_config
     network:
-      type: "custom"
-      nodes:
-        - "agent1"
-        - "agent2"
+      <<: *network_config
     loss:
       type: "concept"
       <<: *concept_config
     max_batches: 1
+
+  signaling_train_eval:
+    type: "signaling_eval"
+    network:
+      <<: *network_config
+    dataset: "dataset1_train"
+    metrics:
+      <<: *metrics_config
+    loggers:
+      <<: *loggers_config
+    interval: 1
+
+  signaling_val_eval:
+    type: "signaling_eval"
+    network:
+      <<: *network_config
+    dataset: "dataset1_val"
+    metrics:
+      <<: *metrics_config
+    loggers:
+      <<: *loggers_config
+    interval: 1
+
+  identity_train_eval:
+    type: "identity_eval"
+    network:
+      <<: *network_config
+    dataset: "dataset1_train"
+    metrics:
+      <<: *metrics_config
+    loggers:
+      <<: *loggers_config
+    interval: 1
+
+  identity_val_eval:
+    type: "identity_eval"
+    network:
+      <<: *network_config
+    dataset: "dataset1_val"
+    metrics:
+      <<: *metrics_config
+    loggers:
+      <<: *loggers_config
+    interval: 1
