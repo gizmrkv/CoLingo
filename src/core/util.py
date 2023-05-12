@@ -30,7 +30,7 @@ class AgentSaver(Callback):
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
                 th.save(
-                    agent,
+                    agent.model,
                     f"{save_dir}/{self.count}.pth",
                 )
 
