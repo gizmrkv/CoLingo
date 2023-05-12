@@ -9,7 +9,7 @@ concept_config: &concept_config
 
 channel_config: &channel_config
   <<: *concept_config
-  max_len: 3
+  max_len: 10
   vocab_size: 50
 
 model_config: &model_config
@@ -38,8 +38,8 @@ network_config: &network_config
     - "agent1"
     - "agent2"
   edges:
-    - ["agent1", "agent1"]
-    - ["agent2", "agent2"]
+    - ["agent1", "agent2"]
+    - ["agent2", "agent1"]
 
 metrics_config: &metrics_config
   acc:
@@ -87,6 +87,7 @@ tasks:
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5
+      length_weight: 0.01
       baseline:
         type: "batch_mean"
       length_baseline:
@@ -114,6 +115,10 @@ tasks:
     dataset: "dataset1_train"
     metrics:
       <<: *metrics_config
+      msglen:
+        type: "msglen"
+      msgent:
+        type: "msgent"
     loggers:
       <<: *loggers_config
     interval: 1
@@ -125,6 +130,10 @@ tasks:
     dataset: "dataset1_val"
     metrics:
       <<: *metrics_config
+      msglen:
+        type: "msglen"
+      msgent:
+        type: "msgent"
     loggers:
       <<: *loggers_config
     interval: 1
@@ -150,17 +159,17 @@ tasks:
     loggers:
       <<: *loggers_config
     interval: 1
-  
-  language_eval:
-    type: "language_eval"
-    network:
-      <<: *network_config
-    dataset: "dataset1"
-    metrics:
-      topsim:
-        type: "topsim"
-      langsim:
-        type: "langsim"
-    loggers:
-      <<: *loggers_config
-    interval: 1
+
+  # language_eval:
+  #   type: "language_eval"
+  #   network:
+  #     <<: *network_config
+  #   dataset: "dataset1"
+  #   metrics:
+  #     topsim:
+  #       type: "topsim"
+  #     langsim:
+  #       type: "langsim"
+  #   loggers:
+  #     <<: *loggers_config
+  #   interval: 1

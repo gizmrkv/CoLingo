@@ -7,19 +7,31 @@ import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
-from src.core.dataset import (build_concept_dataset, build_normal_dataset,
-                              build_onehot_concept_dataset, random_split)
+from src.core.dataset import (
+    build_concept_dataset,
+    build_normal_dataset,
+    build_onehot_concept_dataset,
+    random_split,
+)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
+from src.core.metric import (
+    ConceptAccuracy,
+    LanguageSimilarity,
+    MessageEntropy,
+    MessageLength,
+    TopographicSimilarity,
+)
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
-from src.core.util import (AgentSaver, ConceptAccuracy, LanguageSimilarity,
-                           TopographicSimilarity, fix_seed)
+from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (EmbeddingConceptSequentialMessageModel,
-                            OnehotConceptSequntialMessageModel,
-                            OnehotConceptSymbolMessageModel)
+from src.model.misc import (
+    EmbeddingConceptSequentialMessageModel,
+    OnehotConceptSequntialMessageModel,
+    OnehotConceptSymbolMessageModel,
+)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
@@ -69,6 +81,8 @@ metric_types = {
     "concept_accuracy": ConceptAccuracy,
     "topsim": TopographicSimilarity,
     "langsim": LanguageSimilarity,
+    "msglen": MessageLength,
+    "msgent": MessageEntropy,
 }
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
