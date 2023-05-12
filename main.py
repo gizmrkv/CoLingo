@@ -1,37 +1,30 @@
 import datetime
+import json
+import pickle
 import random
-from typing import Any
+import sys
 
+import toml
 import torch as th
 import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
-from src.core.dataset import (
-    build_concept_dataset,
-    build_normal_dataset,
-    build_onehot_concept_dataset,
-    random_split,
-)
+from src.core.dataset import (build_concept_dataset, build_normal_dataset,
+                              build_onehot_concept_dataset, random_split)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.metric import (
-    ConceptAccuracy,
-    LanguageSimilarity,
-    MessageEntropy,
-    MessageLength,
-    TopographicSimilarity,
-)
+from src.core.metric import (ConceptAccuracy, LanguageSimilarity,
+                             MessageEntropy, MessageLength,
+                             TopographicSimilarity)
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (
-    EmbeddingConceptSequentialMessageModel,
-    OnehotConceptSequntialMessageModel,
-    OnehotConceptSymbolMessageModel,
-)
+from src.model.misc import (EmbeddingConceptSequentialMessageModel,
+                            OnehotConceptSequntialMessageModel,
+                            OnehotConceptSymbolMessageModel)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
@@ -225,7 +218,19 @@ def main(config: dict):
 
 
 if __name__ == "__main__":
-    with open("config/sample.yaml", "r") as f:
-        config = yaml.safe_load(f)
+    # config_path = sys.argv[1]
+    config_path = "config/sample.yaml"
+
+    with open(config_path, "r") as f:
+        if config_path.endswith(".json"):
+            config = json.load(f)
+        elif config_path.endswith((".yaml", ".yml")):
+            config = yaml.safe_load(f)
+        elif config_path.endswith(".toml"):
+            config = toml.load(f)
+        elif config_path.endswith(".pickle"):
+            config = pickle.load(f)
+        else:
+            raise ValueError(f"Unknown file extension: {config_path}")
 
     main(config)
