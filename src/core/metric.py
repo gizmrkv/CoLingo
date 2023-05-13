@@ -19,6 +19,14 @@ class MessageEntropy:
         return aux_s["entropy"].mean().item()
 
 
+class UniqueMessage:
+    def __call__(self, message: th.Tensor, *args, **kwds):
+        n = message.shape[0]
+        message = message.sort(dim=1)[0]
+        message = th.unique(message, dim=0)
+        return message.shape[0] / n
+
+
 class ConceptAccuracy:
     def __init__(self, n_attributes: int, n_values: int):
         self.n_attributes = n_attributes

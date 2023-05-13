@@ -25,9 +25,11 @@ from src.core.metric import (
     MessageEntropy,
     MessageLength,
     TopographicSimilarity,
+    UniqueMessage,
 )
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
+from src.core.task_scheduler import LinearTaskScheduler
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
 from src.model.misc import (
@@ -62,6 +64,7 @@ task_types = {
     "signaling_eval": SignalingEvaluator,
     "identity_eval": IdentityEvaluator,
     "language_eval": LanguageEvaluator,
+    "linear_scheduler": LinearTaskScheduler,
 }
 network_types = {"custom": create_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
@@ -86,6 +89,7 @@ metric_types = {
     "langsim": LanguageSimilarity,
     "msglen": MessageLength,
     "msgent": MessageEntropy,
+    "unique": UniqueMessage,
 }
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
@@ -127,11 +131,24 @@ def create_agents(agents: dict[str, dict], device: str):
 def create_task(
     types: dict,
     type: str,
+    name: str | None = None,
     datasets: dict | None = None,
     agents: dict | None = None,
     device: str | None = None,
     **params,
 ):
+    if type.endswith("scheduler"):
+        params["task"] = create_task(
+            types,
+            name=name,
+            datasets=datasets,
+            agents=agents,
+            device=device,
+            **params["task"],
+        )
+        scheduler = create_instance(types, type, **params)
+        return scheduler
+
     if "network" in params.keys():
         params["network"] = create_instance(network_types, **params["network"])
 
@@ -150,14 +167,15 @@ def create_task(
         params[loss] = create_instance(loss_types, **params[loss]).to(device)
 
     if "metrics" in params.keys():
-        for name, metric in params["metrics"].items():
-            params["metrics"][name] = create_instance(metric_types, **metric)
+        for metric_name, metric in params["metrics"].items():
+            params["metrics"][metric_name] = create_instance(metric_types, **metric)
 
     if "loggers" in params.keys():
-        for name, logger in params["loggers"].items():
-            params["loggers"][name] = create_instance(logger_types, **logger)
+        for logger_name, logger in params["loggers"].items():
+            params["loggers"][logger_name] = create_instance(logger_types, **logger)
 
     params["agents"] = agents
+    params["name"] = name
 
     return create_instance(types, type, **params)
 
@@ -170,7 +188,12 @@ def create_tasks(
 ):
     return {
         name: create_task(
-            task_types, **task, datasets=datasets, agents=agents, device=device
+            task_types,
+            name=name,
+            datasets=datasets,
+            agents=agents,
+            device=device,
+            **task,
         )
         for name, task in tasks.items()
     }
