@@ -10,21 +10,31 @@ import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
-from src.core.dataset import (build_concept_dataset, build_normal_dataset,
-                              build_onehot_concept_dataset, random_split)
+from src.core.dataset import (
+    build_concept_dataset,
+    build_normal_dataset,
+    build_onehot_concept_dataset,
+    random_split,
+)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.metric import (ConceptAccuracy, LanguageSimilarity,
-                             MessageEntropy, MessageLength,
-                             TopographicSimilarity)
+from src.core.metric import (
+    ConceptAccuracy,
+    LanguageSimilarity,
+    MessageEntropy,
+    MessageLength,
+    TopographicSimilarity,
+)
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (EmbeddingConceptSequentialMessageModel,
-                            OnehotConceptSequntialMessageModel,
-                            OnehotConceptSymbolMessageModel)
+from src.model.misc import (
+    EmbeddingConceptSequentialMessageModel,
+    OnehotConceptSequntialMessageModel,
+    OnehotConceptSymbolMessageModel,
+)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
@@ -80,115 +90,90 @@ metric_types = {
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
 
-def build_datasets(datasets_config: dict[str, dict], device: str):
+def create_instance(types: dict, type: str, **params):
+    return types[type](**params)
+
+
+def create_datasets(datasets_config: dict[str, dict], device: str):
     datasets = {}
-    for name, params in datasets_config.copy().items():
-        dataset_type = params["type"].lower()
-        dataset_params = {k: v for k, v in params.items() if k not in ["type", "split"]}
-        datasets[name] = dataset_types[dataset_type](**dataset_params).to(device)
-        if "split" in params.keys():
-            splitted_dataset_names = params["split"].keys()
-            splitted_dataset_ratios = params["split"].values()
-            splitted_datasets = random_split(datasets[name], splitted_dataset_ratios)
-            for splitted_dataset_name, splitted_dataset in zip(
-                splitted_dataset_names, splitted_datasets
-            ):
-                datasets["_".join([name, splitted_dataset_name])] = splitted_dataset
+    for name, params in datasets_config.items():
+        split = params.get("split", None)
+        params.pop("split")
+        datasets[name] = create_instance(dataset_types, **params).to(device)
+
+        if split is not None:
+            splitted_names = split.keys()
+            splitted_ratios = split.values()
+            splitted_datasets = random_split(datasets[name], splitted_ratios)
+            for splitted_name, splitted in zip(splitted_names, splitted_datasets):
+                datasets["_".join([name, splitted_name])] = splitted
+
     return datasets
 
 
-def build_agents(agents_config: dict[str, dict], device: str):
-    agents = {}
-    for name, params in agents_config.items():
-        agent_params = {k: v for k, v in params.items() if k != "type"}
-
-        # build model
-        if "model" in agent_params.keys():
-            model_type = agent_params["model"]["type"].lower()
-            model_params = {
-                k: v for k, v in agent_params["model"].items() if k != "type"
-            }
-            agent_params["model"] = model_types[model_type](**model_params)
-
-        # build optimizer
-        if "optimizer" in agent_params.keys():
-            optimizer_type = agent_params["optimizer"]["type"].lower()
-            optimizer_params = {
-                k: v for k, v in agent_params["optimizer"].items() if k != "type"
-            }
-            agent_params["optimizer"] = optimizer_types[optimizer_type]
-            agent_params["optimizer_params"] = optimizer_params
-
-        agents[name] = Agent(name=name, **agent_params).to(device)
-
-    return agents
+def create_agent(name: str | None = None, device: str | None = None, **params):
+    params["model"] = create_instance(model_types, **params["model"]).to(device)
+    params["optimizer_params"] = params["optimizer"].copy()
+    params["optimizer_params"].pop("type")
+    params["optimizer"] = optimizer_types[params["optimizer"]["type"]]
+    params["name"] = name
+    return Agent(**params)
 
 
-def build_tasks(
-    tasks_config: dict[str, dict], agents: dict[str, Agent], datasets: dict, device: str
+def create_agents(agents: dict[str, dict], device: str):
+    return {name: create_agent(name, device, **agent) for name, agent in agents.items()}
+
+
+def create_task(
+    types: dict,
+    type: str,
+    datasets: dict | None = None,
+    agents: dict | None = None,
+    device: str | None = None,
+    **params,
 ):
-    tasks = {}
-    for name, params in tasks_config.copy().items():
-        task_type = params["type"].lower()
-        task_params = {k: v for k, v in params.items() if k != "type"}
+    if "network" in params.keys():
+        params["network"] = create_instance(network_types, **params["network"])
 
-        # build network
-        if "network" in task_params.keys():
-            network_type = task_params["network"]["type"].lower()
-            network_params = {
-                k: v for k, v in task_params["network"].items() if k != "type"
-            }
-            task_params["network"] = network_types[network_type](**network_params)
+    if "dataset" in params.keys():
+        params["dataset"] = datasets[params["dataset"]]
 
-        # assign dataset
-        if "dataset" in task_params.keys():
-            task_params["dataset"] = datasets[task_params["dataset"]]
+    if "dataloader" in params.keys():
+        params["dataloader"]["dataset"] = datasets[params["dataloader"]["dataset"]]
+        params["dataloader"] = create_instance(dataloader_types, **params["dataloader"])
 
-        # build dataloader
-        if "dataloader" in task_params.keys():
-            dataloader_type = task_params["dataloader"]["type"].lower()
-            dataloader_params = {
-                k: v for k, v in task_params["dataloader"].items() if k != "type"
-            }
-            dataloader_params["dataset"] = datasets[dataloader_params["dataset"]]
-            task_params["dataloader"] = dataloader_types[dataloader_type](
-                **dataloader_params
+    for loss in [k for k in params.keys() if k.endswith("loss")]:
+        for baseline in [k for k in params[loss].keys() if k.endswith("baseline")]:
+            params[loss][baseline] = create_instance(
+                baseline_types, **params[loss][baseline]
             )
+        params[loss] = create_instance(loss_types, **params[loss]).to(device)
 
-        # build losses
-        for loss in [k for k in task_params.keys() if k.endswith("loss")]:
-            loss_type = task_params[loss]["type"].lower()
-            loss_params = {k: v for k, v in task_params[loss].items() if k != "type"}
-            for baseline in [k for k in loss_params.keys() if k.endswith("baseline")]:
-                baseline_type = loss_params[baseline]["type"].lower()
-                baseline_params = {
-                    k: v for k, v in loss_params[baseline].items() if k != "type"
-                }
-                loss_params[baseline] = baseline_types[baseline_type](**baseline_params)
-            task_params[loss] = loss_types[loss_type](**loss_params).to(device)
+    if "metrics" in params.keys():
+        for name, metric in params["metrics"].items():
+            params["metrics"][name] = create_instance(metric_types, **metric)
 
-        # build metrics
-        if "metrics" in task_params.keys():
-            for metric_name, metric in task_params["metrics"].items():
-                metric_type = metric["type"].lower()
-                metric_params = {k: v for k, v in metric.items() if k != "type"}
-                task_params["metrics"][metric_name] = metric_types[metric_type](
-                    **metric_params
-                )
+    if "loggers" in params.keys():
+        for name, logger in params["loggers"].items():
+            params["loggers"][name] = create_instance(logger_types, **logger)
 
-        # build logger
-        if "loggers" in task_params.keys():
-            for logger_name, logger in task_params["loggers"].items():
-                logger_type = logger["type"].lower()
-                logger_params = {k: v for k, v in logger.items() if k != "type"}
-                task_params["loggers"][logger_name] = logger_types[logger_type](
-                    **logger_params
-                )
+    params["agents"] = agents
 
-        # build task
-        tasks[name] = task_types[task_type](agents=agents, name=name, **task_params)
+    return create_instance(types, type, **params)
 
-    return tasks
+
+def create_tasks(
+    tasks: dict[str, dict],
+    datasets: dict | None = None,
+    agents: dict | None = None,
+    device: str | None = None,
+):
+    return {
+        name: create_task(
+            task_types, **task, datasets=datasets, agents=agents, device=device
+        )
+        for name, task in tasks.items()
+    }
 
 
 def check_config(datasets, agents, tasks):
@@ -205,9 +190,11 @@ def main(config: dict):
 
     device = config["device"]
 
-    datasets = build_datasets(config["datasets"], device)
-    agents = build_agents(config["agents"], device)
-    tasks = build_tasks(config["tasks"], agents, datasets, device)
+    datasets = create_datasets(config["datasets"], device)
+    agents = create_agents(config["agents"], device)
+    tasks = create_tasks(
+        config["tasks"], datasets=datasets, agents=agents, device=device
+    )
 
     check_config(datasets, agents, tasks)
 
