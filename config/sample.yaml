@@ -1,5 +1,5 @@
 exp_name: "sample_exp"
-n_iterations: 30000
+n_iterations: 5000
 seed: 3
 device: "cuda"
 
@@ -9,14 +9,14 @@ concept_config: &concept_config
 
 channel_config: &channel_config
   <<: *concept_config
-  max_len: 10
+  max_len: 3
   vocab_size: 50
 
 model_config: &model_config
   type: "internal"
   <<: *channel_config
-  internal_size: 256
-  embed_size: 256
+  internal_size: 1024
+  embed_size: 128
   hidden_size: 256
   rnn_type: "gru"
   n_layers: 2
@@ -39,7 +39,7 @@ network_config: &network_config
     - "agent2"
   edges:
     - ["agent1", "agent2"]
-    - ["agent2", "agent1"]
+    # - ["agent2", "agent1"]
 
 metrics_config: &metrics_config
   acc:
@@ -87,7 +87,7 @@ tasks:
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5
-      length_weight: 0.01
+      length_weight: 0.0
       baseline:
         type: "batch_mean"
       length_baseline:
@@ -98,15 +98,19 @@ tasks:
     max_batches: 1
 
   identity1:
-    type: "identity"
-    dataloader:
-      <<: *dataloader_config
-    network:
-      <<: *network_config
-    loss:
-      type: "concept"
-      <<: *concept_config
-    max_batches: 1
+    type: "linear_scheduler"
+    trans_begin: 10000
+    trans_end: 10001
+    task:
+      type: "identity"
+      dataloader:
+        <<: *dataloader_config
+      network:
+        <<: *network_config
+      loss:
+        type: "concept"
+        <<: *concept_config
+      max_batches: 1
 
   signaling_train_eval:
     type: "signaling_eval"
@@ -119,6 +123,8 @@ tasks:
         type: "msglen"
       msgent:
         type: "msgent"
+      unique:
+        type: "unique"
     loggers:
       <<: *loggers_config
     interval: 1
@@ -134,6 +140,8 @@ tasks:
         type: "msglen"
       msgent:
         type: "msgent"
+      unique:
+        type: "unique"
     loggers:
       <<: *loggers_config
     interval: 1
