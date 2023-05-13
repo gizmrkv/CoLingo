@@ -10,8 +10,8 @@ class LinearTaskScheduler(Callback):
         task: Callback,
         trans_begin: int,
         trans_end: int,
-        begin_prob: float = 1.0,
-        end_prob: float = 0.0,
+        begin_rate: float = 1.0,
+        end_rate: float = 0.0,
         run_on_begin: bool = True,
         run_on_end: bool = True,
     ):
@@ -21,8 +21,8 @@ class LinearTaskScheduler(Callback):
         self.task = task
         self.trans_begin = trans_begin
         self.trans_end = trans_end
-        self.begin_prob = begin_prob
-        self.end_prob = end_prob
+        self.begin_rate = begin_rate
+        self.end_rate = end_rate
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
 
@@ -35,13 +35,13 @@ class LinearTaskScheduler(Callback):
 
     def on_update(self):
         if self._count < self.trans_begin:
-            rate = self.begin_prob
+            rate = self.begin_rate
         elif self._count > self.trans_end:
-            rate = self.end_prob
+            rate = self.end_rate
         else:
-            rate = (self.end_prob - self.begin_prob) / (
+            rate = (self.end_rate - self.begin_rate) / (
                 self.trans_end - self.trans_begin
-            ) * (self._count - self.trans_begin) + self.begin_prob
+            ) * (self._count - self.trans_begin) + self.begin_rate
 
         self._count += 1
         self._pool, overflows = math.modf(self._pool + rate)
