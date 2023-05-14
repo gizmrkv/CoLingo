@@ -27,6 +27,16 @@ class UniqueMessage:
         return message.shape[0] / n
 
 
+class SignalingDisplay:
+    def __call__(
+        self, input: th.Tensor, message: th.Tensor, target: th.Tensor, *args, **kwds
+    ):
+        bsz = input.shape[0]
+        input = input.view(bsz * 2, 5).argmax(dim=-1).view(bsz, 2)
+        for t, m, i in zip(target, message, input):
+            print(f"{tuple(t.tolist())} -> {m.tolist()} -> {tuple(i.tolist())}")
+
+
 class ConceptAccuracy:
     def __init__(self, n_attributes: int, n_values: int):
         self.n_attributes = n_attributes
@@ -39,7 +49,12 @@ class ConceptAccuracy:
             .argmax(dim=-1)
             .reshape(-1, self.n_attributes)
         )
-        acc = (input == target).float().mean().item()
+        acc = {}
+        acc["partial"] = (input == target).float().mean().item()
+        acc["complete"] = (input == target).all(dim=-1).float().mean().item()
+        for i in range(self.n_attributes):
+            acc[i + 1] = (input[:, i] == target[:, i]).float().mean().item()
+
         return acc
 
 

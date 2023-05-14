@@ -24,6 +24,7 @@ from src.core.metric import (
     LanguageSimilarity,
     MessageEntropy,
     MessageLength,
+    SignalingDisplay,
     TopographicSimilarity,
     UniqueMessage,
 )
@@ -90,6 +91,7 @@ metric_types = {
     "msglen": MessageLength,
     "msgent": MessageEntropy,
     "unique": UniqueMessage,
+    "signdisp": SignalingDisplay,
 }
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
@@ -102,7 +104,7 @@ def create_datasets(datasets_config: dict[str, dict], device: str):
     datasets = {}
     for name, params in datasets_config.items():
         split = params.get("split", None)
-        params.pop("split")
+        params.pop("split", None)
         datasets[name] = create_instance(dataset_types, **params).to(device)
 
         if split is not None:
@@ -230,6 +232,7 @@ def main(config: dict):
 if __name__ == "__main__":
     # config_path = sys.argv[1]
     config_path = "config/sample.yaml"
+    # config_path = "config/small.yaml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
