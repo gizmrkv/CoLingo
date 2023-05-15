@@ -1,10 +1,9 @@
-from collections import namedtuple
-
 import torch as th
 from torch.distributions import Categorical
+from torchtyping import TensorType
 
-from ..core import util
 from ..core.command import Command
+from ..core.util import find_length
 
 
 class ConceptEncoder(th.nn.Module):
@@ -34,7 +33,7 @@ class ConceptEncoder(th.nn.Module):
             th.nn.Linear(hidden_size, internal_size),
         )
 
-    def forward(self, x: th.Tensor):
+    def forward(self, x: TensorType["batch", "n_attributes", int]):
         x = th.cat(
             [self.embedding[i](x[:, i]) for i in range(self.n_attributes)],
             dim=1,
@@ -62,7 +61,7 @@ class ConceptDecoder(th.nn.Module):
             th.nn.Linear(internal_size, n_attributes * n_values),
         )
 
-    def forward(self, x: th.Tensor):
+    def forward(self, x: TensorType["batch", "internal_size", float]):
         x = self.fc(x)
 
         logits = th.zeros_like(x).sum(dim=1)
@@ -102,7 +101,7 @@ class MessageEncoder(th.nn.Module):
         self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
         self.fc = th.nn.Linear(hidden_size, internal_size)
 
-    def forward(self, x: th.Tensor):
+    def forward(self, x: TensorType["batch", "max_len", int]):
         x = self.embedding(x)
         x = th.nn.functional.layer_norm(x, x.size()[1:])
         _, h = self.rnn(x)
@@ -161,7 +160,7 @@ class MessageDecoder(th.nn.Module):
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
         self.rnn = rnn_type(embed_size, hidden_size, n_layers, batch_first=True)
 
-    def forward(self, x: th.Tensor):
+    def forward(self, x: TensorType["batch", "internal_size", float]):
         h = th.stack([model(x) for model in self.internal2hiddens])
         h = th.nn.functional.layer_norm(h, h.size()[1:])
 
@@ -205,7 +204,7 @@ class MessageDecoder(th.nn.Module):
         logits = th.cat([logits, zeros], dim=1)
         entropy = th.cat([entropy, zeros], dim=1)
 
-        length = util.find_length(sequence)
+        length = find_length(sequence)
         max_len = sequence.size(1)
         mask_eos = (
             1
