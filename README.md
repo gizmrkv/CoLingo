@@ -19,6 +19,7 @@
   - Complete network
   - Bipartite network
 - Periodic model initializer
+  - agentの初期化をこれに担当させちゃう？
 - Faction
 - Image input
 - channel noise
@@ -29,6 +30,8 @@
   - Conversion
   - Parrot
   - 
+- パラメータ初期化方法をコンフィグファイルから指定
+- freeze model
 
 ## 考察
 
