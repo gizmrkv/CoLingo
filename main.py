@@ -88,7 +88,7 @@ logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 def create_instance(types: dict, type: str, **params):
     if type not in types.keys():
         raise ValueError(f"Invalid type: {type}")
-        
+
     return types[type](**params)
 
 
@@ -222,7 +222,7 @@ def main(config: dict):
 
     tasks["model_saver"] = AgentSaver(agents, 1000, f"{exp_dir}/models")
 
-    runner = TaskRunner(tasks)
+    runner = TaskRunner(tasks.values())
     runner.run(config["n_iterations"])
 
 
