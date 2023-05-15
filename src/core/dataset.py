@@ -1,14 +1,26 @@
 import itertools
+from typing import Callable
 
 import numpy as np
 import torch as th
+from torch.utils.data import TensorDataset
 
 
-def build_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:
+def build_concept_dataset(
+    n_attributes: int,
+    n_values: int,
+    transform: Callable[[th.Tensor], th.Tensor] | None = None,
+    device: th.device | str | None = None,
+) -> th.Tensor:
     dataset = th.Tensor(
         list(itertools.product(th.arange(n_values), repeat=n_attributes))
-    ).long()
-    return dataset
+    ).long().to(device)
+
+    if transform is None:
+        target = dataset
+    else:
+        target = transform(dataset)
+    return TensorDataset(dataset, target)
 
 
 def build_onehot_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:

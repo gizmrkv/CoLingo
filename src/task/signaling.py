@@ -39,7 +39,7 @@ class SignalingTrainer(Callback):
         self._edges = list(self.network.edges)
 
     def on_update(self):
-        for batch in islice(self.dataloader, self.max_batches):
+        for batch, target in islice(self.dataloader, self.max_batches):
             edge = random.choice(self._edges)
             sender = self.agents[edge[0]]
             receiver = self.agents[edge[1]]
@@ -50,7 +50,7 @@ class SignalingTrainer(Callback):
             message, aux_s = sender(batch, self.sender_command)
             answer, aux_r = receiver(message, self.receiver_command)
 
-            receiver_loss = self.receiver_loss(answer, batch)
+            receiver_loss = self.receiver_loss(answer, target)
             sender_loss = self.sender_loss(receiver_loss, aux_s)
 
             loss = (sender_loss + receiver_loss).mean()
@@ -67,7 +67,7 @@ class SignalingEvaluator(Callback):
         self,
         agents: dict[str, Agent],
         network: DiGraph,
-        dataset: th.Tensor,
+        dataloader: DataLoader,
         metrics: dict[str, callable],
         loggers: dict[str, Logger],
         sender_command: Command = Command.SEND,
@@ -78,7 +78,7 @@ class SignalingEvaluator(Callback):
         super().__init__()
         self.agents = agents
         self.network = network
-        self.dataset = dataset
+        self.dataloader = dataloader
         self.metircs = metrics
         self.loggers = loggers
         self.sender_command = sender_command
@@ -95,27 +95,28 @@ class SignalingEvaluator(Callback):
 
         self._count += 1
 
-        logs = {f"{edge[0]} -> {edge[1]}": {} for edge in self._edges}
-        for edge in self._edges:
-            sender = self.agents[edge[0]]
-            receiver = self.agents[edge[1]]
+        for batch, target in self.dataloader:
+            logs = {f"{edge[0]} -> {edge[1]}": {} for edge in self._edges}
+            for edge in self._edges:
+                sender = self.agents[edge[0]]
+                receiver = self.agents[edge[1]]
 
-            for agent in [sender, receiver]:
-                agent.eval()
+                for agent in [sender, receiver]:
+                    agent.eval()
 
-            with th.no_grad():
-                message, aux_s = sender(self.dataset, self.sender_command)
-                output, aux_r = receiver(message, self.receiver_command)
+                with th.no_grad():
+                    message, aux_s = sender(batch, self.sender_command)
+                    output, aux_r = receiver(message, self.receiver_command)
 
-            for metric_name, metric in self.metircs.items():
-                value = metric(
-                    input=output,
-                    message=message,
-                    target=self.dataset,
-                    aux_s=aux_s,
-                    aux_r=aux_r,
-                )
-                logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
+                for metric_name, metric in self.metircs.items():
+                    value = metric(
+                        input=output,
+                        message=message,
+                        target=target,
+                        aux_s=aux_s,
+                        aux_r=aux_r,
+                    )
+                    logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
 
-        for logger in self.loggers.values():
-            logger.log({self.name: logs})
+            for logger in self.loggers.values():
+                logger.log({self.name: logs})

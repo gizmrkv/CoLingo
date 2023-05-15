@@ -1,7 +1,7 @@
 exp_name: "sample_exp"
 n_iterations: 5000
 seed: 3
-device: "cuda"
+device: "cpu"
 
 concept_config: &concept_config
   n_attributes: 2
@@ -116,7 +116,8 @@ tasks:
     type: "signaling_eval"
     network:
       <<: *network_config
-    dataset: "dataset1_train"
+    dataloader:
+      <<: *dataloader_config
     metrics:
       <<: *metrics_config
       msglen:
@@ -133,7 +134,8 @@ tasks:
     type: "signaling_eval"
     network:
       <<: *network_config
-    dataset: "dataset1_val"
+    dataloader:
+      <<: *dataloader_config
     metrics:
       <<: *metrics_config
       msglen:
@@ -150,7 +152,8 @@ tasks:
     type: "identity_eval"
     network:
       <<: *network_config
-    dataset: "dataset1_train"
+    dataloader:
+      <<: *dataloader_config
     metrics:
       <<: *metrics_config
     loggers:
@@ -161,7 +164,8 @@ tasks:
     type: "identity_eval"
     network:
       <<: *network_config
-    dataset: "dataset1_val"
+    dataloader:
+      <<: *dataloader_config
     metrics:
       <<: *metrics_config
     loggers:

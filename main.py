@@ -10,34 +10,22 @@ import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
-from src.core.dataset import (
-    build_concept_dataset,
-    build_normal_dataset,
-    build_onehot_concept_dataset,
-    random_split,
-)
+from src.core.dataset import (build_concept_dataset, build_normal_dataset,
+                              build_onehot_concept_dataset, random_split)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.metric import (
-    ConceptAccuracy,
-    LanguageSimilarity,
-    MessageEntropy,
-    MessageLength,
-    SignalingDisplay,
-    TopographicSimilarity,
-    UniqueMessage,
-)
+from src.core.metric import (ConceptAccuracy, LanguageSimilarity,
+                             MessageEntropy, MessageLength, SignalingDisplay,
+                             TopographicSimilarity, UniqueMessage)
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.task_scheduler import LinearTaskScheduler
 from src.core.util import AgentSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (
-    EmbeddingConceptSequentialMessageModel,
-    OnehotConceptSequntialMessageModel,
-    OnehotConceptSymbolMessageModel,
-)
+from src.model.misc import (EmbeddingConceptSequentialMessageModel,
+                            OnehotConceptSequntialMessageModel,
+                            OnehotConceptSymbolMessageModel)
 from src.task.identity import IdentityEvaluator, IdentityTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
@@ -105,7 +93,7 @@ def create_datasets(datasets_config: dict[str, dict], device: str):
     for name, params in datasets_config.items():
         split = params.get("split", None)
         params.pop("split", None)
-        datasets[name] = create_instance(dataset_types, **params).to(device)
+        datasets[name] = create_instance(dataset_types, device=device, **params)
 
         if split is not None:
             splitted_names = split.keys()
