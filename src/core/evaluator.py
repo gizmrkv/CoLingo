@@ -1,5 +1,5 @@
 import torch as th
-from networkx import Graph
+from networkx import DiGraph
 
 from .agent import Agent
 from .callback import Callback
@@ -10,7 +10,7 @@ class LanguageEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: Graph,
+        network: DiGraph,
         dataset: th.Tensor,
         metrics: dict[str, callable],
         loggers: dict[str, Logger],

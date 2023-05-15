@@ -2,7 +2,7 @@ import random
 from itertools import islice
 
 import torch as th
-from networkx import Graph
+from networkx import DiGraph
 from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
@@ -14,7 +14,7 @@ class IdentityTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: Graph,
+        network: DiGraph,
         dataloader: DataLoader,
         loss: th.nn.Module,
         max_batches: int = 1,
@@ -46,7 +46,7 @@ class IdentityEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: Graph,
+        network: DiGraph,
         dataset: th.Tensor,
         metrics: dict[str, callable],
         loggers: dict[str, Logger],
