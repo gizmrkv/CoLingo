@@ -42,7 +42,7 @@ class PredictionTrainer(Callback):
             loss = self.loss(output, target).mean()
             agent.optimizer.zero_grad()
             loss.backward(retain_graph=True)
-            agent.optimizer.step()
+            agent.step()
 
 
 class PredictionEvaluator(Callback):
