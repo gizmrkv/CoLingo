@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
+from ..core.command import Command
 from ..core.logger import Logger
 
 
@@ -18,6 +19,7 @@ class IdentityTrainer(Callback):
         dataloader: DataLoader,
         loss: th.nn.Module,
         max_batches: int = 1,
+        command: Command = Command.PREDICT,
         name: str | None = None,
     ):
         super().__init__()
@@ -26,6 +28,7 @@ class IdentityTrainer(Callback):
         self.network = network
         self.dataloader = dataloader
         self.loss = loss
+        self.command = command
         self.max_batches = max_batches
         self.name = name
 
@@ -35,7 +38,7 @@ class IdentityTrainer(Callback):
         for batch in islice(self.dataloader, self.max_batches):
             agent = self.agents[random.choice(self._nodes)]
             agent.train()
-            output = agent(batch, "identity")
+            output = agent(batch, self.command)
             loss = self.loss(output, batch).mean()
             agent.optimizer.zero_grad()
             loss.backward(retain_graph=True)
@@ -50,6 +53,7 @@ class IdentityEvaluator(Callback):
         dataset: th.Tensor,
         metrics: dict[str, callable],
         loggers: dict[str, Logger],
+        command: Command = Command.PREDICT,
         interval: int = 10,
         name: str = "eval",
     ):
@@ -59,6 +63,7 @@ class IdentityEvaluator(Callback):
         self.dataset = dataset
         self.metrics = metrics
         self.loggers = loggers
+        self.command = command
         self.interval = interval
         self.name = name
 
@@ -76,7 +81,7 @@ class IdentityEvaluator(Callback):
             agent = self.agents[agent_name]
             agent.eval()
             with th.no_grad():
-                output = agent(self.dataset, "identity")
+                output = agent(self.dataset, self.command)
 
             for metric_name, metric in self.metrics.items():
                 value = metric(input=output, target=self.dataset)

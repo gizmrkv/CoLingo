@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
+from ..core.command import Command
 from ..core.logger import Logger
 
 
@@ -19,6 +20,8 @@ class SignalingTrainer(Callback):
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
         max_batches: int = 1,
+        sender_command: Command = Command.SEND,
+        receiver_command: Command = Command.RECEIVE,
         name: str | None = None,
     ):
         super().__init__()
@@ -29,6 +32,8 @@ class SignalingTrainer(Callback):
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
         self.max_batches = max_batches
+        self.sender_command = sender_command
+        self.receiver_command = receiver_command
         self.name = name
 
         self._edges = list(self.network.edges)
@@ -42,8 +47,8 @@ class SignalingTrainer(Callback):
             for agent in [sender, receiver]:
                 agent.train()
 
-            message, aux_s = sender(batch, "sender")
-            answer, aux_r = receiver(message, "receiver")
+            message, aux_s = sender(batch, self.sender_command)
+            answer, aux_r = receiver(message, self.receiver_command)
 
             receiver_loss = self.receiver_loss(answer, batch)
             sender_loss = self.sender_loss(receiver_loss, aux_s)
@@ -65,6 +70,8 @@ class SignalingEvaluator(Callback):
         dataset: th.Tensor,
         metrics: dict[str, callable],
         loggers: dict[str, Logger],
+        sender_command: Command = Command.SEND,
+        receiver_command: Command = Command.RECEIVE,
         interval: int = 10,
         name: str = "eval",
     ):
@@ -74,6 +81,8 @@ class SignalingEvaluator(Callback):
         self.dataset = dataset
         self.metircs = metrics
         self.loggers = loggers
+        self.sender_command = sender_command
+        self.receiver_command = receiver_command
         self.interval = interval
         self.name = name
 
@@ -95,8 +104,8 @@ class SignalingEvaluator(Callback):
                 agent.eval()
 
             with th.no_grad():
-                message, aux_s = sender(self.dataset, "sender")
-                output, aux_r = receiver(message, "receiver")
+                message, aux_s = sender(self.dataset, self.sender_command)
+                output, aux_r = receiver(message, self.receiver_command)
 
             for metric_name, metric in self.metircs.items():
                 value = metric(

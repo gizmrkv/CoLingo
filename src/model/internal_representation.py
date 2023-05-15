@@ -4,6 +4,7 @@ import torch as th
 from torch.distributions import Categorical
 
 from ..core import util
+from ..core.command import Command
 
 
 class ConceptEncoder(th.nn.Module):
@@ -287,15 +288,15 @@ class InternalRepresentaionModel(th.nn.Module):
             embedding=self.embedding,
         )
 
-    def forward(self, x: th.Tensor, role: str):
-        if role == "sender":
+    def forward(self, x: th.Tensor, command: Command):
+        if command == Command.SEND:
             internal = self.concept_encoder(x)
             return self.message_decoder(internal)
 
-        if role == "receiver":
+        if command == Command.RECEIVE:
             internal = self.message_encoder(x)
             return self.concept_decoder(internal)
 
-        if role == "identity":
+        if command == Command.PREDICT:
             internal = self.concept_encoder(x)
             return self.concept_decoder(internal)[0]

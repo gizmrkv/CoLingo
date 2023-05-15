@@ -2,6 +2,8 @@ from typing import Any
 
 import torch as th
 
+from .command import Command
+
 
 class Agent(th.nn.Module):
     def __init__(
@@ -21,5 +23,5 @@ class Agent(th.nn.Module):
                 th.nn.init.kaiming_uniform_(m.weight)
                 th.nn.init.zeros_(m.bias)
 
-    def forward(self, x: th.Tensor, role: str):
-        return self.model(x, role)
+    def forward(self, x: th.Tensor, command: Command):
+        return self.model(x, command)
