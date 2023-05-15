@@ -1,8 +1,4 @@
-from typing import Any
-
 import torch as th
-
-from .command import Command
 
 
 class Agent(th.nn.Module):
@@ -10,8 +6,8 @@ class Agent(th.nn.Module):
         self,
         model: th.nn.Module,
         optimizer: th.optim.Optimizer,
-        optimizer_params: dict[str, Any],
-        name: str,
+        optimizer_params: dict,
+        name: str | None = None,
     ):
         super().__init__()
         self.model = model
@@ -23,5 +19,5 @@ class Agent(th.nn.Module):
                 th.nn.init.kaiming_uniform_(m.weight)
                 th.nn.init.zeros_(m.bias)
 
-    def forward(self, x: th.Tensor, command: Command):
-        return self.model(x, command)
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
