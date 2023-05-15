@@ -8,7 +8,7 @@ from .agent import Agent
 from .callback import Callback
 
 
-class AgentSaver(Callback):
+class ModelSaver(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
