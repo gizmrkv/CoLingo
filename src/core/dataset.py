@@ -10,11 +10,11 @@ def build_concept_dataset(
     n_attributes: int,
     n_values: int,
     transform: Callable[[th.Tensor], th.Tensor] | None = None,
-    device: th.device | str | None = None,
+    device: th.device | str = "cpu",
 ) -> th.Tensor:
     dataset = th.Tensor(
         list(itertools.product(th.arange(n_values), repeat=n_attributes))
-    ).long().to(device)
+    ).long()
 
     if transform is None:
         target = dataset
