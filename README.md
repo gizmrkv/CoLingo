@@ -1,22 +1,25 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-
+- DataLoader to TensorDataset
+- Actor-Critic
+- documentation
+  - torchtyping, typeguard, pytest
+  - configファイルを1回通してチェックする
 - ハンドメイド言語
   - 整数と記号が1対1
   - 常に同じ1文字
 - Metrics
+  - 語彙数
   - Stability
   - (Async)
   - テストのためにハンドメイド言語を用意する
 - 混合精度
-- Task Scheduler（複数のTaskの実行開始判定，終了判定，順序を計画する.）
-  - ランダムに選んで1個実行するScheduler
-  - 順番に1回ずつ実行するScheduler
 - Evaluator
   - 学習中に定期的に実行する？セーブしたモデルをロードして計算する？
-  - Agent一人にdatasetとrole与えてoutput出力
-  - Agent複数人にdatasetとrole与えてoutput出力
+  - 汎用　Agent複数人にdatasetとrole与えてoutput出力
+    - IdentityTaskを改造する？
+    - **roleを外から指定する**
 - Network
   - Complete network
   - Bipartite network
@@ -31,6 +34,27 @@
   - Conversion
   - Parrot
   - 
+
+## 考察
+
+無言期
+はじめは喋るとペナルティかかるから何もしゃべらない
+
+語彙爆発期
+そこからなにか喋ると報酬が与えらることに気づく．Receiverは即時に対応できる．
+SenderがConceptに対してMessageを作るとき，このMessageがほかのConceptに使うかは気にしない．喋って報酬が与えられなかったとき，単に別のメッセージを作ろうとするが，使われていないMessageを作らないと正答率は上がらない．
+
+停滞期
+学習が進んだあと，0.02%ぐらいから進まない頃，Senderが異なるConceptを同じMessageに割り当てちゃう．ReceiverがカバーできないからSenderが強化学習でなんとかしないといけないけど時間がかかる．
+
+### 停滞期の解消考察
+
+- 人真似
+    言語習得者のMessageはある程度バラけているため，これを真似すれば即時に停滞期までスキップできる．Messageのダブリング解決に時間を多くかけられる．
+    色んな人のMessageを真似することでいいとこ取りできる？
+- 語彙辞書を参照する．レキシコン
+    新しく言葉を作るときに，既存の言葉を参照する．これにより，ダブリングを防げる．
+
 
 ## 目的
 
