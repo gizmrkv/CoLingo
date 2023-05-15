@@ -10,6 +10,7 @@ import yaml
 
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
+from src.core.command import Command
 from src.core.dataset import (build_concept_dataset, build_normal_dataset,
                               build_onehot_concept_dataset, random_split)
 from src.core.evaluator import LanguageEvaluator
@@ -85,6 +86,9 @@ logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
 
 def create_instance(types: dict, type: str, **params):
+    if type not in types.keys():
+        raise ValueError(f"Invalid type: {type}")
+        
     return types[type](**params)
 
 
@@ -142,9 +146,6 @@ def create_task(
     if "network" in params.keys():
         params["network"] = create_instance(network_types, **params["network"])
 
-    if "dataset" in params.keys():
-        params["dataset"] = datasets[params["dataset"]]
-
     if "dataloader" in params.keys():
         params["dataloader"]["dataset"] = datasets[params["dataloader"]["dataset"]]
         params["dataloader"] = create_instance(dataloader_types, **params["dataloader"])
@@ -163,6 +164,14 @@ def create_task(
     if "loggers" in params.keys():
         for logger_name, logger in params["loggers"].items():
             params["loggers"][logger_name] = create_instance(logger_types, **logger)
+
+    for command in [k for k in params.keys() if k.endswith("command")]:
+        if isinstance(params[command], str):
+            params[command] = Command[params[command].upper()]
+        elif isinstance(params[command], int):
+            params[command] = Command(params[command])
+        else:
+            raise ValueError("command must be either str or int")
 
     params["agents"] = agents
     params["name"] = name
