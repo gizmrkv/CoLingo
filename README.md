@@ -1,7 +1,6 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-- DataLoader to TensorDataset
 - Actor-Critic
 - documentation
   - torchtyping, typeguard, pytest
@@ -10,16 +9,12 @@
   - 整数と記号が1対1
   - 常に同じ1文字
 - Metrics
-  - 語彙数
   - Stability
   - (Async)
   - テストのためにハンドメイド言語を用意する
 - 混合精度
 - Evaluator
   - 学習中に定期的に実行する？セーブしたモデルをロードして計算する？
-  - 汎用　Agent複数人にdatasetとrole与えてoutput出力
-    - IdentityTaskを改造する？
-    - **roleを外から指定する**
 - Network
   - Complete network
   - Bipartite network
