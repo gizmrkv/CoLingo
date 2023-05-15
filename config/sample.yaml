@@ -97,12 +97,12 @@ tasks:
       <<: *concept_config
     max_batches: 1
 
-  identity1:
+  prediction1:
     type: "linear_scheduler"
     trans_begin: 10000
     trans_end: 10001
     task:
-      type: "identity"
+      type: "prediction"
       dataloader:
         <<: *dataloader_config
       network:
@@ -148,8 +148,8 @@ tasks:
       <<: *loggers_config
     interval: 1
 
-  identity_train_eval:
-    type: "identity_eval"
+  prediction_train_eval:
+    type: "prediction_eval"
     network:
       <<: *network_config
     dataloader:
@@ -160,8 +160,8 @@ tasks:
       <<: *loggers_config
     interval: 1
 
-  identity_val_eval:
-    type: "identity_eval"
+  prediction_val_eval:
+    type: "prediction_eval"
     network:
       <<: *network_config
     dataloader:

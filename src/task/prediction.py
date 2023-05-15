@@ -11,7 +11,7 @@ from ..core.command import Command
 from ..core.logger import Logger
 
 
-class IdentityTrainer(Callback):
+class PredictionTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
@@ -45,7 +45,7 @@ class IdentityTrainer(Callback):
             agent.optimizer.step()
 
 
-class IdentityEvaluator(Callback):
+class PredictionEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],

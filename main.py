@@ -26,7 +26,7 @@ from src.model.internal_representation import InternalRepresentaionModel
 from src.model.misc import (EmbeddingConceptSequentialMessageModel,
                             OnehotConceptSequntialMessageModel,
                             OnehotConceptSymbolMessageModel)
-from src.task.identity import IdentityEvaluator, IdentityTrainer
+from src.task.prediction import PredictionEvaluator, PredictionTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 
 dataset_types = {
@@ -49,9 +49,9 @@ loss_types = {
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {
     "signaling": SignalingTrainer,
-    "identity": IdentityTrainer,
+    "prediction": PredictionTrainer,
     "signaling_eval": SignalingEvaluator,
-    "identity_eval": IdentityEvaluator,
+    "prediction_eval": PredictionEvaluator,
     "language_eval": LanguageEvaluator,
     "linear_scheduler": LinearTaskScheduler,
 }
