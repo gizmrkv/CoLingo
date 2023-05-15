@@ -39,8 +39,8 @@ from src.model.misc import (
     OnehotConceptSequntialMessageModel,
     OnehotConceptSymbolMessageModel,
 )
-from src.task.prediction import PredictionEvaluator, PredictionTrainer
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
+from src.task.supervised import SupervisedEvaluator, SupervisedTrainer
 
 dataset_types = {
     "concept": build_concept_dataset,
@@ -62,9 +62,9 @@ loss_types = {
 baseline_types = {"mean": MeanBaseline, "batch_mean": BatchMeanBaseline}
 task_types = {
     "signaling": SignalingTrainer,
-    "prediction": PredictionTrainer,
+    "prediction": SupervisedTrainer,
     "signaling_eval": SignalingEvaluator,
-    "prediction_eval": PredictionEvaluator,
+    "prediction_eval": SupervisedEvaluator,
     "language_eval": LanguageEvaluator,
     "linear_scheduler": LinearTaskScheduler,
 }
