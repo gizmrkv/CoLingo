@@ -43,12 +43,7 @@ class ConceptAccuracy:
         self.n_values = n_values
 
     def __call__(self, input: th.Tensor, target: th.Tensor, *args, **kwargs):
-        batch_size = target.shape[0]
-        input = (
-            input.view(batch_size * self.n_attributes, -1)
-            .argmax(dim=-1)
-            .reshape(-1, self.n_attributes)
-        )
+        input = input.argmax(dim=-1)
         acc = {}
         acc["partial"] = (input == target).float().mean().item()
         acc["complete"] = (input == target).all(dim=-1).float().mean().item()

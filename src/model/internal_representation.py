@@ -63,6 +63,7 @@ class ConceptDecoder(th.nn.Module):
 
     def forward(self, x: TensorType["batch", "internal_size", float]):
         x = self.fc(x)
+        x = x.view(-1, self.n_attributes, self.n_values)
 
         logits = th.zeros_like(x).sum(dim=1)
         entropy = th.zeros_like(x).sum(dim=1)
