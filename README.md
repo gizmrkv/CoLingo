@@ -1,13 +1,16 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-- Actor-Critic
+- freeze model
+- Task
+  - Speech
+  - Telephon
+  - Conversion
+  - Parrot
+  - 
 - documentation
   - torchtyping, typeguard, pytest
   - configファイルを1回通してチェックする
-- ハンドメイド言語
-  - 整数と記号が1対1
-  - 常に同じ1文字
 - Metrics
   - Stability
   - (Async)
@@ -24,14 +27,11 @@
 - Image input
 - channel noise
 - num_workers = 2 (num_workersの数だけGPUが必要かもしれない)
-- Task
-  - Broadcast
-  - Telephon
-  - Conversion
-  - Parrot
-  - 
 - パラメータ初期化方法をコンフィグファイルから指定
-- freeze model
+- Actor-Critic
+- ハンドメイド言語
+  - 整数と記号が1対1
+  - 常に同じ1文字
 
 ## 考察
 
