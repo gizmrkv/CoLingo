@@ -1,4 +1,5 @@
 import math
+import random
 
 from .callback import Callback
 
@@ -13,6 +14,7 @@ class LinearTaskScheduler(Callback):
         end_rate: float = 0.0,
         run_on_begin: bool = True,
         run_on_end: bool = True,
+        randomly: bool = False,
     ):
         assert 0 <= trans_begin < trans_end
 
@@ -24,6 +26,7 @@ class LinearTaskScheduler(Callback):
         self.end_rate = end_rate
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
+        self.randomly = randomly
 
         self._count = 0
         self._pool = 0
@@ -43,9 +46,13 @@ class LinearTaskScheduler(Callback):
             ) * (self._count - self.trans_begin) + self.begin_rate
 
         self._count += 1
-        self._pool, overflows = math.modf(self._pool + rate)
-        for _ in range(int(overflows)):
-            self.task.on_update()
+        if self.randomly:
+            if random.random() < rate:
+                self.task.on_update()
+        else:
+            self._pool, overflows = math.modf(self._pool + rate)
+            for _ in range(int(overflows)):
+                self.task.on_update()
 
     def on_end(self):
         if self.run_on_end:
