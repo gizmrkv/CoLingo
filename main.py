@@ -11,34 +11,22 @@ import yaml
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
 from src.core.command import Command
-from src.core.dataset import (
-    build_concept_dataset,
-    build_normal_dataset,
-    build_onehot_concept_dataset,
-    random_split,
-)
+from src.core.dataset import (build_concept_dataset, build_normal_dataset,
+                              build_onehot_concept_dataset, random_split)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.metric import (
-    ConceptAccuracy,
-    LanguageSimilarity,
-    MessageEntropy,
-    MessageLength,
-    SignalingDisplay,
-    TopographicSimilarity,
-    UniqueMessage,
-)
+from src.core.metric import (ConceptAccuracy, LanguageSimilarity,
+                             MessageEntropy, MessageLength, SignalingDisplay,
+                             TopographicSimilarity, UniqueMessage)
 from src.core.network import create_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.task_scheduler import LinearTaskScheduler
-from src.core.util import ModelSaver, fix_seed
+from src.core.util import ModelInitializer, ModelSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (
-    EmbeddingConceptSequentialMessageModel,
-    OnehotConceptSequntialMessageModel,
-    OnehotConceptSymbolMessageModel,
-)
+from src.model.misc import (EmbeddingConceptSequentialMessageModel,
+                            OnehotConceptSequntialMessageModel,
+                            OnehotConceptSymbolMessageModel)
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 from src.task.supervised import SupervisedEvaluator, SupervisedTrainer
 
@@ -233,6 +221,9 @@ def main(config: dict):
     check_config(datasets, agents, tasks)
 
     tasks["model_saver"] = ModelSaver(agents, 1000, f"{exp_dir}/models")
+    tasks["model_initializer"] = ModelInitializer(
+        agents, create_custom_graph(list(agents.keys()))
+    )
 
     runner = TaskRunner(tasks.values())
     runner.run(config["n_iterations"])

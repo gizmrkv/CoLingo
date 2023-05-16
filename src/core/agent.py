@@ -41,11 +41,6 @@ class Agent(th.nn.Module):
         self.step_prob = step_prob
         self.name = name
 
-        for m in self.model.modules():
-            if isinstance(m, th.nn.Linear):
-                th.nn.init.kaiming_uniform_(m.weight)
-                th.nn.init.zeros_(m.bias)
-
     def forward(self, *args, **kwargs):
         """
         Executes a forward pass through the agent's model with the given arguments. 
