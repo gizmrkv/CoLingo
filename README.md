@@ -1,6 +1,10 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- モデルをロードしてメトリクスを計算する
+  1. 学習の終了時 or 任意のタイミングで起動
+  2. モデルのあるディレクトリを指定
+  3. 
 - freeze model
 - Task
   - Speech
@@ -26,12 +30,16 @@
 - Faction
 - Image input
 - channel noise
-- num_workers = 2 (num_workersの数だけGPUが必要かもしれない)
+  - メッセージの記号をランダムに書き換える
+  - 特定の記号ペアは入れ替わりやすい
+  - メッセージを前か後にシフトする（話し始めを聞きそびれる的な）
 - パラメータ初期化方法をコンフィグファイルから指定
 - Actor-Critic
 - ハンドメイド言語
   - 整数と記号が1対1
   - 常に同じ1文字
+- num_workers = 2 (num_workersの数だけGPUが必要かもしれない)
+
 
 ## 考察
 
