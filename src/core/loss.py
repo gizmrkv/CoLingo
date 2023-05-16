@@ -1,7 +1,19 @@
 import torch as th
+from torchtyping import TensorType
 
 
 class ReinforceLoss(th.nn.Module):
+    """
+    This class implements a customized loss function based on the REINFORCE algorithm.
+    This loss function is used to train agents in reinforcement learning settings.
+
+    Args:
+        entropy_weight (float, optional): The weight applied to the entropy term in the loss function. Defaults to 0.0.
+        length_weight (float, optional): The weight applied to the length term in the loss function. Defaults to 0.0.
+        baseline (th.nn.Module | None, optional): A module to compute the baseline for variance reduction. Defaults to None.
+        length_baseline (th.nn.Module | None, optional): A module to compute the baseline for the length term. Defaults to None.
+    """
+
     def __init__(
         self,
         entropy_weight: float = 0.0,
@@ -15,7 +27,19 @@ class ReinforceLoss(th.nn.Module):
         self.baseline = baseline
         self.length_baseline = length_baseline
 
-    def forward(self, loss: th.Tensor, auxiliary: dict):
+    def forward(
+        self, loss: TensorType["batch", float], auxiliary: dict
+    ) -> TensorType["batch", float]:
+        """
+        Compute the REINFORCE loss.
+
+        Args:
+            loss (TensorType["batch", float]): The original loss values.
+            auxiliary (dict): A dictionary that includes 'logprob', 'entropy', and 'length' as keys.
+
+        Returns:
+            TensorType["batch", float]: The computed REINFORCE loss.
+        """
         loss = loss.detach()
         logprob = auxiliary["logprob"]
         entropy = auxiliary["entropy"]
@@ -28,12 +52,34 @@ class ReinforceLoss(th.nn.Module):
 
 
 class ConceptLoss(th.nn.Module):
+    """
+    The ConceptLoss class implements a loss function.
+
+    Args:
+        n_attributes (int): The number of attributes in the concept.
+        n_values (int): The number of values each attribute can take.
+    """
+
     def __init__(self, n_attributes: int, n_values: int):
         super().__init__()
         self.n_attributes = n_attributes
         self.n_values = n_values
 
-    def forward(self, input: th.Tensor, target: th.Tensor):
+    def forward(
+        self,
+        input: TensorType["batch", "n_attributes", "n_values", float],
+        target: th.Tensor,
+    ) -> TensorType["batch", float]:
+        """
+        Compute the Concept loss.
+
+        Args:
+            input (TensorType["batch", "n_attributes", "n_values", float]): The prediction from the model.
+            target (th.Tensor): The ground truth.
+
+        Returns:
+            TensorType["batch", float]: The computed Concept loss.
+        """
         input = input.view(-1, self.n_values)
         target = target.view(-1)
         return (

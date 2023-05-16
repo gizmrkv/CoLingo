@@ -1,7 +1,4 @@
-from typing import Any
-
 import editdistance
-import numpy as np
 import torch as th
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr

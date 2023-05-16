@@ -100,7 +100,6 @@ tasks:
   prediction1:
     type: "linear_scheduler"
     trans_begin: 10000
-    trans_end: 10001
     task:
       type: "prediction"
       dataloader:
