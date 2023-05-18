@@ -1,12 +1,27 @@
 import os
+from typing import Callable
 
 import editdistance
 import numpy as np
 import torch as th
 from networkx import DiGraph
+from numba import jit
+from scipy.stats import kendalltau, pearsonr, spearmanr
 
 from .agent import Agent
 from .callback import Callback
+
+
+def fix_seed(seed: int):
+    import random
+
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 class ModelSaver(Callback):
@@ -54,18 +69,6 @@ class ModelInitializer(Callback):
         for agent_name in self._nodes:
             agent = self.agents[agent_name]
             agent.apply(init_weights)
-
-
-def fix_seed(seed: int):
-    import random
-
-    import numpy as np
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
 
 
 def init_weights(m):
@@ -138,7 +141,66 @@ def message_similarity(
     return 1 - th.tensor(edit_distances, dtype=th.int) / th.max(length1, length2)
 
 
+# def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
+#     concept1 = th.tensor(concept1)
+#     concept2 = th.tensor(concept2)
+#     return (concept1 != concept2).float().mean(dim=-1)
+
+
+@jit(nopython=True)
+def pdist(
+    X: np.ndarray, metric: Callable[[np.ndarray, np.ndarray], float]
+) -> np.ndarray:
+    n = X.shape[0]
+    out_size = (n * (n - 1)) // 2
+    dm = list(range(out_size))
+    k = 0
+    for i in range(X.shape[0] - 1):
+        for j in range(i + 1, X.shape[0]):
+            dm[k] = metric(X[i], X[j])
+            k += 1
+    return dm
+
+
+@jit(nopython=True)
 def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
-    concept1 = th.tensor(concept1)
-    concept2 = th.tensor(concept2)
-    return (concept1 != concept2).float().mean(dim=-1)
+    return np.mean(concept1 != concept2)
+
+
+@jit(nopython=True)
+def edit_distance(s1: np.ndarray, s2: np.ndarray):
+    if len(s1) < len(s2):
+        return edit_distance(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = np.arange(len(s2) + 1, dtype=np.int64)
+    for i, c1 in enumerate(s1):
+        current_row = np.zeros(len(s2) + 1, dtype=np.int64)
+        current_row[0] = i + 1
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row[j + 1] = min(insertions, deletions, substitutions)
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
+def topsim_numbapdist_numbaedit(
+    concept: np.ndarray, language: np.ndarray, corr: str = "spearman"
+):
+    concept_pdist = pdist(concept, concept_distance)
+    language_pdist = pdist(language, edit_distance)
+
+    if corr == "spearman":
+        corr = spearmanr
+    elif corr == "kendall":
+        corr = kendalltau
+    elif corr == "pearson":
+        corr = pearsonr
+    else:
+        raise ValueError("corr must be spearman or kendall")
+    return corr(concept_pdist, language_pdist).correlation
