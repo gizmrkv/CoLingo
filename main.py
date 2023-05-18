@@ -11,8 +11,8 @@ import yaml
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
 from src.core.command import Command
-from src.core.dataset import (build_concept_dataset, build_normal_dataset,
-                              build_onehot_concept_dataset, random_split)
+from src.core.dataset import (create_concept_dataset, create_normal_dataset,
+                              create_onehot_concept_dataset, random_split)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
@@ -31,9 +31,9 @@ from src.task.signaling import SignalingEvaluator, SignalingTrainer
 from src.task.supervised import SupervisedEvaluator, SupervisedTrainer
 
 dataset_types = {
-    "concept": build_concept_dataset,
-    "onehot_concept": build_onehot_concept_dataset,
-    "normal": build_normal_dataset,
+    "concept": create_concept_dataset,
+    "onehot_concept": create_onehot_concept_dataset,
+    "normal": create_normal_dataset,
     "random_split": random_split,
 }
 model_types = {
