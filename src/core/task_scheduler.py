@@ -23,7 +23,7 @@ class LinearTaskScheduler(Callback):
         task: Callback,
         trans_begin: int,
         trans_duration: int = 1,
-        begin_rate: float = 1.0,
+        begin_rate: float = 0.0,
         end_rate: float = 0.0,
         run_on_begin: bool = True,
         run_on_end: bool = True,
