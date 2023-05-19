@@ -40,6 +40,13 @@
   - 常に同じ1文字
 - num_workers = 2 (num_workersの数だけGPUが必要かもしれない)
 
+## メモ
+
+Numbaを使ったscipyのspearmanrの高速化は3倍ほど遅くなる結果に終わった．
+これはspearmanrの内部ではfor文を使わずにnumpyの関数のみを使っていたことが理由だろう．
+一方，scipyのpdistはfor文を使っているため，Numbaで1.5倍ほど高速化できた．
+
+
 
 ## 考察
 
