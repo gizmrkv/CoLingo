@@ -18,13 +18,14 @@ class LinearTaskScheduler(Callback):
         run_on_end (bool, optional): A flag that determines if the task should be run at the end of the change period. Defaults to True.
         randomly (bool, optional): A flag that determines if the task should be run randomly within the change period. Defaults to False.
     """
+
     def __init__(
         self,
         task: Callback,
+        begin_rate: float,
+        end_rate: float,
         trans_begin: int,
         trans_duration: int = 1,
-        begin_rate: float = 0.0,
-        end_rate: float = 0.0,
         run_on_begin: bool = True,
         run_on_end: bool = True,
         randomly: bool = False,
@@ -53,8 +54,8 @@ class LinearTaskScheduler(Callback):
 
     def on_update(self):
         """
-        This method updates the execution rate according to the linear schedule. 
-        If `randomly` is True, it executes the task with a probability equal to the current rate. 
+        This method updates the execution rate according to the linear schedule.
+        If `randomly` is True, it executes the task with a probability equal to the current rate.
         Otherwise, it executes the task as many times as the rate rounded down to the nearest integer.
         """
         if self._count < self.trans_begin:
