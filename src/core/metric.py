@@ -3,7 +3,7 @@ import torch as th
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
 
-from .util import concept_distance, message_similarity
+from .util import concept_distance, language_similarity
 
 
 class MessageLength:
@@ -70,6 +70,6 @@ class LanguageSimilarity:
         langsim = 0
         for i in range(n_langs):
             for j in range(i + 1, n_langs):
-                langsim += message_similarity(langs[i], langs[j]).mean().item()
+                langsim += language_similarity(langs[i], langs[j]).mean().item()
 
         return langsim / n_langs * (n_langs - 1) / 2
