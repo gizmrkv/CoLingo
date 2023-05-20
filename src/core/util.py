@@ -5,7 +5,7 @@ import editdistance
 import numpy as np
 import torch as th
 from networkx import DiGraph
-from numba import jit
+from numba import njit
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
 from .agent import Agent
@@ -91,84 +91,34 @@ def init_weights(m):
 
 def find_length(messages: th.Tensor) -> th.Tensor:
     """
-    :param messages: A tensor of term ids, encoded as Long values, of size (batch size, max sequence length).
-    :returns A tensor with lengths of the sequences, including the end-of-sequence symbol <eos> (in EGG, it is 0).
-    If no <eos> is found, the full length is returned (i.e. messages.size(1)).
-
-    >>> messages = torch.tensor([[1, 1, 0, 0, 0, 1], [1, 1, 1, 10, 100500, 5]])
-    >>> lengths = find_lengths(messages)
-    >>> lengths
-    tensor([3, 6])
+    must has 0 at the end of each sequence
     """
-    max_k = messages.size(1)
-    zero_mask = messages == 0
-    # a bit involved logic, but it seems to be faster for large batches than slicing batch dimension and
-    # querying torch.nonzero()
-    # zero_mask contains ones on positions where 0 occur in the outputs, and 1 otherwise
-    # zero_mask.cumsum(dim=1) would contain non-zeros on all positions after 0 occurred
-    # zero_mask.cumsum(dim=1) > 0 would contain ones on all positions after 0 occurred
-    # (zero_mask.cumsum(dim=1) > 0).sum(dim=1) equates to the number of steps  happened after 0 occured (including it)
-    # max_k - (zero_mask.cumsum(dim=1) > 0).sum(dim=1) is the number of steps before 0 took place
-
-    lengths = max_k - (zero_mask.cumsum(dim=1) > 0).sum(dim=1)
-    lengths.add_(1).clamp_(max=max_k)
-
-    return lengths
+    return messages.argmin(dim=1) + 1
 
 
-def message_similarity(
-    message1: th.Tensor,
-    message2: th.Tensor,
-    length1: th.Tensor | None = None,
-    length2: th.Tensor | None = None,
-):
-    if length1 is None:
-        length1 = find_length(message1)
-    if length2 is None:
-        length2 = find_length(message2)
-
-    message1 = message1.cpu().numpy()
-    message2 = message2.cpu().numpy()
-
-    tensor1_trimmed = [np.trim_zeros(seq, trim="b") for seq in message1]
-    tensor2_trimmed = [np.trim_zeros(seq, trim="b") for seq in message2]
-
-    edit_distances = [
-        editdistance.eval(seq1, seq2)
-        for seq1, seq2 in zip(tensor1_trimmed, tensor2_trimmed)
-    ]
-
-    return 1 - th.tensor(edit_distances, dtype=th.int) / th.max(length1, length2)
-
-
-# def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
-#     concept1 = th.tensor(concept1)
-#     concept2 = th.tensor(concept2)
-#     return (concept1 != concept2).float().mean(dim=-1)
-
-
-@jit(nopython=True)
-def pdist(
-    X: np.ndarray, metric: Callable[[np.ndarray, np.ndarray], float]
-) -> np.ndarray:
+@njit
+def pdist(X: np.ndarray, dist: Callable[[np.ndarray, np.ndarray], float]) -> np.ndarray:
     n = X.shape[0]
-    out_size = (n * (n - 1)) // 2
-    dm = list(range(out_size))
+    size = (n * (n - 1)) // 2
+    distances = list(range(size))
     k = 0
-    for i in range(X.shape[0] - 1):
-        for j in range(i + 1, X.shape[0]):
-            dm[k] = metric(X[i], X[j])
+    for i in range(n - 1):
+        for j in range(i + 1, n):
+            distances[k] = dist(X[i], X[j])
             k += 1
-    return dm
+    return distances
 
 
-@jit(nopython=True)
+@njit
 def concept_distance(concept1: np.ndarray, concept2: np.ndarray):
     return np.mean(concept1 != concept2)
 
 
-@jit(nopython=True)
+@njit
 def edit_distance(s1: np.ndarray, s2: np.ndarray):
+    """
+    This is slower than the editdistance.eval, but it is compatible with numba.
+    """
     if len(s1) < len(s2):
         return edit_distance(s2, s1)
 
@@ -189,7 +139,7 @@ def edit_distance(s1: np.ndarray, s2: np.ndarray):
     return previous_row[-1]
 
 
-def topsim_numbapdist_numbaedit(
+def topographic_similarity(
     concept: np.ndarray, language: np.ndarray, corr: str = "spearman"
 ):
     concept_pdist = pdist(concept, concept_distance)
@@ -204,3 +154,30 @@ def topsim_numbapdist_numbaedit(
     else:
         raise ValueError("corr must be spearman or kendall")
     return corr(concept_pdist, language_pdist).correlation
+
+
+@njit
+def language_similarity(
+    language1: np.ndarray,
+    language2: np.ndarray,
+    length1: np.ndarray | None = None,
+    length2: np.ndarray | None = None,
+    distance: str = "edit_distance",
+):
+    if length1 is None:
+        length1 = np.argmin(language1, axis=1) + 1
+    if length2 is None:
+        length2 = np.argmin(language2, axis=1) + 1
+
+    if distance == "edit_distance":
+        distance = edit_distance
+    else:
+        raise ValueError("distance must be edit_distance")
+
+    distances = np.arange(language1.shape[0], dtype=np.int64)
+    for i in range(language1.shape[0]):
+        distances[i] = edit_distance(
+            language1[i, : length1[i]], language2[i, : length2[i]]
+        )
+
+    return 1 - distances / np.maximum(length1, length2)
