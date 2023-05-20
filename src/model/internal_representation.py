@@ -205,15 +205,9 @@ class MessageDecoder(th.nn.Module):
         logits = th.cat([logits, zeros], dim=1)
         entropy = th.cat([entropy, zeros], dim=1)
 
-        length = find_length(sequence)
-        max_len = sequence.size(1)
-        mask_eos = (
-            1
-            - th.cumsum(
-                th.nn.functional.one_hot(length.long(), num_classes=max_len + 1),
-                dim=1,
-            )[:, :-1]
-        )
+        length = sequence.argmin(dim=1) + 1
+        mask_eos = th.arange(self.max_len + 1).expand(sequence.size(0), -1)
+        mask_eos = mask_eos.to(length.device) < length.unsqueeze(1)
 
         sequence = sequence * mask_eos
         logits = (logits * mask_eos).sum(dim=1)
