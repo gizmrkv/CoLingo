@@ -1,5 +1,6 @@
 import random
 from itertools import islice
+from typing import Callable
 
 import torch as th
 from networkx import DiGraph
@@ -51,7 +52,7 @@ class SupervisedEvaluator(Callback):
         agents: dict[str, Agent],
         network: DiGraph,
         dataloader: DataLoader,
-        metrics: dict[str, callable],
+        metrics: dict[str, Callable],
         loggers: dict[str, Logger],
         command: Command = Command.PREDICT,
         interval: int = 10,

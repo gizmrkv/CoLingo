@@ -1,3 +1,5 @@
+from typing import Callable
+
 import torch as th
 from networkx import DiGraph
 
@@ -12,7 +14,7 @@ class LanguageEvaluator(Callback):
         agents: dict[str, Agent],
         network: DiGraph,
         dataset: th.Tensor,
-        metrics: dict[str, callable],
+        metrics: dict[str, Callable],
         loggers: dict[str, Logger],
         interval: int = 10,
         name: str = "eval",

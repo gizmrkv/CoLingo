@@ -1,5 +1,6 @@
 import random
 from itertools import islice
+from typing import Callable
 
 import torch as th
 from networkx import DiGraph
@@ -68,7 +69,7 @@ class SignalingEvaluator(Callback):
         agents: dict[str, Agent],
         network: DiGraph,
         dataloader: DataLoader,
-        metrics: dict[str, callable],
+        metrics: dict[str, Callable],
         loggers: dict[str, Logger],
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
