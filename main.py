@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import pickle
 import random
 import sys
@@ -223,6 +224,11 @@ def main(config: dict):
     date = datetime.datetime.now().strftime("%Y-%m-%d %Hh%Mm%Ss")
     exp_id = random.randint(0, 100000)
     exp_dir = f"exp/{config['exp_name']} {date} {exp_id}"
+    if not os.path.exists(exp_dir):
+        os.makedirs(exp_dir)
+
+    with open(f"{exp_dir}/config.json", "w") as f:
+        json.dump(config, f, indent=4)
 
     fix_seed(config["seed"])
 
