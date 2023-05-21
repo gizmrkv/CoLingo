@@ -10,15 +10,16 @@ from ..core.agent import Agent
 from ..core.callback import Callback
 from ..core.command import Command
 from ..core.logger import Logger
+from ..core.network import create_custom_graph
 
 
 class SupervisedTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: DiGraph,
         dataloader: DataLoader,
         loss: th.nn.Module,
+        network: DiGraph | None = None,
         max_batches: int = 1,
         command: Command = Command.PREDICT,
         name: str | None = None,
@@ -32,6 +33,9 @@ class SupervisedTrainer(Callback):
         self.command = command
         self.max_batches = max_batches
         self.name = name
+
+        if self.network is None:
+            self.network = create_custom_graph(list(self.agents.keys()))
 
         self._nodes = list(self.network.nodes)
 
@@ -50,10 +54,10 @@ class SupervisedEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: DiGraph,
         dataloader: DataLoader,
         metrics: dict[str, Callable],
         loggers: dict[str, Logger],
+        network: DiGraph | None = None,
         command: Command = Command.PREDICT,
         interval: int = 10,
         name: str = "eval",
@@ -67,6 +71,9 @@ class SupervisedEvaluator(Callback):
         self.command = command
         self.interval = interval
         self.name = name
+
+        if self.network is None:
+            self.network = create_custom_graph(list(self.agents.keys()))
 
         self._nodes = list(self.network.nodes)
         self._count = 0

@@ -1,7 +1,7 @@
 exp_name: "sample_exp"
 n_iterations: 5000
 seed: 3
-device: "cpu"
+device: "cuda"
 
 concept_config: &concept_config
   n_attributes: 2
@@ -9,7 +9,7 @@ concept_config: &concept_config
 
 channel_config: &channel_config
   <<: *concept_config
-  max_len: 3
+  max_len: 10
   vocab_size: 50
 
 model_config: &model_config
@@ -83,7 +83,12 @@ tasks:
       <<: *dataloader_config
       dataset: "dataset1_train"
     network:
-      <<: *network_config
+      type: "custom"
+      nodes:
+        - "agent1"
+        - "agent2"
+      edges:
+        - ["agent1", "agent2"]
     sender_loss:
       type: "reinforce"
       entropy_weight: 0.5
@@ -99,13 +104,13 @@ tasks:
 
   prediction1:
     type: "linear_scheduler"
-    trans_begin: 10000
+    begin_rate: 1
+    end_rate: 0
+    trans_begin: 100000000
     task:
       type: "prediction"
       dataloader:
         <<: *dataloader_config
-      network:
-        <<: *network_config
       loss:
         type: "concept"
         <<: *concept_config
@@ -113,8 +118,6 @@ tasks:
 
   signaling_train_eval:
     type: "signaling_eval"
-    network:
-      <<: *network_config
     dataloader:
       <<: *dataloader_config
     metrics:
@@ -131,8 +134,6 @@ tasks:
 
   signaling_val_eval:
     type: "signaling_eval"
-    network:
-      <<: *network_config
     dataloader:
       <<: *dataloader_config
     metrics:
@@ -149,8 +150,6 @@ tasks:
 
   prediction_train_eval:
     type: "prediction_eval"
-    network:
-      <<: *network_config
     dataloader:
       <<: *dataloader_config
     metrics:
@@ -161,8 +160,6 @@ tasks:
 
   prediction_val_eval:
     type: "prediction_eval"
-    network:
-      <<: *network_config
     dataloader:
       <<: *dataloader_config
     metrics:

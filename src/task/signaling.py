@@ -10,16 +10,17 @@ from ..core.agent import Agent
 from ..core.callback import Callback
 from ..core.command import Command
 from ..core.logger import Logger
+from ..core.network import create_directed_complete_graph
 
 
 class SignalingTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: DiGraph,
         dataloader: DataLoader,
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
+        network: DiGraph | None = None,
         max_batches: int = 1,
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
@@ -36,6 +37,9 @@ class SignalingTrainer(Callback):
         self.sender_command = sender_command
         self.receiver_command = receiver_command
         self.name = name
+
+        if self.network is None:
+            self.network = create_directed_complete_graph(list(self.agents.keys()))
 
         self._edges = list(self.network.edges)
 
@@ -67,10 +71,10 @@ class SignalingEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        network: DiGraph,
         dataloader: DataLoader,
         metrics: dict[str, Callable],
         loggers: dict[str, Logger],
+        network: DiGraph | None = None,
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
         interval: int = 10,
@@ -86,6 +90,9 @@ class SignalingEvaluator(Callback):
         self.receiver_command = receiver_command
         self.interval = interval
         self.name = name
+
+        if self.network is None:
+            self.network = create_directed_complete_graph(list(self.agents.keys()))
 
         self._edges = list(self.network.edges)
         self._count = 0
