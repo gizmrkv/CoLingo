@@ -1,10 +1,6 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-- モデルをロードしてメトリクスを計算する
-  1. 学習の終了時 or 任意のタイミングで起動
-  2. モデルのあるディレクトリを指定
-  3. 
 - freeze model
 - Task
   - Speech
@@ -19,12 +15,16 @@
   - Stability
   - (Async)
   - テストのためにハンドメイド言語を用意する
+- OpenAI Gym task
 - 混合精度
 - Evaluator
   - 学習中に定期的に実行する？セーブしたモデルをロードして計算する？
 - Network
-  - Complete network
   - Bipartite network
+- モデルをロードしてメトリクスを計算する
+  1. 学習の終了時 or 任意のタイミングで起動
+  2. モデルのあるディレクトリを指定
+  3. 
 - Periodic model initializer
   - agentの初期化をこれに担当させちゃう？
 - Faction

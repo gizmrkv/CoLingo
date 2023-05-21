@@ -11,29 +11,41 @@ import yaml
 from src.core.agent import Agent
 from src.core.baseline import BatchMeanBaseline, MeanBaseline
 from src.core.command import Command
-from src.core.dataset import (create_concept_dataset, create_normal_dataset,
-                              create_onehot_concept_dataset, random_split)
+from src.core.dataset import (
+    generate_concept_dataset,
+    generate_normal_dataset,
+    generate_onehot_concept_dataset,
+    random_split,
+)
 from src.core.evaluator import LanguageEvaluator
 from src.core.logger import ConsoleLogger, WandBLogger
 from src.core.loss import ConceptLoss, OnehotConceptLoss, ReinforceLoss
-from src.core.metric import (ConceptAccuracy, LanguageSimilarity,
-                             MessageEntropy, MessageLength, SignalingDisplay,
-                             TopographicSimilarity, UniqueMessage)
-from src.core.network import create_custom_graph
+from src.core.metric import (
+    ConceptAccuracy,
+    LanguageSimilarity,
+    MessageEntropy,
+    MessageLength,
+    SignalingDisplay,
+    TopographicSimilarity,
+    UniqueMessage,
+)
+from src.core.network import generate_custom_graph
 from src.core.task_runner import TaskRunner
 from src.core.task_scheduler import LinearTaskScheduler
 from src.core.util import ModelInitializer, ModelSaver, fix_seed
 from src.model.internal_representation import InternalRepresentaionModel
-from src.model.misc import (EmbeddingConceptSequentialMessageModel,
-                            OnehotConceptSequntialMessageModel,
-                            OnehotConceptSymbolMessageModel)
+from src.model.misc import (
+    EmbeddingConceptSequentialMessageModel,
+    OnehotConceptSequntialMessageModel,
+    OnehotConceptSymbolMessageModel,
+)
 from src.task.signaling import SignalingEvaluator, SignalingTrainer
 from src.task.supervised import SupervisedEvaluator, SupervisedTrainer
 
 dataset_types = {
-    "concept": create_concept_dataset,
-    "onehot_concept": create_onehot_concept_dataset,
-    "normal": create_normal_dataset,
+    "concept": generate_concept_dataset,
+    "onehot_concept": generate_onehot_concept_dataset,
+    "normal": generate_normal_dataset,
     "random_split": random_split,
 }
 model_types = {
@@ -56,7 +68,7 @@ task_types = {
     "language_eval": LanguageEvaluator,
     "linear_scheduler": LinearTaskScheduler,
 }
-network_types = {"custom": create_custom_graph}
+network_types = {"custom": generate_custom_graph}
 dataloader_types = {"builtin": th.utils.data.DataLoader}
 optimizer_types = {
     "adadelta": th.optim.Adadelta,
@@ -85,19 +97,19 @@ metric_types = {
 logger_types = {"console": ConsoleLogger, "wandb": WandBLogger}
 
 
-def create_instance(types: dict, type: str, **params):
+def generate_instance(types: dict, type: str, **params):
     if type not in types.keys():
         raise ValueError(f"Invalid type: {type}")
 
     return types[type](**params)
 
 
-def create_datasets(datasets_config: dict[str, dict], device: str):
+def generate_datasets(datasets_config: dict[str, dict], device: str):
     datasets = {}
     for name, params in datasets_config.items():
         split = params.get("split", None)
         params.pop("split", None)
-        datasets[name] = create_instance(dataset_types, device=device, **params)
+        datasets[name] = generate_instance(dataset_types, device=device, **params)
 
         if split is not None:
             splitted_names = split.keys()
@@ -109,8 +121,8 @@ def create_datasets(datasets_config: dict[str, dict], device: str):
     return datasets
 
 
-def create_agent(name: str | None = None, device: str | None = None, **params):
-    params["model"] = create_instance(model_types, **params["model"]).to(device)
+def generate_agent(name: str | None = None, device: str | None = None, **params):
+    params["model"] = generate_instance(model_types, **params["model"]).to(device)
     params["optimizer_params"] = params["optimizer"].copy()
     params["optimizer_params"].pop("type")
     params["optimizer"] = optimizer_types[params["optimizer"]["type"]]
@@ -118,11 +130,13 @@ def create_agent(name: str | None = None, device: str | None = None, **params):
     return Agent(**params)
 
 
-def create_agents(agents: dict[str, dict], device: str):
-    return {name: create_agent(name, device, **agent) for name, agent in agents.items()}
+def generate_agents(agents: dict[str, dict], device: str):
+    return {
+        name: generate_agent(name, device, **agent) for name, agent in agents.items()
+    }
 
 
-def create_task(
+def generate_task(
     types: dict,
     type: str,
     name: str | None = None,
@@ -132,7 +146,7 @@ def create_task(
     **params,
 ):
     if type.endswith("scheduler"):
-        params["task"] = create_task(
+        params["task"] = generate_task(
             types,
             name=name,
             datasets=datasets,
@@ -140,30 +154,32 @@ def create_task(
             device=device,
             **params["task"],
         )
-        scheduler = create_instance(types, type, **params)
+        scheduler = generate_instance(types, type, **params)
         return scheduler
 
     if "network" in params.keys():
-        params["network"] = create_instance(network_types, **params["network"])
+        params["network"] = generate_instance(network_types, **params["network"])
 
     if "dataloader" in params.keys():
         params["dataloader"]["dataset"] = datasets[params["dataloader"]["dataset"]]
-        params["dataloader"] = create_instance(dataloader_types, **params["dataloader"])
+        params["dataloader"] = generate_instance(
+            dataloader_types, **params["dataloader"]
+        )
 
     for loss in [k for k in params.keys() if k.endswith("loss")]:
         for baseline in [k for k in params[loss].keys() if k.endswith("baseline")]:
-            params[loss][baseline] = create_instance(
+            params[loss][baseline] = generate_instance(
                 baseline_types, **params[loss][baseline]
             )
-        params[loss] = create_instance(loss_types, **params[loss]).to(device)
+        params[loss] = generate_instance(loss_types, **params[loss]).to(device)
 
     if "metrics" in params.keys():
         for metric_name, metric in params["metrics"].items():
-            params["metrics"][metric_name] = create_instance(metric_types, **metric)
+            params["metrics"][metric_name] = generate_instance(metric_types, **metric)
 
     if "loggers" in params.keys():
         for logger_name, logger in params["loggers"].items():
-            params["loggers"][logger_name] = create_instance(logger_types, **logger)
+            params["loggers"][logger_name] = generate_instance(logger_types, **logger)
 
     for command in [k for k in params.keys() if k.endswith("command")]:
         if isinstance(params[command], str):
@@ -176,17 +192,17 @@ def create_task(
     params["agents"] = agents
     params["name"] = name
 
-    return create_instance(types, type, **params)
+    return generate_instance(types, type, **params)
 
 
-def create_tasks(
+def generate_tasks(
     tasks: dict[str, dict],
     datasets: dict | None = None,
     agents: dict | None = None,
     device: str | None = None,
 ):
     return {
-        name: create_task(
+        name: generate_task(
             task_types,
             name=name,
             datasets=datasets,
@@ -212,9 +228,9 @@ def main(config: dict):
 
     device = config["device"]
 
-    datasets = create_datasets(config["datasets"], device)
-    agents = create_agents(config["agents"], device)
-    tasks = create_tasks(
+    datasets = generate_datasets(config["datasets"], device)
+    agents = generate_agents(config["agents"], device)
+    tasks = generate_tasks(
         config["tasks"], datasets=datasets, agents=agents, device=device
     )
 
@@ -222,7 +238,7 @@ def main(config: dict):
 
     tasks["model_saver"] = ModelSaver(agents, 1000, f"{exp_dir}/models")
     tasks["model_initializer"] = ModelInitializer(
-        agents, create_custom_graph(list(agents.keys()))
+        agents, generate_custom_graph(list(agents.keys()))
     )
 
     runner = TaskRunner(tasks.values())

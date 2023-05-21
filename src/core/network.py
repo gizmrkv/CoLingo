@@ -1,7 +1,7 @@
 import networkx as nx
 
 
-def create_custom_graph(
+def generate_custom_graph(
     nodes: list | None = None, edges: list | None = None
 ) -> nx.DiGraph:
     g = nx.DiGraph()
@@ -12,7 +12,7 @@ def create_custom_graph(
     return g
 
 
-def create_directed_complete_graph(
+def generate_directed_complete_graph(
     nodes: list, allow_self_edges: bool = False
 ) -> nx.DiGraph:
     g = nx.DiGraph()

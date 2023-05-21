@@ -6,7 +6,7 @@ import torch as th
 from torch.utils.data import TensorDataset
 
 
-def create_concept_dataset(
+def generate_concept_dataset(
     n_attributes: int,
     n_values: int,
     transform: Callable[[th.Tensor], th.Tensor] | None = None,
@@ -25,14 +25,14 @@ def create_concept_dataset(
     return TensorDataset(dataset, target)
 
 
-def create_onehot_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:
-    dataset = create_concept_dataset(n_attributes, n_values)
+def generate_onehot_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:
+    dataset = generate_concept_dataset(n_attributes, n_values)
     dataset = th.nn.functional.one_hot(dataset, n_values).float()
     dataset = dataset.view(-1, n_attributes * n_values)
     return dataset
 
 
-def create_normal_dataset(n_dim: int, mean: float, std: float) -> th.Tensor:
+def generate_normal_dataset(n_dim: int, mean: float, std: float) -> th.Tensor:
     dataset = th.normal(mean, std, (n_dim,))
     return dataset
 

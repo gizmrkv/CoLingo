@@ -10,7 +10,7 @@ from ..core.agent import Agent
 from ..core.callback import Callback
 from ..core.command import Command
 from ..core.logger import Logger
-from ..core.network import create_directed_complete_graph
+from ..core.network import generate_directed_complete_graph
 
 
 class SignalingTrainer(Callback):
@@ -39,7 +39,7 @@ class SignalingTrainer(Callback):
         self.name = name
 
         if self.network is None:
-            self.network = create_directed_complete_graph(list(self.agents.keys()))
+            self.network = generate_directed_complete_graph(list(self.agents.keys()))
 
         self._edges = list(self.network.edges)
 
@@ -92,7 +92,7 @@ class SignalingEvaluator(Callback):
         self.name = name
 
         if self.network is None:
-            self.network = create_directed_complete_graph(list(self.agents.keys()))
+            self.network = generate_directed_complete_graph(list(self.agents.keys()))
 
         self._edges = list(self.network.edges)
         self._count = 0
