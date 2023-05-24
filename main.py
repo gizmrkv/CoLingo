@@ -225,7 +225,7 @@ def main(config: dict):
     exp_name = config["exp_name"]
     now = datetime.datetime.now()
     exp_id = str(uuid.uuid4())[-4:]
-    exp_dir = f"exp/{exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{exp_id}"
+    exp_dir = f"experiments/{exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{exp_id}"
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
 

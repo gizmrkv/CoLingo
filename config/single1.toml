@@ -1,0 +1,42 @@
+exp_name = "exp1"
+n_iterations = 5000
+batch_size = 65536
+seed = 3
+device = "cpu"
+
+model_save_interval = 1000
+
+
+# concept 
+n_attributes = 2
+n_values = 50
+
+# channel
+max_len = 10
+vocab_size = 50
+
+# model
+internal_size = 1024
+embed_size = 128
+hidden_size = 256
+rnn_type = "gru"
+n_layers = 2
+share_message_embedding = true
+
+# optimizer
+optimizer = "adam"
+lr = 0.001
+
+# dataset
+split_ratio = 0.8
+
+# reinforce
+baseline = "batch_mean"
+entropy_weight = 0.5
+length_weight = 0.0
+
+# task
+run_single = true
+run_signal = true
+max_batches_single = 1
+max_batches_signal = 1

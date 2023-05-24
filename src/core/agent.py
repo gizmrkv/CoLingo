@@ -32,13 +32,12 @@ class Agent(th.nn.Module):
         self,
         model: th.nn.Module,
         optimizer: th.optim.Optimizer,
-        optimizer_params: dict,
         step_prob: float = 1.0,
         name: str | None = None,
     ):
         super().__init__()
         self.model = model
-        self.optimizer = optimizer(self.model.parameters(), **optimizer_params)
+        self.optimizer = optimizer
         self.step_prob = step_prob
         self.name = name
 

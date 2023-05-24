@@ -77,7 +77,7 @@ class SignalingEvaluator(Callback):
         network: DiGraph | None = None,
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
-        interval: int = 10,
+        interval: int = 1,
         name: str = "eval",
     ):
         super().__init__()

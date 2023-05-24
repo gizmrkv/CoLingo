@@ -59,7 +59,7 @@ class SupervisedEvaluator(Callback):
         loggers: dict[str, Logger],
         network: DiGraph | None = None,
         command: Command = Command.PREDICT,
-        interval: int = 10,
+        interval: int = 1,
         name: str = "eval",
     ):
         super().__init__()
