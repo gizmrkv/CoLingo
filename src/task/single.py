@@ -13,7 +13,7 @@ from ..core.logger import Logger
 from ..core.network import generate_custom_graph
 
 
-class SupervisedTrainer(Callback):
+class SingleTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
@@ -50,7 +50,7 @@ class SupervisedTrainer(Callback):
             agent.step()
 
 
-class SupervisedEvaluator(Callback):
+class SingleEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],

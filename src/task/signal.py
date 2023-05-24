@@ -13,7 +13,7 @@ from ..core.logger import Logger
 from ..core.network import generate_directed_complete_graph
 
 
-class SignalingTrainer(Callback):
+class SignalTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
@@ -67,7 +67,7 @@ class SignalingTrainer(Callback):
             receiver.step()
 
 
-class SignalingEvaluator(Callback):
+class SignalEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],

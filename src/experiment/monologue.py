@@ -16,9 +16,9 @@ from ..core.metric import ConceptAccuracy
 from ..core.network import generate_custom_graph
 from ..core.task_runner import TaskRunner
 from ..core.util import ModelInitializer, ModelSaver, fix_seed
-from ..model.internal_representation import InternalRepresentaionModel
-from ..task.signaling import SignalingEvaluator, SignalingTrainer
-from ..task.supervised import SupervisedEvaluator, SupervisedTrainer
+from ..model.cross_modal import CrossModalModel
+from ..task.signal import SignalEvaluator, SignalTrainer
+from ..task.single import SingleEvaluator, SingleTrainer
 
 
 @dataclass
@@ -65,12 +65,12 @@ class Config:
     max_batches_signal: int
 
 
-def run_single_experiment(config: dict):
+def run_monologue(config: dict):
     cfg = Config(**config)
 
     now = datetime.datetime.now()
     log_id = str(uuid.uuid4())[-4:]
-    log_dir = f"logs/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
+    log_dir = f"log/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
@@ -90,7 +90,7 @@ def run_single_experiment(config: dict):
         valid_dataset, batch_size=cfg.batch_size, shuffle=True
     )
 
-    model = InternalRepresentaionModel(
+    model = CrossModalModel(
         n_attributes=cfg.n_attributes,
         n_values=cfg.n_values,
         max_len=cfg.max_len,
@@ -121,7 +121,7 @@ def run_single_experiment(config: dict):
     ]
     if cfg.run_single:
         tasks.append(
-            SupervisedTrainer(
+            SingleTrainer(
                 agents={"agent": agent},
                 dataloader=train_dataloader,
                 loss=ConceptLoss(cfg.n_attributes, cfg.n_values),
@@ -130,7 +130,7 @@ def run_single_experiment(config: dict):
             )
         )
         tasks.append(
-            SupervisedEvaluator(
+            SingleEvaluator(
                 agents={"agent": agent},
                 dataloader=valid_dataloader,
                 metrics={"acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values)},
@@ -145,7 +145,7 @@ def run_single_experiment(config: dict):
         baseline = baselines[cfg.baseline]()
         length_baseline = baselines[cfg.baseline]()
         tasks.append(
-            SignalingTrainer(
+            SignalTrainer(
                 agents={"agent": agent},
                 dataloader=train_dataloader,
                 sender_loss=ReinforceLoss(
@@ -162,7 +162,7 @@ def run_single_experiment(config: dict):
             )
         )
         tasks.append(
-            SignalingEvaluator(
+            SignalEvaluator(
                 agents={"agent": agent},
                 dataloader=valid_dataloader,
                 metrics={"acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values)},

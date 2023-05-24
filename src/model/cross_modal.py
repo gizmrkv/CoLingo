@@ -218,7 +218,7 @@ class MessageDecoder(th.nn.Module):
         return sequence, auxiliary
 
 
-class InternalRepresentaionModel(th.nn.Module):
+class CrossModalModel(th.nn.Module):
     def __init__(
         self,
         n_attributes: int,
