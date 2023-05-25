@@ -96,3 +96,5 @@ class SingleEvaluator(Callback):
 
             for logger in self.loggers:
                 logger.log({self.name: logs})
+
+            break

@@ -141,7 +141,7 @@ def edit_distance(s1: np.ndarray, s2: np.ndarray):
 
 def topographic_similarity(
     concept: np.ndarray, language: np.ndarray, corr: str = "spearman"
-):
+) -> float:
     concept_pdist = pdist(concept, concept_distance)
     language_pdist = pdist(language, edit_distance)
 
@@ -163,7 +163,7 @@ def language_similarity(
     length1: np.ndarray | None = None,
     length2: np.ndarray | None = None,
     distance: str = "edit_distance",
-):
+) -> float:
     if length1 is None:
         length1 = np.argmin(language1, axis=1) + 1
     if length2 is None:
