@@ -1,5 +1,5 @@
 exp_name = "exp1"
-n_iterations = 5000
+n_iterations = 5
 batch_size = 65536
 seed = 3
 device = "cpu"
