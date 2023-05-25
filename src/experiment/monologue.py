@@ -12,11 +12,17 @@ from ..core.baseline import BatchMeanBaseline
 from ..core.dataset import generate_concept_dataset, random_split
 from ..core.logger import ConsoleLogger, WandBLogger
 from ..core.loss import ConceptLoss, ReinforceLoss
-from ..core.metric import ConceptAccuracy, MessageMetrics
+from ..core.metric import (
+    ConceptAccuracy,
+    LanguageSimilarity,
+    MessageMetrics,
+    TopographicSimilarity,
+)
 from ..core.network import generate_custom_graph
 from ..core.task_runner import TaskRunner
 from ..core.util import ModelInitializer, ModelSaver, fix_seed
 from ..model.cross_modal import CrossModalModel
+from ..task.language import LanguageEvaluator
 from ..task.signal import SignalEvaluator, SignalTrainer
 from ..task.single import SingleEvaluator, SingleTrainer
 
@@ -111,17 +117,6 @@ def run_monologue(config: dict):
     }
     optimizer = optimizers[cfg.optimizer](model.parameters(), lr=cfg.lr)
     agent = Agent(model, optimizer)
-    tasks = [
-        ModelSaver(
-            agents={cfg.agent_name: agent},
-            interval=cfg.model_save_interval,
-            path=f"{log_dir}/models",
-        ),
-        ModelInitializer(
-            agents={cfg.agent_name: agent},
-            network=generate_custom_graph(nodes=[cfg.agent_name]),
-        ),
-    ]
     single_metrics = {
         "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
     }
@@ -137,6 +132,25 @@ def run_monologue(config: dict):
     network = generate_custom_graph(
         nodes=[cfg.agent_name], edges=[(cfg.agent_name, cfg.agent_name)]
     )
+    tasks = [
+        ModelSaver(
+            agents={cfg.agent_name: agent},
+            interval=cfg.model_save_interval,
+            path=f"{log_dir}/models",
+        ),
+        ModelInitializer(
+            agents={cfg.agent_name: agent},
+            network=generate_custom_graph(nodes=[cfg.agent_name]),
+        ),
+        LanguageEvaluator(
+            agents={cfg.agent_name: agent},
+            dataloader=train_dataloader,
+            loggers=loggers,
+            metrics={"topsim": TopographicSimilarity()},
+            network=network,
+            name="lang_train",
+        ),
+    ]
     if cfg.run_single:
         tasks.append(
             SingleTrainer(
