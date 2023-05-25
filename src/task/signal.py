@@ -1,6 +1,6 @@
 import random
 from itertools import islice
-from typing import Callable
+from typing import Callable, Iterable
 
 import torch as th
 from networkx import DiGraph
@@ -20,23 +20,21 @@ class SignalTrainer(Callback):
         dataloader: DataLoader,
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
-        network: DiGraph | None = None,
         max_batches: int = 1,
+        network: DiGraph | None = None,
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
-        name: str | None = None,
     ):
         super().__init__()
 
         self.agents = agents
-        self.network = network
         self.dataloader = dataloader
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
         self.max_batches = max_batches
+        self.network = network
         self.sender_command = sender_command
         self.receiver_command = receiver_command
-        self.name = name
 
         if self.network is None:
             self.network = generate_directed_complete_graph(list(self.agents.keys()))
@@ -73,23 +71,23 @@ class SignalEvaluator(Callback):
         agents: dict[str, Agent],
         dataloader: DataLoader,
         metrics: dict[str, Callable],
-        loggers: dict[str, Logger],
+        loggers: Iterable[Logger],
+        name: str,
+        interval: int = 1,
         network: DiGraph | None = None,
         sender_command: Command = Command.SEND,
         receiver_command: Command = Command.RECEIVE,
-        interval: int = 1,
-        name: str = "eval",
     ):
         super().__init__()
         self.agents = agents
-        self.network = network
         self.dataloader = dataloader
         self.metircs = metrics
         self.loggers = loggers
+        self.network = network
+        self.name = name
+        self.interval = interval
         self.sender_command = sender_command
         self.receiver_command = receiver_command
-        self.interval = interval
-        self.name = name
 
         if self.network is None:
             self.network = generate_directed_complete_graph(list(self.agents.keys()))
@@ -126,5 +124,5 @@ class SignalEvaluator(Callback):
                     )
                     logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
 
-            for logger in self.loggers.values():
+            for logger in self.loggers:
                 logger.log({self.name: logs})

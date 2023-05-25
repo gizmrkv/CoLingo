@@ -12,7 +12,7 @@ from ..core.baseline import BatchMeanBaseline
 from ..core.dataset import generate_concept_dataset, random_split
 from ..core.logger import ConsoleLogger, WandBLogger
 from ..core.loss import ConceptLoss, ReinforceLoss
-from ..core.metric import ConceptAccuracy
+from ..core.metric import ConceptAccuracy, MessageEntropy, MessageLength, UniqueMessage
 from ..core.network import generate_custom_graph
 from ..core.task_runner import TaskRunner
 from ..core.util import ModelInitializer, ModelSaver, fix_seed
@@ -64,6 +64,9 @@ class Config:
     max_batches_single: int
     max_batches_signal: int
 
+    # agent
+    agent_name: str = "A1"
+
 
 def run_monologue(config: dict):
     cfg = Config(**config)
@@ -110,32 +113,60 @@ def run_monologue(config: dict):
     agent = Agent(model, optimizer)
     tasks = [
         ModelSaver(
-            agents={"agent": agent},
+            agents={cfg.agent_name: agent},
             interval=cfg.model_save_interval,
             path=f"{log_dir}/models",
         ),
         ModelInitializer(
-            agents={"agent": agent},
-            network=generate_custom_graph(nodes=["agent"]),
+            agents={cfg.agent_name: agent},
+            network=generate_custom_graph(nodes=[cfg.agent_name]),
         ),
     ]
+    single_metrics = {
+        "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
+    }
+    signal_metrics = {
+        "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
+        "msg_ent": MessageEntropy(),
+        "msg_len": MessageLength(),
+        "unique_msg": UniqueMessage(),
+    }
+
+    loggers = [
+        ConsoleLogger(),
+        WandBLogger(project="hoge", name="huga"),
+    ]
+    network = generate_custom_graph(
+        nodes=[cfg.agent_name], edges=[(cfg.agent_name, cfg.agent_name)]
+    )
     if cfg.run_single:
         tasks.append(
             SingleTrainer(
-                agents={"agent": agent},
+                agents={cfg.agent_name: agent},
                 dataloader=train_dataloader,
                 loss=ConceptLoss(cfg.n_attributes, cfg.n_values),
-                network=generate_custom_graph(nodes=["agent"]),
+                network=network,
                 max_batches=cfg.max_batches_single,
             )
         )
         tasks.append(
             SingleEvaluator(
-                agents={"agent": agent},
+                agents={cfg.agent_name: agent},
+                dataloader=train_dataloader,
+                metrics=single_metrics,
+                loggers=loggers,
+                network=network,
+                name="single_train",
+            )
+        )
+        tasks.append(
+            SingleEvaluator(
+                agents={cfg.agent_name: agent},
                 dataloader=valid_dataloader,
-                metrics={"acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values)},
-                loggers={"console": ConsoleLogger(), "wandb": WandBLogger()},
-                network=generate_custom_graph(nodes=["agent"]),
+                metrics=single_metrics,
+                loggers=loggers,
+                network=network,
+                name="single_valid",
             )
         )
     if cfg.run_signal:
@@ -146,7 +177,7 @@ def run_monologue(config: dict):
         length_baseline = baselines[cfg.baseline]()
         tasks.append(
             SignalTrainer(
-                agents={"agent": agent},
+                agents={cfg.agent_name: agent},
                 dataloader=train_dataloader,
                 sender_loss=ReinforceLoss(
                     entropy_weight=cfg.entropy_weight,
@@ -155,21 +186,28 @@ def run_monologue(config: dict):
                     length_baseline=length_baseline,
                 ),
                 receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values),
-                network=generate_custom_graph(
-                    nodes=["agent"], edges=[("agent", "agent")]
-                ),
+                network=network,
                 max_batches=cfg.max_batches_signal,
             )
         )
         tasks.append(
             SignalEvaluator(
-                agents={"agent": agent},
+                agents={cfg.agent_name: agent},
+                dataloader=train_dataloader,
+                metrics=signal_metrics,
+                loggers=loggers,
+                network=network,
+                name="signal_train",
+            )
+        )
+        tasks.append(
+            SignalEvaluator(
+                agents={cfg.agent_name: agent},
                 dataloader=valid_dataloader,
-                metrics={"acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values)},
-                loggers={"console": ConsoleLogger(), "wandb": WandBLogger()},
-                network=generate_custom_graph(
-                    nodes=["agent"], edges=[("agent", "agent")]
-                ),
+                metrics=signal_metrics,
+                loggers=loggers,
+                network=network,
+                name="signal_valid",
             )
         )
 

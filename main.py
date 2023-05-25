@@ -3,7 +3,7 @@ import json
 import toml
 import yaml
 
-from experiment.monologue import run_monologue
+from src.experiment.monologue import run_monologue
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]

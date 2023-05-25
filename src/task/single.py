@@ -1,6 +1,6 @@
 import random
 from itertools import islice
-from typing import Callable
+from typing import Callable, Iterable
 
 import torch as th
 from networkx import DiGraph
@@ -19,10 +19,9 @@ class SingleTrainer(Callback):
         agents: dict[str, Agent],
         dataloader: DataLoader,
         loss: th.nn.Module,
-        network: DiGraph | None = None,
         max_batches: int = 1,
+        network: DiGraph | None = None,
         command: Command = Command.PREDICT,
-        name: str | None = None,
     ):
         super().__init__()
 
@@ -32,7 +31,6 @@ class SingleTrainer(Callback):
         self.loss = loss
         self.command = command
         self.max_batches = max_batches
-        self.name = name
 
         if self.network is None:
             self.network = generate_custom_graph(list(self.agents.keys()))
@@ -56,21 +54,21 @@ class SingleEvaluator(Callback):
         agents: dict[str, Agent],
         dataloader: DataLoader,
         metrics: dict[str, Callable],
-        loggers: dict[str, Logger],
+        loggers: Iterable[Logger],
+        name: str,
+        interval: int = 1,
         network: DiGraph | None = None,
         command: Command = Command.PREDICT,
-        interval: int = 1,
-        name: str = "eval",
     ):
         super().__init__()
         self.agents = agents
-        self.network = network
         self.dataloader = dataloader
         self.metrics = metrics
         self.loggers = loggers
-        self.command = command
-        self.interval = interval
         self.name = name
+        self.interval = interval
+        self.network = network
+        self.command = command
 
         if self.network is None:
             self.network = generate_custom_graph(list(self.agents.keys()))
@@ -96,5 +94,5 @@ class SingleEvaluator(Callback):
                     value = metric(input=output, target=target)
                     logs[agent_name][metric_name] = value
 
-            for logger in self.loggers.values():
+            for logger in self.loggers:
                 logger.log({self.name: logs})
