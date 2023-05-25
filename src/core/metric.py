@@ -1,3 +1,5 @@
+from typing import Any
+
 import editdistance
 import torch as th
 from scipy.spatial.distance import pdist
@@ -6,32 +8,36 @@ from scipy.stats import spearmanr
 from .util import concept_distance, language_similarity
 
 
-class MessageLength:
-    def __call__(self, aux_s, *args, **kwds):
-        return aux_s["length"].float().mean().item()
-
-
-class MessageEntropy:
-    def __call__(self, aux_s, *args, **kwds):
-        return aux_s["entropy"].mean().item()
-
-
-class UniqueMessage:
-    def __call__(self, message: th.Tensor, *args, **kwds):
+class MessageMetrics:
+    def __call__(
+        self,
+        message: th.Tensor,
+        logprob: th.Tensor,
+        entropy: th.Tensor,
+        length: th.Tensor,
+        *args,
+        **kwds,
+    ):
         n = message.shape[0]
         message = message.sort(dim=1)[0]
         message = th.unique(message, dim=0)
-        return message.shape[0] / n
+        uniques = message.shape[0] / n
+        return {
+            "logprob": logprob.mean().item(),
+            "entropy": entropy.mean().item(),
+            "length": length.float().mean().item(),
+            "uniques": uniques,
+        }
 
 
 class SignalingDisplay:
     def __call__(
-        self, input: th.Tensor, message: th.Tensor, target: th.Tensor, *args, **kwds
+        self, input: th.Tensor, message: th.Tensor, output: th.Tensor, *args, **kwds
     ):
         bsz = input.shape[0]
         input = input.view(bsz * 2, 5).argmax(dim=-1).view(bsz, 2)
-        for t, m, i in zip(target, message, input):
-            print(f"{tuple(t.tolist())} -> {m.tolist()} -> {tuple(i.tolist())}")
+        for inp, mes, out in zip(input, message, output):
+            print(f"{tuple(inp.tolist())} -> {mes.tolist()} -> {tuple(out.tolist())}")
 
 
 class ConceptAccuracy:
@@ -39,13 +45,15 @@ class ConceptAccuracy:
         self.n_attributes = n_attributes
         self.n_values = n_values
 
-    def __call__(self, input: th.Tensor, target: th.Tensor, *args, **kwargs):
-        input = input.argmax(dim=-1)
+    def __call__(
+        self, input: th.Tensor, output: th.Tensor, target: th.Tensor, *args, **kwargs
+    ):
+        output = output.argmax(dim=-1)
         acc = {}
-        acc["partial"] = (input == target).float().mean().item()
-        acc["complete"] = (input == target).all(dim=-1).float().mean().item()
+        acc["partial"] = (output == target).float().mean().item()
+        acc["complete"] = (output == target).all(dim=-1).float().mean().item()
         for i in range(self.n_attributes):
-            acc[i + 1] = (input[:, i] == target[:, i]).float().mean().item()
+            acc[i + 1] = (output[:, i] == target[:, i]).float().mean().item()
 
         return acc
 

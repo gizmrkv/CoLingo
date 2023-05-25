@@ -28,7 +28,11 @@ class ReinforceLoss(th.nn.Module):
         self.length_baseline = length_baseline
 
     def forward(
-        self, loss: TensorType["batch", float], auxiliary: dict
+        self,
+        loss: TensorType["batch", float],
+        logprob: TensorType["batch", float],
+        entropy: TensorType["batch", float],
+        length: TensorType["batch", int],
     ) -> TensorType["batch", float]:
         """
         Compute the REINFORCE loss.
@@ -41,9 +45,7 @@ class ReinforceLoss(th.nn.Module):
             TensorType["batch", float]: The computed REINFORCE loss.
         """
         loss = loss.detach()
-        logprob = auxiliary["logprob"]
-        entropy = auxiliary["entropy"]
-        length = auxiliary["length"].float() * self.length_weight
+        length = length.float() * self.length_weight
 
         policy_loss = (loss - self.baseline(loss)) * logprob
         entropy = self.entropy_weight * entropy

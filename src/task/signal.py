@@ -42,7 +42,7 @@ class SignalTrainer(Callback):
         self._edges = list(self.network.edges)
 
     def on_update(self):
-        for batch, target in islice(self.dataloader, self.max_batches):
+        for input, target in islice(self.dataloader, self.max_batches):
             edge = random.choice(self._edges)
             sender = self.agents[edge[0]]
             receiver = self.agents[edge[1]]
@@ -50,11 +50,13 @@ class SignalTrainer(Callback):
             for agent in [sender, receiver]:
                 agent.train()
 
-            message, aux_s = sender(batch, self.sender_command)
-            answer, aux_r = receiver(message, self.receiver_command)
+            message, logprob, entropy, length = sender(input, self.sender_command)
+            answer = receiver(message, self.receiver_command)
 
-            receiver_loss = self.receiver_loss(answer, target)
-            sender_loss = self.sender_loss(receiver_loss, aux_s)
+            receiver_loss = self.receiver_loss(input=answer, target=target)
+            sender_loss = self.sender_loss(
+                loss=receiver_loss, logprob=logprob, entropy=entropy, length=length
+            )
 
             loss = (sender_loss + receiver_loss).mean()
 
@@ -101,7 +103,7 @@ class SignalEvaluator(Callback):
 
         self._count += 1
 
-        for batch, target in self.dataloader:
+        for input, target in self.dataloader:
             logs = {f"{edge[0]} -> {edge[1]}": {} for edge in self._edges}
             for edge in self._edges:
                 sender = self.agents[edge[0]]
@@ -111,16 +113,20 @@ class SignalEvaluator(Callback):
                     agent.eval()
 
                 with th.no_grad():
-                    message, aux_s = sender(batch, self.sender_command)
-                    output, aux_r = receiver(message, self.receiver_command)
+                    message, logprob, entropy, length = sender(
+                        input, self.sender_command
+                    )
+                    output = receiver(message, self.receiver_command)
 
                 for metric_name, metric in self.metircs.items():
                     value = metric(
-                        input=output,
+                        input=input,
                         message=message,
+                        output=output,
                         target=target,
-                        aux_s=aux_s,
-                        aux_r=aux_r,
+                        logprob=logprob,
+                        entropy=entropy,
+                        length=length,
                     )
                     logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
 

@@ -38,11 +38,11 @@ class SingleTrainer(Callback):
         self._nodes = list(self.network.nodes)
 
     def on_update(self):
-        for batch, target in islice(self.dataloader, self.max_batches):
+        for input, target in islice(self.dataloader, self.max_batches):
             agent = self.agents[random.choice(self._nodes)]
             agent.train()
-            output = agent(batch, self.command)
-            loss = self.loss(output, target).mean()
+            output = agent(input, self.command)
+            loss = self.loss(input=output, target=target).mean()
             agent.optimizer.zero_grad()
             loss.backward(retain_graph=True)
             agent.step()
@@ -82,16 +82,16 @@ class SingleEvaluator(Callback):
 
         self._count += 1
 
-        for batch, target in self.dataloader:
+        for input, target in self.dataloader:
             logs = {agent_name: {} for agent_name in self._nodes}
             for agent_name in self._nodes:
                 agent = self.agents[agent_name]
                 agent.eval()
                 with th.no_grad():
-                    output = agent(batch, self.command)
+                    output = agent(input, self.command)
 
                 for metric_name, metric in self.metrics.items():
-                    value = metric(input=output, target=target)
+                    value = metric(input=input, output=output, target=target)
                     logs[agent_name][metric_name] = value
 
             for logger in self.loggers:

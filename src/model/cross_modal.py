@@ -64,13 +64,7 @@ class ConceptDecoder(th.nn.Module):
     def forward(self, x: TensorType["batch", "internal_size", float]):
         x = self.fc(x)
         x = x.view(-1, self.n_attributes, self.n_values)
-
-        logits = th.zeros_like(x).sum(dim=1)
-        entropy = th.zeros_like(x).sum(dim=1)
-
-        auxiliary = {"logprob": logits, "entropy": entropy}
-
-        return x, auxiliary
+        return x
 
 
 class MessageEncoder(th.nn.Module):
@@ -213,9 +207,7 @@ class MessageDecoder(th.nn.Module):
         logits = (logits * mask_eos).sum(dim=1)
         entropy = (entropy * mask_eos).sum(dim=1) / length.float()
 
-        auxiliary = {"logprob": logits, "entropy": entropy, "length": length}
-
-        return sequence, auxiliary
+        return sequence, logits, entropy, length
 
 
 class CrossModalModel(th.nn.Module):
@@ -293,4 +285,4 @@ class CrossModalModel(th.nn.Module):
 
         if command == Command.PREDICT:
             internal = self.concept_encoder(x)
-            return self.concept_decoder(internal)[0]
+            return self.concept_decoder(internal)

@@ -12,7 +12,7 @@ from ..core.baseline import BatchMeanBaseline
 from ..core.dataset import generate_concept_dataset, random_split
 from ..core.logger import ConsoleLogger, WandBLogger
 from ..core.loss import ConceptLoss, ReinforceLoss
-from ..core.metric import ConceptAccuracy, MessageEntropy, MessageLength, UniqueMessage
+from ..core.metric import ConceptAccuracy, MessageMetrics
 from ..core.network import generate_custom_graph
 from ..core.task_runner import TaskRunner
 from ..core.util import ModelInitializer, ModelSaver, fix_seed
@@ -127,9 +127,7 @@ def run_monologue(config: dict):
     }
     signal_metrics = {
         "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
-        "msg_ent": MessageEntropy(),
-        "msg_len": MessageLength(),
-        "unique_msg": UniqueMessage(),
+        "msg": MessageMetrics(),
     }
 
     loggers = [
