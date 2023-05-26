@@ -88,7 +88,9 @@ def run_monologue(config: dict):
 
     fix_seed(cfg.seed)
 
-    dataset = generate_concept_dataset(cfg.n_attributes, cfg.n_values)
+    dataset = generate_concept_dataset(
+        cfg.n_attributes, cfg.n_values, device=cfg.device
+    )
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )
@@ -110,13 +112,13 @@ def run_monologue(config: dict):
         rnn_type=cfg.rnn_type,
         n_layers=cfg.n_layers,
         share_message_embedding=cfg.share_message_embedding,
-    )
+    ).to(cfg.device)
     optimizers = {
         "adam": th.optim.Adam,
         "sgd": th.optim.SGD,
     }
     optimizer = optimizers[cfg.optimizer](model.parameters(), lr=cfg.lr)
-    agent = Agent(model, optimizer)
+    agent = Agent(model, optimizer).to(cfg.device)
     single_metrics = {
         "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
     }
@@ -156,7 +158,7 @@ def run_monologue(config: dict):
             SingleTrainer(
                 agents={cfg.agent_name: agent},
                 dataloader=train_dataloader,
-                loss=ConceptLoss(cfg.n_attributes, cfg.n_values),
+                loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
                 network=network,
                 max_batches=cfg.max_batches_single,
             )
@@ -185,8 +187,8 @@ def run_monologue(config: dict):
         baselines = {
             "batch_mean": BatchMeanBaseline,
         }
-        baseline = baselines[cfg.baseline]()
-        length_baseline = baselines[cfg.baseline]()
+        baseline = baselines[cfg.baseline]().to(cfg.device)
+        length_baseline = baselines[cfg.baseline]().to(cfg.device)
         tasks.append(
             SignalTrainer(
                 agents={cfg.agent_name: agent},
@@ -196,8 +198,10 @@ def run_monologue(config: dict):
                     length_weight=cfg.length_weight,
                     baseline=baseline,
                     length_baseline=length_baseline,
+                ).to(cfg.device),
+                receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(
+                    cfg.device
                 ),
-                receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values),
                 network=network,
                 max_batches=cfg.max_batches_signal,
             )
