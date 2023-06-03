@@ -1,10 +1,13 @@
 exp_name = "exp1"
-n_iterations = 100
+n_iterations = 1000
 batch_size = 65536
 seed = 3
-device = "cpu"
-
+device = "cuda"
 model_save_interval = 1000
+
+# wandb
+wandb_project = "hoge"
+wandb_name = "huga"
 
 
 # concept 
@@ -38,4 +41,7 @@ entropy_weight = 0.5
 length_weight = 0.0
 
 # task
+run_single = false
+run_signal = true
 max_batches_single = 1
+max_batches_signal = 1

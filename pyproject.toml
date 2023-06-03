@@ -23,6 +23,7 @@ gym = "^0.26.2"
 torchtyping = "^0.1.4"
 matplotlib = "^3.7.1"
 numba = "^0.57.0"
+tqdm = "^4.65.0"
 
 [tool.poetry.dev-dependencies]
 

@@ -1,101 +1,125 @@
 import random
 from itertools import islice
-from typing import Callable, Iterable
+from typing import Iterable
 
 import torch as th
-from networkx import DiGraph
 from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
-from ..core.command import Command
 from ..core.logger import Logger
-from ..core.network import generate_directed_complete_graph
+from ..core.metric import Metric
 
 
 class SignalTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
+        optimizers: dict[str, th.optim.Optimizer],
         dataloader: DataLoader,
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
+        sender_input_key,
+        sender_output_key,
+        receiver_input_key,
+        receiver_output_key,
         max_batches: int = 1,
-        network: DiGraph | None = None,
-        sender_command: Command = Command.SEND,
-        receiver_command: Command = Command.RECEIVE,
+        channels: list[tuple[str, str]] | None = None,
     ):
         super().__init__()
 
         self.agents = agents
+        self.optimizers = optimizers
         self.dataloader = dataloader
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
+        self.sender_input_key = sender_input_key
+        self.sender_output_key = sender_output_key
+        self.receiver_input_key = receiver_input_key
+        self.receiver_output_key = receiver_output_key
         self.max_batches = max_batches
-        self.network = network
-        self.sender_command = sender_command
-        self.receiver_command = receiver_command
 
-        if self.network is None:
-            self.network = generate_directed_complete_graph(list(self.agents.keys()))
+        self.agents_names = list(self.agents.keys())
 
-        self._edges = list(self.network.edges)
+        if channels is None:
+            self.channels = []
+            for sender_name in self.agents_names:
+                for receiver_name in self.agents_names:
+                    if sender_name != receiver_name:
+                        self.channels.append((sender_name, receiver_name))
+        else:
+            self.channels = channels
 
     def on_update(self):
         for input, target in islice(self.dataloader, self.max_batches):
-            edge = random.choice(self._edges)
-            sender = self.agents[edge[0]]
-            receiver = self.agents[edge[1]]
+            sender_name, receiver_name = random.choice(self.channels)
+            sender = self.agents[sender_name]
+            receiver = self.agents[receiver_name]
 
-            for agent in [sender, receiver]:
-                agent.train()
+            sender.train()
+            receiver.train()
+            self.optimizers[sender_name].zero_grad()
+            self.optimizers[receiver_name].zero_grad()
 
-            message, logprob, entropy, length = sender(input, self.sender_command)
-            answer = receiver(message, self.receiver_command)
+            hidden_s = sender.input({self.sender_input_key: input})
+            ((message, logprob, entropy, length),) = sender.output(
+                self.sender_output_key, hidden=hidden_s
+            )
+            hidden_r = receiver.input({self.receiver_input_key: message})
+            (output,) = receiver.output(self.receiver_output_key, hidden=hidden_r)
 
-            receiver_loss = self.receiver_loss(input=answer, target=target)
+            receiver_loss = self.receiver_loss(input=output, target=target)
             sender_loss = self.sender_loss(
                 loss=receiver_loss, logprob=logprob, entropy=entropy, length=length
             )
+            loss: th.Tensor = (sender_loss + receiver_loss).mean()
 
-            loss = (sender_loss + receiver_loss).mean()
-
-            sender.optimizer.zero_grad()
-            receiver.optimizer.zero_grad()
             loss.backward(retain_graph=True)
-            sender.step()
-            receiver.step()
+            self.optimizers[sender_name].step()
+            self.optimizers[receiver_name].step()
 
 
 class SignalEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        dataloader: DataLoader,
-        metrics: dict[str, Callable],
+        input: th.Tensor,
+        target: th.Tensor,
+        metrics: Iterable[Metric],
         loggers: Iterable[Logger],
+        sender_input_key,
+        sender_output_key,
+        receiver_input_key,
+        receiver_output_key,
         name: str,
         interval: int = 1,
-        network: DiGraph | None = None,
-        sender_command: Command = Command.SEND,
-        receiver_command: Command = Command.RECEIVE,
+        channels: list[tuple[str, str]] | None = None,
     ):
         super().__init__()
         self.agents = agents
-        self.dataloader = dataloader
+        self.input = input
+        self.target = target
         self.metircs = metrics
         self.loggers = loggers
-        self.network = network
+        self.sender_input_key = sender_input_key
+        self.sender_output_key = sender_output_key
+        self.receiver_input_key = receiver_input_key
+        self.receiver_output_key = receiver_output_key
         self.name = name
         self.interval = interval
-        self.sender_command = sender_command
-        self.receiver_command = receiver_command
 
-        if self.network is None:
-            self.network = generate_directed_complete_graph(list(self.agents.keys()))
-
-        self._edges = list(self.network.edges)
         self._count = 0
+
+        self.agents_names = list(self.agents.keys())
+
+        if channels is None:
+            self.channels = []
+            for sender_name in self.agents_names:
+                for receiver_name in self.agents_names:
+                    if sender_name != receiver_name:
+                        self.channels.append((sender_name, receiver_name))
+        else:
+            self.channels = channels
 
     def on_update(self):
         if self._count % self.interval != 0:
@@ -103,34 +127,37 @@ class SignalEvaluator(Callback):
 
         self._count += 1
 
-        for input, target in self.dataloader:
-            logs = {f"{edge[0]} -> {edge[1]}": {} for edge in self._edges}
-            for edge in self._edges:
-                sender = self.agents[edge[0]]
-                receiver = self.agents[edge[1]]
+        def channel_name(channel: tuple[str, str]) -> str:
+            return f"{channel[0]} -> {channel[1]}"
 
-                for agent in [sender, receiver]:
-                    agent.eval()
+        logs = {channel_name(channel): {} for channel in self.channels}
+        for channel in self.channels:
+            sender_name, receiver_name = channel
+            sender = self.agents[sender_name]
+            receiver = self.agents[receiver_name]
 
-                with th.no_grad():
-                    message, logprob, entropy, length = sender(
-                        input, self.sender_command
-                    )
-                    output = receiver(message, self.receiver_command)
+            sender.eval()
+            receiver.eval()
 
-                for metric_name, metric in self.metircs.items():
-                    value = metric(
-                        input=input,
-                        message=message,
-                        output=output,
-                        target=target,
-                        logprob=logprob,
-                        entropy=entropy,
-                        length=length,
-                    )
-                    logs[f"{edge[0]} -> {edge[1]}"][metric_name] = value
+            with th.no_grad():
+                hidden_s = sender.input({self.sender_input_key: self.input})
+                ((message, log_prob, entropy, length),) = sender.output(
+                    self.sender_output_key, hidden=hidden_s
+                )
+                hidden_r = receiver.input({self.receiver_input_key: message})
+                (output,) = receiver.output(self.receiver_output_key, hidden=hidden_r)
 
-            for logger in self.loggers:
-                logger.log({self.name: logs})
+            for metric in self.metircs:
+                met = metric.calculate(
+                    input=self.input,
+                    message=message,
+                    output=output,
+                    target=self.target,
+                    log_prob=log_prob,
+                    entropy=entropy,
+                    length=length,
+                )
+                logs[channel_name(channel)] |= met
 
-            break
+        for logger in self.loggers:
+            logger.log({self.name: logs})

@@ -1,5 +1,7 @@
 from typing import Iterable
 
+import tqdm
+
 from .callback import Callback
 
 
@@ -30,9 +32,7 @@ class TaskRunner:
         for task in self.tasks:
             task.on_begin()
 
-        for i in range(n_iterations):
-            print(f"Iteration {i + 1}/{n_iterations}")
-
+        for i in tqdm.tqdm(range(n_iterations)):
             for task in self.tasks:
                 task.on_pre_update()
 

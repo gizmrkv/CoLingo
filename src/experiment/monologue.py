@@ -8,12 +8,14 @@ import torch as th
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..core.agent import ConceptOrMessageAgent
+from ..core.baseline import BatchMeanBaseline
 from ..core.dataset import generate_concept_dataset, random_split
 from ..core.logger import ConsoleLogger, WandBLogger
-from ..core.loss import ConceptLoss
-from ..core.metric import ConceptAccuracyMetric
+from ..core.loss import ConceptLoss, ReinforceLoss
+from ..core.metric import ConceptAccuracyMetric, MessageMetric
 from ..core.task_runner import TaskRunner
 from ..core.util import AgentInitializer, AgentSaver, fix_seed
+from ..task.signal import SignalEvaluator, SignalTrainer
 from ..task.single import SingleEvaluator, SingleTrainer
 
 
@@ -25,6 +27,10 @@ class Config:
     seed: int
     device: str
     model_save_interval: int
+
+    # wandb
+    wandb_project: str
+    wandb_name: str
 
     # concept
     n_attributes: int
@@ -57,7 +63,10 @@ class Config:
     length_weight: float
 
     # task
+    run_single: bool
+    run_signal: bool
     max_batches_single: int
+    max_batches_signal: int
 
     # agent
     agent_name: str = "A1"
@@ -109,14 +118,7 @@ def run_monologue(config: dict):
         "sgd": th.optim.SGD,
     }
     optimizer = optimizers[cfg.optimizer](agent.parameters(), lr=cfg.lr)
-    single_metrics = [
-        ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
-    ]
 
-    loggers = [
-        ConsoleLogger(),
-        WandBLogger(project="hoge", name="huga"),
-    ]
     tasks = [
         AgentSaver(
             agents={cfg.agent_name: agent},
@@ -126,37 +128,109 @@ def run_monologue(config: dict):
         AgentInitializer(
             agents=[agent],
         ),
-        SingleTrainer(
-            agents={cfg.agent_name: agent},
-            optimizers={cfg.agent_name: optimizer},
-            dataloader=train_dataloader,
-            loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
-            input_key=0,
-            output_key=0,
-            max_batches=cfg.max_batches_single,
-        ),
-        SingleEvaluator(
-            agents={cfg.agent_name: agent},
-            input=train_dataset,
-            target=train_dataset,
-            metrics=single_metrics,
-            loggers=loggers,
-            input_key=0,
-            output_key=0,
-            name="single_train",
-        ),
-        SingleEvaluator(
-            agents={cfg.agent_name: agent},
-            input=valid_dataset,
-            target=valid_dataset,
-            metrics=single_metrics,
-            loggers=loggers,
-            input_key=0,
-            output_key=0,
-            name="single_valid",
-        ),
+    ]
+    loggers = [
+        WandBLogger(project=cfg.wandb_project, name=cfg.wandb_name),
     ]
     tasks.extend(loggers)
+
+    if cfg.run_single:
+        single_metrics = [
+            ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
+        ]
+        tasks.extend(
+            [
+                SingleTrainer(
+                    agents={cfg.agent_name: agent},
+                    optimizers={cfg.agent_name: optimizer},
+                    dataloader=train_dataloader,
+                    loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
+                    input_key=0,
+                    output_key=0,
+                    max_batches=cfg.max_batches_single,
+                ),
+                SingleEvaluator(
+                    agents={cfg.agent_name: agent},
+                    input=train_dataset,
+                    target=train_dataset,
+                    metrics=single_metrics,
+                    loggers=loggers,
+                    input_key=0,
+                    output_key=0,
+                    name="single_train",
+                ),
+                SingleEvaluator(
+                    agents={cfg.agent_name: agent},
+                    input=valid_dataset,
+                    target=valid_dataset,
+                    metrics=single_metrics,
+                    loggers=loggers,
+                    input_key=0,
+                    output_key=0,
+                    name="single_valid",
+                ),
+            ]
+        )
+    if cfg.run_signal:
+        baselines = {"batch_mean": BatchMeanBaseline}
+        baseline = baselines[cfg.baseline]()
+        length_baseline = baselines[cfg.baseline]()
+
+        signal_metrics = [
+            ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
+            MessageMetric(),
+        ]
+
+        tasks.extend(
+            [
+                SignalTrainer(
+                    agents={cfg.agent_name: agent},
+                    optimizers={cfg.agent_name: optimizer},
+                    dataloader=train_dataloader,
+                    sender_loss=ReinforceLoss(
+                        entropy_weight=cfg.entropy_weight,
+                        length_weight=cfg.length_weight,
+                        baseline=baseline,
+                        length_baseline=length_baseline,
+                    ).to(cfg.device),
+                    receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(
+                        cfg.device
+                    ),
+                    sender_input_key=0,
+                    sender_output_key=1,
+                    receiver_input_key=1,
+                    receiver_output_key=0,
+                    max_batches=cfg.max_batches_signal,
+                    channels=[(cfg.agent_name, cfg.agent_name)],
+                ),
+                SignalEvaluator(
+                    agents={cfg.agent_name: agent},
+                    input=train_dataset,
+                    target=train_dataset,
+                    metrics=signal_metrics,
+                    loggers=loggers,
+                    sender_input_key=0,
+                    sender_output_key=1,
+                    receiver_input_key=1,
+                    receiver_output_key=0,
+                    name="signal_train",
+                    channels=[(cfg.agent_name, cfg.agent_name)],
+                ),
+                SignalEvaluator(
+                    agents={cfg.agent_name: agent},
+                    input=valid_dataset,
+                    target=valid_dataset,
+                    metrics=signal_metrics,
+                    loggers=loggers,
+                    sender_input_key=0,
+                    sender_output_key=1,
+                    receiver_input_key=1,
+                    receiver_output_key=0,
+                    name="signal_valid",
+                    channels=[(cfg.agent_name, cfg.agent_name)],
+                ),
+            ]
+        )
 
     runner = TaskRunner(tasks)
     runner.run(n_iterations=cfg.n_iterations)
