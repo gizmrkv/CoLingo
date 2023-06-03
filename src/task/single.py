@@ -61,7 +61,7 @@ class SingleEvaluator(Callback):
         loggers: Iterable[Logger],
         input_key,
         output_key,
-        name: str | None = None,
+        name: str,
         interval: int = 1,
     ):
         super().__init__()

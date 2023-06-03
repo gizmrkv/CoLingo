@@ -19,7 +19,7 @@ class MessageMetric(Metric):
     def __init__(self, name: str = "message"):
         super().__init__(name=name)
 
-    def __call__(
+    def calculate(
         self,
         message: th.Tensor,
         log_prob: th.Tensor,

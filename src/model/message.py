@@ -71,7 +71,7 @@ class MessageDecoder(th.nn.Module):
 
         rnn_type = rnn_type.lower()
         rnn_type = {"rnn": th.nn.RNN, "lstm": th.nn.LSTM, "gru": th.nn.GRU}[rnn_type]
-        self.rnn = rnn_type(embed_dim, vocab_size, n_layers, batch_first=True)
+        self.rnn = rnn_type(message_embed_dim, hidden_dim, n_layers, batch_first=True)
 
         self.sos_embed = th.nn.Parameter(th.zeros(message_embed_dim))
         self.hidden2logits = th.nn.Linear(hidden_dim, vocab_size)
