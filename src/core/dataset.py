@@ -9,7 +9,6 @@ from torch.utils.data import TensorDataset
 def generate_concept_dataset(
     n_attributes: int,
     n_values: int,
-    transform: Callable[[th.Tensor], th.Tensor] | None = None,
     device: th.device | str = "cpu",
 ) -> th.Tensor:
     dataset = (
@@ -17,12 +16,7 @@ def generate_concept_dataset(
         .long()
         .to(device)
     )
-
-    if transform is None:
-        target = dataset
-    else:
-        target = transform(dataset)
-    return TensorDataset(dataset, target)
+    return dataset
 
 
 def generate_onehot_concept_dataset(n_attributes: int, n_values: int) -> th.Tensor:

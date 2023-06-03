@@ -1,16 +1,32 @@
+from abc import ABC, abstractmethod
 from pprint import pprint
 
 import wandb
 
+from ..core.callback import Callback
 
-class Logger:
-    def log(self, logs: dict):
+
+class Logger(Callback):
+    def __init__(self):
+        super().__init__()
+        self.logs = {}
+
+    def log(self, logs: dict, flush: bool = False):
+        self.logs |= logs
+        if flush:
+            self.flush()
+
+    def flush(self):
         pass
+
+    def on_post_update(self):
+        self.flush()
 
 
 class ConsoleLogger(Logger):
-    def log(self, logs: dict):
-        pprint(logs)
+    def flush(self):
+        pprint(self.logs)
+        self.logs = {}
 
 
 class WandBLogger(Logger):
@@ -18,5 +34,6 @@ class WandBLogger(Logger):
         super().__init__()
         wandb.init(**kwargs)
 
-    def log(self, logs: dict):
-        wandb.log(logs)
+    def flush(self):
+        wandb.log(self.logs)
+        self.logs = {}

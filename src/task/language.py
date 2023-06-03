@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
-from ..core.command import Command
 from ..core.logger import Logger
 from ..core.network import generate_custom_graph
 
@@ -20,7 +19,6 @@ class LanguageEvaluator(Callback):
         loggers: Iterable[Logger],
         name: str,
         network: DiGraph | None = None,
-        command: Command = Command.SEND,
     ):
         super().__init__()
         self.agents = agents
@@ -29,7 +27,6 @@ class LanguageEvaluator(Callback):
         self.loggers = loggers
         self.name = name
         self.network = network
-        self.command = command
 
         if self.network is None:
             self.network = generate_custom_graph(list(self.agents.keys()))

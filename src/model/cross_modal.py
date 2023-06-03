@@ -2,9 +2,6 @@ import torch as th
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from ..core.command import Command
-from ..core.util import find_length
-
 
 class ConceptEncoder(th.nn.Module):
     def __init__(

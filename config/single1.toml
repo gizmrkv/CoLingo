@@ -1,5 +1,5 @@
 exp_name = "exp1"
-n_iterations = 5
+n_iterations = 100
 batch_size = 65536
 seed = 3
 device = "cpu"
@@ -16,12 +16,14 @@ max_len = 10
 vocab_size = 50
 
 # model
-internal_size = 1024
-embed_size = 128
-hidden_size = 256
+internal_dim = 1024
+concept_embed_dim = 128
+concept_hidden_dim = 256
+message_embed_dim = 128
 rnn_type = "gru"
+message_hidden_dim = 256
 n_layers = 2
-share_message_embedding = true
+share_message_embedding = false
 
 # optimizer
 optimizer = "adam"
@@ -36,7 +38,4 @@ entropy_weight = 0.5
 length_weight = 0.0
 
 # task
-run_single = true
-run_signal = true
 max_batches_single = 1
-max_batches_signal = 1

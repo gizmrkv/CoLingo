@@ -34,7 +34,13 @@ class TaskRunner:
             print(f"Iteration {i + 1}/{n_iterations}")
 
             for task in self.tasks:
+                task.on_pre_update()
+
+            for task in self.tasks:
                 task.on_update()
+
+            for task in self.tasks:
+                task.on_post_update()
 
         for task in self.tasks:
             task.on_end()

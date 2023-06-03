@@ -1,13 +1,28 @@
+from abc import ABC, abstractmethod
+
 import torch as th
 
 from .util import language_similarity, topographic_similarity
 
 
-class MessageMetrics:
+class Metric(ABC):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+
+    @abstractmethod
+    def calculate(self, *args, **kwargs) -> dict:
+        raise NotImplementedError
+
+
+class MessageMetric(Metric):
+    def __init__(self, name: str = "message"):
+        super().__init__(name=name)
+
     def __call__(
         self,
         message: th.Tensor,
-        logprob: th.Tensor,
+        log_prob: th.Tensor,
         entropy: th.Tensor,
         length: th.Tensor,
         *args,
@@ -18,31 +33,34 @@ class MessageMetrics:
         message = th.unique(message, dim=0)
         uniques = message.shape[0] / n
         return {
-            "logprob": logprob.mean().item(),
-            "entropy": entropy.mean().item(),
-            "length": length.float().mean().item(),
-            "uniques": uniques,
+            self.name: {
+                "log_prob": log_prob.mean().item(),
+                "entropy": entropy.mean().item(),
+                "length": length.float().mean().item(),
+                "uniques": uniques,
+            }
         }
 
 
-class SignalingDisplay:
-    def __call__(
-        self, input: th.Tensor, message: th.Tensor, output: th.Tensor, *args, **kwds
+# class SignalingDisplay:
+#     def __call__(
+#         self, input: th.Tensor, message: th.Tensor, output: th.Tensor, *args, **kwds
+#     ):
+#         bsz = input.shape[0]
+#         input = input.view(bsz * 2, 5).argmax(dim=-1).view(bsz, 2)
+#         for inp, mes, out in zip(input, message, output):
+#             print(f"{tuple(inp.tolist())} -> {mes.tolist()} -> {tuple(out.tolist())}")
+
+
+class ConceptAccuracyMetric(Metric):
+    def __init__(
+        self, n_attributes: int, n_values: int, name: str = "concept_accuracy"
     ):
-        bsz = input.shape[0]
-        input = input.view(bsz * 2, 5).argmax(dim=-1).view(bsz, 2)
-        for inp, mes, out in zip(input, message, output):
-            print(f"{tuple(inp.tolist())} -> {mes.tolist()} -> {tuple(out.tolist())}")
-
-
-class ConceptAccuracy:
-    def __init__(self, n_attributes: int, n_values: int):
+        super().__init__(name=name)
         self.n_attributes = n_attributes
         self.n_values = n_values
 
-    def __call__(
-        self, input: th.Tensor, output: th.Tensor, target: th.Tensor, *args, **kwargs
-    ):
+    def calculate(self, output: th.Tensor, target: th.Tensor, *args, **kwargs):
         output = output.argmax(dim=-1)
         acc = {}
         acc["partial"] = (output == target).float().mean().item()
@@ -50,11 +68,14 @@ class ConceptAccuracy:
         for i in range(self.n_attributes):
             acc[i + 1] = (output[:, i] == target[:, i]).float().mean().item()
 
-        return acc
+        return {self.name: acc}
 
 
-class TopographicSimilarity:
-    def __call__(
+class TopographicSimilarityMetric(Metric):
+    def __init__(self, name: str = "topsim"):
+        super().__init__(name=name)
+
+    def calculate(
         self, input: th.Tensor, languages: dict[str, th.Tensor], *args, **kwds
     ):
         topsims = {}
@@ -63,11 +84,14 @@ class TopographicSimilarity:
                 input.numpy(), language.numpy()
             )
 
-        return topsims
+        return {self.name: topsims}
 
 
-class LanguageSimilarity:
-    def __call__(
+class LanguageSimilarityMetric(Metric):
+    def __init__(self, name: str = "lansim"):
+        super().__init__(name=name)
+
+    def calculate(
         self,
         languages: dict[str, th.Tensor],
         lengths: dict[str, th.Tensor],
@@ -81,7 +105,9 @@ class LanguageSimilarity:
             for j in range(i + 1, n_langs):
                 lang1 = languages[langs[i]]
                 lang2 = languages[langs[j]]
-                lansim = language_similarity(lang1, lang2)
+                leng1 = lengths[langs[i]]
+                leng2 = lengths[langs[j]]
+                lansim = language_similarity(lang1, lang2, leng1, leng2)
                 lansims[f"{langs[i]}-{langs[j]}"] = lansim
         lansims["mean"] = sum(lansims.values()) / len(lansims)
-        return lansims
+        return {self.name: lansims}

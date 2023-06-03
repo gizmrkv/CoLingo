@@ -5,25 +5,15 @@ import uuid
 from dataclasses import dataclass
 
 import torch as th
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
-from ..core.agent import Agent
-from ..core.baseline import BatchMeanBaseline
+from ..core.agent import ConceptOrMessageAgent
 from ..core.dataset import generate_concept_dataset, random_split
 from ..core.logger import ConsoleLogger, WandBLogger
-from ..core.loss import ConceptLoss, ReinforceLoss
-from ..core.metric import (
-    ConceptAccuracy,
-    LanguageSimilarity,
-    MessageMetrics,
-    TopographicSimilarity,
-)
-from ..core.network import generate_custom_graph
+from ..core.loss import ConceptLoss
+from ..core.metric import ConceptAccuracyMetric
 from ..core.task_runner import TaskRunner
-from ..core.util import ModelInitializer, ModelSaver, fix_seed
-from ..model.cross_modal import CrossModalModel
-from ..task.language import LanguageEvaluator
-from ..task.signal import SignalEvaluator, SignalTrainer
+from ..core.util import AgentInitializer, AgentSaver, fix_seed
 from ..task.single import SingleEvaluator, SingleTrainer
 
 
@@ -45,10 +35,12 @@ class Config:
     vocab_size: int
 
     # model
-    internal_size: int
-    embed_size: int
-    hidden_size: int
+    internal_dim: int
+    concept_embed_dim: int
+    concept_hidden_dim: int
+    message_embed_dim: int
     rnn_type: str
+    message_hidden_dim: int
     n_layers: int
     share_message_embedding: bool
 
@@ -65,10 +57,7 @@ class Config:
     length_weight: float
 
     # task
-    run_single: bool
-    run_signal: bool
     max_batches_single: int
-    max_batches_signal: int
 
     # agent
     agent_name: str = "A1"
@@ -95,137 +84,79 @@ def run_monologue(config: dict):
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=cfg.batch_size, shuffle=True
+        TensorDataset(train_dataset, train_dataset),
+        batch_size=cfg.batch_size,
+        shuffle=True,
     )
-    valid_dataloader = DataLoader(
-        valid_dataset, batch_size=cfg.batch_size, shuffle=True
-    )
-
-    model = CrossModalModel(
+    # TODO: Fix
+    agent = ConceptOrMessageAgent(
         n_attributes=cfg.n_attributes,
         n_values=cfg.n_values,
         max_len=cfg.max_len,
         vocab_size=cfg.vocab_size,
-        internal_size=cfg.internal_size,
-        embed_size=cfg.embed_size,
-        hidden_size=cfg.hidden_size,
+        internal_dim=cfg.internal_dim,
+        concept_embed_dim=cfg.concept_embed_dim,
+        concept_hidden_dim=cfg.concept_hidden_dim,
+        message_embed_dim=cfg.message_embed_dim,
         rnn_type=cfg.rnn_type,
+        message_hidden_dim=cfg.message_hidden_dim,
         n_layers=cfg.n_layers,
         share_message_embedding=cfg.share_message_embedding,
     ).to(cfg.device)
+
     optimizers = {
         "adam": th.optim.Adam,
         "sgd": th.optim.SGD,
     }
-    optimizer = optimizers[cfg.optimizer](model.parameters(), lr=cfg.lr)
-    agent = Agent(model, optimizer).to(cfg.device)
-    single_metrics = {
-        "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
-    }
-    signal_metrics = {
-        "acc": ConceptAccuracy(cfg.n_attributes, cfg.n_values),
-        "msg": MessageMetrics(),
-    }
+    optimizer = optimizers[cfg.optimizer](agent.parameters(), lr=cfg.lr)
+    single_metrics = [
+        ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
+    ]
 
     loggers = [
         ConsoleLogger(),
         WandBLogger(project="hoge", name="huga"),
     ]
-    network = generate_custom_graph(
-        nodes=[cfg.agent_name], edges=[(cfg.agent_name, cfg.agent_name)]
-    )
     tasks = [
-        ModelSaver(
+        AgentSaver(
             agents={cfg.agent_name: agent},
             interval=cfg.model_save_interval,
             path=f"{log_dir}/models",
         ),
-        ModelInitializer(
-            agents={cfg.agent_name: agent},
-            network=generate_custom_graph(nodes=[cfg.agent_name]),
+        AgentInitializer(
+            agents=[agent],
         ),
-        LanguageEvaluator(
+        SingleTrainer(
             agents={cfg.agent_name: agent},
+            optimizers={cfg.agent_name: optimizer},
             dataloader=train_dataloader,
+            loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
+            input_key=0,
+            output_key=0,
+            max_batches=cfg.max_batches_single,
+        ),
+        SingleEvaluator(
+            agents={cfg.agent_name: agent},
+            input=train_dataset,
+            target=train_dataset,
+            metrics=single_metrics,
             loggers=loggers,
-            metrics={"topsim": TopographicSimilarity()},
-            network=network,
-            name="lang_train",
+            input_key=0,
+            output_key=0,
+            name="single_train",
+        ),
+        SingleEvaluator(
+            agents={cfg.agent_name: agent},
+            input=valid_dataset,
+            target=valid_dataset,
+            metrics=single_metrics,
+            loggers=loggers,
+            input_key=0,
+            output_key=0,
+            name="single_valid",
         ),
     ]
-    if cfg.run_single:
-        tasks.append(
-            SingleTrainer(
-                agents={cfg.agent_name: agent},
-                dataloader=train_dataloader,
-                loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
-                network=network,
-                max_batches=cfg.max_batches_single,
-            )
-        )
-        tasks.append(
-            SingleEvaluator(
-                agents={cfg.agent_name: agent},
-                dataloader=train_dataloader,
-                metrics=single_metrics,
-                loggers=loggers,
-                network=network,
-                name="single_train",
-            )
-        )
-        tasks.append(
-            SingleEvaluator(
-                agents={cfg.agent_name: agent},
-                dataloader=valid_dataloader,
-                metrics=single_metrics,
-                loggers=loggers,
-                network=network,
-                name="single_valid",
-            )
-        )
-    if cfg.run_signal:
-        baselines = {
-            "batch_mean": BatchMeanBaseline,
-        }
-        baseline = baselines[cfg.baseline]().to(cfg.device)
-        length_baseline = baselines[cfg.baseline]().to(cfg.device)
-        tasks.append(
-            SignalTrainer(
-                agents={cfg.agent_name: agent},
-                dataloader=train_dataloader,
-                sender_loss=ReinforceLoss(
-                    entropy_weight=cfg.entropy_weight,
-                    length_weight=cfg.length_weight,
-                    baseline=baseline,
-                    length_baseline=length_baseline,
-                ).to(cfg.device),
-                receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(
-                    cfg.device
-                ),
-                network=network,
-                max_batches=cfg.max_batches_signal,
-            )
-        )
-        tasks.append(
-            SignalEvaluator(
-                agents={cfg.agent_name: agent},
-                dataloader=train_dataloader,
-                metrics=signal_metrics,
-                loggers=loggers,
-                network=network,
-                name="signal_train",
-            )
-        )
-        tasks.append(
-            SignalEvaluator(
-                agents={cfg.agent_name: agent},
-                dataloader=valid_dataloader,
-                metrics=signal_metrics,
-                loggers=loggers,
-                network=network,
-                name="signal_valid",
-            )
-        )
+    tasks.extend(loggers)
 
     runner = TaskRunner(tasks)
     runner.run(n_iterations=cfg.n_iterations)

@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Iterable
 
 import editdistance
 import numpy as np
@@ -24,7 +24,7 @@ def fix_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
 
 
-class ModelSaver(Callback):
+class AgentSaver(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
@@ -46,28 +46,23 @@ class ModelSaver(Callback):
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
                 th.save(
-                    agent.model,
+                    agent,
                     f"{save_dir}/{self.count}.pth",
                 )
 
         self.count += 1
 
 
-class ModelInitializer(Callback):
+class AgentInitializer(Callback):
     def __init__(
         self,
-        agents: dict[str, Agent],
-        network: DiGraph,
+        agents: Iterable[Agent],
     ):
         super().__init__()
         self.agents = agents
-        self.network = network
-
-        self._nodes = list(self.network.nodes)
 
     def on_begin(self):
-        for agent_name in self._nodes:
-            agent = self.agents[agent_name]
+        for agent in self.agents:
             agent.apply(init_weights)
 
 

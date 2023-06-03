@@ -1,79 +1,82 @@
 import random
 from itertools import islice
-from typing import Callable, Iterable
+from typing import Iterable
 
 import torch as th
-from networkx import DiGraph
 from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
-from ..core.command import Command
 from ..core.logger import Logger
-from ..core.network import generate_custom_graph
+from ..core.metric import Metric
 
 
 class SingleTrainer(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
+        optimizers: dict[str, th.optim.Optimizer],
         dataloader: DataLoader,
         loss: th.nn.Module,
+        input_key,
+        output_key,
         max_batches: int = 1,
-        network: DiGraph | None = None,
-        command: Command = Command.PREDICT,
     ):
         super().__init__()
 
         self.agents = agents
-        self.network = network
+        self.optimizers = optimizers
         self.dataloader = dataloader
         self.loss = loss
-        self.command = command
+        self.input_key = input_key
+        self.output_key = output_key
         self.max_batches = max_batches
 
-        if self.network is None:
-            self.network = generate_custom_graph(list(self.agents.keys()))
-
-        self._nodes = list(self.network.nodes)
+        self.agent_names = list(self.agents.keys())
 
     def on_update(self):
         for input, target in islice(self.dataloader, self.max_batches):
-            agent = self.agents[random.choice(self._nodes)]
+            agent_name = random.choice(self.agent_names)
+            agent = self.agents[agent_name]
+            optimizer = self.optimizers[agent_name]
+
             agent.train()
-            output = agent(input, self.command)
-            loss = self.loss(input=output, target=target).mean()
-            agent.optimizer.zero_grad()
+            optimizer.zero_grad()
+
+            hidden = agent.input({self.input_key: input})
+            (output,) = agent.output(self.output_key, hidden=hidden)
+
+            loss: th.Tensor = self.loss(input=output, target=target).mean()
             loss.backward(retain_graph=True)
-            agent.step()
+            optimizer.step()
 
 
 class SingleEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        dataloader: DataLoader,
-        metrics: dict[str, Callable],
+        input: th.Tensor,
+        target: th.Tensor,
+        metrics: Iterable[Metric],
         loggers: Iterable[Logger],
-        name: str,
+        input_key,
+        output_key,
+        name: str | None = None,
         interval: int = 1,
-        network: DiGraph | None = None,
-        command: Command = Command.PREDICT,
     ):
         super().__init__()
         self.agents = agents
-        self.dataloader = dataloader
+        self.input = input
+        self.target = target
         self.metrics = metrics
         self.loggers = loggers
-        self.name = name
+        self.input_key = input_key
+        self.output_key = output_key
         self.interval = interval
-        self.network = network
-        self.command = command
+        self.name = name
 
-        if self.network is None:
-            self.network = generate_custom_graph(list(self.agents.keys()))
+        self.agent_names = list(self.agents.keys())
 
-        self._nodes = list(self.network.nodes)
         self._count = 0
 
     def on_update(self):
@@ -82,19 +85,19 @@ class SingleEvaluator(Callback):
 
         self._count += 1
 
-        for input, target in self.dataloader:
-            logs = {agent_name: {} for agent_name in self._nodes}
-            for agent_name in self._nodes:
-                agent = self.agents[agent_name]
-                agent.eval()
-                with th.no_grad():
-                    output = agent(input, self.command)
+        logs = {agent_name: {} for agent_name in self.agent_names}
+        for agent_name in self.agent_names:
+            agent = self.agents[agent_name]
+            agent.eval()
+            with th.no_grad():
+                hidden = agent.input({self.input_key: self.input})
+                (output,) = agent.output(self.output_key, hidden=hidden)
 
-                for metric_name, metric in self.metrics.items():
-                    value = metric(input=input, output=output, target=target)
-                    logs[agent_name][metric_name] = value
+            for metric in self.metrics:
+                met = metric.calculate(
+                    input=self.input, output=output, target=self.target
+                )
+                logs[agent_name] |= met
 
-            for logger in self.loggers:
-                logger.log({self.name: logs})
-
-            break
+        for logger in self.loggers:
+            logger.log({self.name: logs})
