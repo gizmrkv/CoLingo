@@ -1,4 +1,4 @@
-method = "grid"
+method = "random"
 name = "length_penalty_search"
 project = "CoLingo"
 
@@ -86,7 +86,7 @@ min = 0.0
 max = 2.0
 
 [parameters.run_single]
-values = false
+value = false
 
 [parameters.run_signal]
 value = true
