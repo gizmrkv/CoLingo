@@ -1,56 +1,52 @@
-from typing import Callable, Iterable
+from typing import Iterable
 
 import torch as th
-from networkx import DiGraph
-from torch.utils.data import DataLoader
 
 from ..core.agent import Agent
 from ..core.callback import Callback
 from ..core.logger import Logger
-from ..core.network import generate_custom_graph
+from ..core.metric import Metric
 
 
 class LanguageEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, Agent],
-        dataloader: DataLoader,
-        metrics: dict[str, Callable],
+        input: th.Tensor,
+        metrics: Iterable[Metric],
         loggers: Iterable[Logger],
+        input_key,
+        output_key,
         name: str,
-        network: DiGraph | None = None,
     ):
         super().__init__()
         self.agents = agents
-        self.dataloader = dataloader
+        self.input = input
         self.metrics = metrics
         self.loggers = loggers
+        self.input_key = input_key
+        self.output_key = output_key
         self.name = name
-        self.network = network
 
-        if self.network is None:
-            self.network = generate_custom_graph(list(self.agents.keys()))
-        self._nodes = list(self.network.nodes)
+        self.agent_names = list(self.agents.keys())
 
     def on_end(self):
-        for input, target in self.dataloader:
-            languages = {}
-            lengths = {}
-            for agent_name in self._nodes:
-                agent = self.agents[agent_name]
-                agent.eval()
-                with th.no_grad():
-                    lang, _, _, _ = agent(input, self.command)
+        languages = {}
+        lengths = {}
+        for agent_name in self.agent_names:
+            agent = self.agents[agent_name]
+            agent.eval()
+            with th.no_grad():
+                hidden = agent.input({self.input_key: self.input})
+                (lang,) = agent.output(self.output_key, hidden=hidden)
 
-                languages[agent_name] = lang
-                lengths[agent_name] = th.argmin(lang, dim=1) + 1
+            languages[agent_name] = lang
+            lengths[agent_name] = th.argmin(lang, dim=1) + 1
 
-            logs = {}
-            for metric_name, metric in self.metrics.items():
-                value = metric(
-                    input=input, languages=languages, lengths=lengths, target=target
-                )
-                logs[metric_name] = value
+        logs = {}
+        for metric in self.metrics:
+            met = metric(input=self.input, languages=languages, lengths=lengths)
+            logs = met
 
-            for logger in self.loggers:
-                logger.log({self.name: logs})
+        for logger in self.loggers:
+            logger.log({self.name: logs})
