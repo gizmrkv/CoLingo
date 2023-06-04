@@ -1,25 +1,34 @@
-method = "random"
-name = "seed_sweep"
+method = "bayes"
+name = "monologue_hyperparam_search"
 project = "CoLingo"
 
 [metric]
-name = "signal_valid.A1 -> A1.acc.complete"
+name = "signal_valid.A1 -> A1.concept_accuracy.complete"
 goal = "maximize"
 
 [parameters.exp_name]
 value = "exp1"
 
 [parameters.n_iterations]
-value = 4000
+value = 1000
 
 [parameters.batch_size]
 value = 65536
 
+[parameters.seed]
+value = 3
+
 [parameters.device]
-value = "cpu"
+value = "cuda"
 
 [parameters.model_save_interval]
 value = 1000
+
+[parameters.wandb_project]
+value = "CoLingo"
+
+[parameters.wandb_name]
+value = "run"
 
 [parameters.n_attributes]
 value = 2
@@ -33,23 +42,35 @@ value = 10
 [parameters.vocab_size]
 value = 50
 
-[parameters.internal_size]
-value = 1024
+[parameters.internal_dim]
+min = 32
+max = 1024
 
-[parameters.embed_size]
-value = 128
+[parameters.concept_embed_dim]
+min = 32
+max = 256
 
-[parameters.hidden_size]
-value = 256
+[parameters.concept_hidden_dim]
+min = 32
+max = 256
+
+[parameters.message_embed_dim]
+min = 32
+max = 256
 
 [parameters.rnn_type]
-value = "gru"
+values = ["rnn", "lstm", "gru"]
+
+[parameters.message_hidden_dim]
+min = 32
+max = 256
 
 [parameters.n_layers]
-value = 2
+min = 1
+max = 4
 
 [parameters.share_message_embedding]
-value = true
+values = [true, false]
 
 [parameters.optimizer]
 value = "adam"
@@ -64,13 +85,14 @@ value = 0.8
 value = "batch_mean"
 
 [parameters.entropy_weight]
-value = 0.5
+min = 0.0
+max = 2.0
 
 [parameters.length_weight]
 value = 0.0
 
 [parameters.run_single]
-value = true
+values = [false, true]
 
 [parameters.run_signal]
 value = true
@@ -80,7 +102,3 @@ value = 1
 
 [parameters.max_batches_signal]
 value = 1
-
-[parameters.seed]
-min = 0
-max = 100000
