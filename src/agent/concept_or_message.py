@@ -1,20 +1,8 @@
-from abc import ABC, abstractmethod
-from enum import Enum
-
 import torch as th
 
 from ..model.concept import ConceptDecoder, ConceptEncoder
 from ..model.message import MessageDecoder, MessageEncoder
-
-
-class Agent(ABC, th.nn.Module):
-    @abstractmethod
-    def input(self, inputs: dict):
-        raise NotImplementedError
-
-    @abstractmethod
-    def output(*outputs, hidden):
-        raise NotImplementedError
+from .agent import Agent
 
 
 class ConceptOrMessageAgent(Agent):

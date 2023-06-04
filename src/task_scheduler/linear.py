@@ -1,7 +1,7 @@
 import math
 import random
 
-from .callback import Callback
+from ..core import Callback
 
 
 class LinearTaskScheduler(Callback):

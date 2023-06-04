@@ -7,16 +7,16 @@ from dataclasses import dataclass
 import torch as th
 from torch.utils.data import DataLoader, TensorDataset
 
-from ..core.agent import ConceptOrMessageAgent
-from ..core.baseline import BatchMeanBaseline
-from ..core.dataset import generate_concept_dataset, random_split
-from ..core.logger import ConsoleLogger, WandBLogger
-from ..core.loss import ConceptLoss, ReinforceLoss
-from ..core.metric import ConceptAccuracyMetric, MessageMetric
+from ..agent import ConceptOrMessageAgent
+from ..baseline import BatchMeanBaseline
 from ..core.task_runner import TaskRunner
-from ..core.util import AgentInitializer, AgentSaver, fix_seed
+from ..dataset import concept_dataset, random_split
+from ..logger import WandBLogger
+from ..loss import ConceptLoss, ReinforceLoss
+from ..metric import ConceptAccuracyMetric, MessageMetric
 from ..task.signal import SignalEvaluator, SignalTrainer
 from ..task.single import SingleEvaluator, SingleTrainer
+from ..util import AgentInitializer, AgentSaver, fix_seed
 
 
 @dataclass
@@ -86,9 +86,7 @@ def run_monologue(config: dict):
 
     fix_seed(cfg.seed)
 
-    dataset = generate_concept_dataset(
-        cfg.n_attributes, cfg.n_values, device=cfg.device
-    )
+    dataset = concept_dataset(cfg.n_attributes, cfg.n_values, device=cfg.device)
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )

@@ -1,7 +1,7 @@
 exp_name = "exp1"
 n_iterations = 1000
 batch_size = 65536
-seed = 3
+seed = 42
 device = "cuda"
 model_save_interval = 1000
 
@@ -19,14 +19,14 @@ max_len = 10
 vocab_size = 50
 
 # model
-internal_dim = 1024
-concept_embed_dim = 128
+internal_dim = 512
+concept_embed_dim = 64
 concept_hidden_dim = 256
-message_embed_dim = 128
+message_embed_dim = 64
 rnn_type = "gru"
 message_hidden_dim = 256
 n_layers = 2
-share_message_embedding = false
+share_message_embedding = true
 
 # optimizer
 optimizer = "adam"
@@ -37,7 +37,7 @@ split_ratio = 0.8
 
 # reinforce
 baseline = "batch_mean"
-entropy_weight = 0.5
+entropy_weight = 0.1
 length_weight = 0.0
 
 # task

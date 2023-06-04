@@ -1,85 +1,9 @@
-import os
-from typing import Callable, Iterable
+from typing import Callable
 
 import numpy as np
 import torch as th
 from numba import njit
 from scipy.stats import kendalltau, pearsonr, spearmanr
-
-from .agent import Agent
-from .callback import Callback
-
-
-def fix_seed(seed: int):
-    import random
-
-    import numpy as np
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-
-
-class AgentSaver(Callback):
-    def __init__(
-        self,
-        agents: dict[str, Agent],
-        interval: float,
-        path: str,
-    ):
-        super().__init__()
-
-        self.agents = agents
-        self.interval = interval
-        self.path = path
-
-        self.count = 0
-
-    def on_update(self):
-        if self.count % self.interval == 0:
-            for agent_name, agent in self.agents.items():
-                save_dir = f"{self.path}/{agent_name}"
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-                th.save(
-                    agent,
-                    f"{save_dir}/{self.count}.pth",
-                )
-
-        self.count += 1
-
-
-class AgentInitializer(Callback):
-    def __init__(
-        self,
-        agents: Iterable[Agent],
-    ):
-        super().__init__()
-        self.agents = agents
-
-    def on_begin(self):
-        for agent in self.agents:
-            agent.apply(init_weights)
-
-
-def init_weights(m):
-    if isinstance(m, (th.nn.Linear, th.nn.Conv2d)):
-        th.nn.init.kaiming_uniform_(m.weight)
-        th.nn.init.zeros_(m.bias)
-    elif isinstance(m, (th.nn.RNN, th.nn.LSTM, th.nn.GRU)):
-        th.nn.init.kaiming_uniform_(m.weight_ih_l0)
-        th.nn.init.kaiming_uniform_(m.weight_hh_l0)
-        th.nn.init.zeros_(m.bias_ih_l0)
-        th.nn.init.zeros_(m.bias_hh_l0)
-    elif isinstance(m, th.nn.Embedding):
-        th.nn.init.kaiming_uniform_(m.weight)
-    elif isinstance(
-        m, (th.nn.LayerNorm, th.nn.BatchNorm1d, th.nn.BatchNorm2d, th.nn.BatchNorm3d)
-    ):
-        th.nn.init.constant_(m.weight, 1)
-        th.nn.init.constant_(m.bias, 0)
 
 
 def find_length(messages: th.Tensor) -> th.Tensor:

@@ -5,10 +5,10 @@ from typing import Iterable
 import torch as th
 from torch.utils.data import DataLoader
 
-from ..core.agent import Agent
+from ..agent import Agent
 from ..core.callback import Callback
-from ..core.logger import Logger
-from ..core.metric import Metric
+from ..logger import Logger
+from ..metric import Metric
 
 
 class SingleTrainer(Callback):

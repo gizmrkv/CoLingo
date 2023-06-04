@@ -2,10 +2,10 @@ from typing import Iterable
 
 import torch as th
 
-from ..core.agent import Agent
+from ..agent import Agent
 from ..core.callback import Callback
-from ..core.logger import Logger
-from ..core.metric import Metric
+from ..logger import Logger
+from ..metric import Metric
 
 
 class LanguageEvaluator(Callback):
