@@ -1,5 +1,4 @@
 import json
-from pprint import pprint
 
 import toml
 import yaml
@@ -15,7 +14,8 @@ def sweep_monologue():
 
 
 if __name__ == "__main__":
-    sweep_path = "config_sweep/monologue_hyperparam_search.toml"
+    # sweep_path = "config_sweep/monologue_hyperparam_search.toml"
+    sweep_path = "config_sweep/length_penalty_search.toml"
     with open(sweep_path, "r") as f:
         if sweep_path.endswith(".json"):
             sweep_config = json.load(f)
