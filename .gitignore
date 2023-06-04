@@ -130,4 +130,6 @@ dmypy.json
 
 *.lock
 
+# custom
 wandb/
+log/
