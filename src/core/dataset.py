@@ -1,9 +1,7 @@
 import itertools
-from typing import Callable
 
 import numpy as np
 import torch as th
-from torch.utils.data import TensorDataset
 
 
 def generate_concept_dataset(

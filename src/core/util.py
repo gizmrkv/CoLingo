@@ -1,10 +1,8 @@
 import os
 from typing import Callable, Iterable
 
-import editdistance
 import numpy as np
 import torch as th
-from networkx import DiGraph
 from numba import njit
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
