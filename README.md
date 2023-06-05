@@ -1,8 +1,6 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-- Task Scheduler
-  - Shuffle
 - Task
   - Speech
   - Telephon
