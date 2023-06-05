@@ -50,7 +50,7 @@ class SignalTrainer(Callback):
         else:
             self.channels = channels
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         for input, target in islice(self.dataloader, self.max_batches):
             sender_name, receiver_name = random.choice(self.channels)
             sender = self.agents[sender_name]
@@ -121,7 +121,7 @@ class SignalEvaluator(Callback):
         else:
             self.channels = channels
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         if self._count % self.interval != 0:
             return
 

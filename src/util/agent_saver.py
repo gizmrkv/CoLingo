@@ -21,7 +21,7 @@ class AgentSaver(Callback):
 
         self.count = 0
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         if self.count % self.interval == 0:
             for agent_name, agent in self.agents.items():
                 save_dir = f"{self.path}/{agent_name}"

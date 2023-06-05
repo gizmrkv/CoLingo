@@ -14,5 +14,5 @@ class Logger(Callback):
     def flush(self):
         pass
 
-    def on_post_update(self):
+    def on_post_update(self, iteration: int):
         self.flush()

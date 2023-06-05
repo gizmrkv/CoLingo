@@ -31,7 +31,7 @@ class CustomTaskScheduler(Callback):
         for task in self.tasks:
             task.on_end()
 
-    def on_pre_update(self):
+    def on_pre_update(self, iteration: int):
         freq = self.freq_lambda(self.call_count)
         self.call_count += 1
         if self.randomly:
@@ -44,12 +44,12 @@ class CustomTaskScheduler(Callback):
             for task in self.tasks:
                 task.on_pre_update()
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         for _ in range(self.run_count):
             for task in self.tasks:
                 task.on_update()
 
-    def on_post_update(self):
+    def on_post_update(self, iteration: int):
         if self.run_count > 0:
             for task in self.tasks:
                 task.on_post_update()

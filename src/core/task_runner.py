@@ -32,15 +32,15 @@ class TaskRunner:
         for task in self.tasks:
             task.on_begin()
 
-        for i in tqdm.tqdm(range(n_iterations)):
+        for iter in tqdm.tqdm(range(n_iterations)):
             for task in self.tasks:
-                task.on_pre_update()
+                task.on_pre_update(iter)
 
             for task in self.tasks:
-                task.on_update()
+                task.on_update(iter)
 
             for task in self.tasks:
-                task.on_post_update()
+                task.on_post_update(iter)
 
         for task in self.tasks:
             task.on_end()

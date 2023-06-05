@@ -34,7 +34,7 @@ class SingleTrainer(Callback):
 
         self.agent_names = list(self.agents.keys())
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         for input, target in islice(self.dataloader, self.max_batches):
             agent_name = random.choice(self.agent_names)
             agent = self.agents[agent_name]
@@ -79,7 +79,7 @@ class SingleEvaluator(Callback):
 
         self._count = 0
 
-    def on_update(self):
+    def on_update(self, iteration: int):
         if self._count % self.interval != 0:
             return
 
