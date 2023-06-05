@@ -17,8 +17,8 @@ class TaskRunner:
         run(n_iterations: int): Runs the specified number of iterations over the tasks.
     """
 
-    def __init__(self, tasks: Iterable[Callback]):
-        self.tasks = tasks
+    def __init__(self, task: Callback | Iterable[Callback]):
+        self.tasks = [task] if isinstance(task, Callback) else task
 
     def run(self, n_iterations: int):
         """
