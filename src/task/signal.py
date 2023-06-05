@@ -25,6 +25,11 @@ class SignalTrainer(Callback):
         receiver_output_key,
         max_batches: int = 1,
         channels: list[tuple[str, str]] | None = None,
+        sender_answer: bool = False,
+        sender_answer_key=None,
+        receiver_parrot: bool = False,
+        receiver_parrot_key=None,
+        parrot_loss: th.nn.Module | None = None,
     ):
         super().__init__()
 
@@ -38,6 +43,11 @@ class SignalTrainer(Callback):
         self.sender_output_key = sender_output_key
         self.receiver_output_key = receiver_output_key
         self.max_batches = max_batches
+        self.sender_answer = sender_answer
+        self.sender_answer_key = sender_answer_key
+        self.receiver_parrot = receiver_parrot
+        self.receiver_parrot_key = receiver_parrot_key
+        self.parrot_loss = parrot_loss
 
         self.agents_names = list(self.agents.keys())
 
@@ -62,19 +72,38 @@ class SignalTrainer(Callback):
             self.optimizers[receiver_name].zero_grad()
 
             hidden_s = sender.input({self.sender_input_key: input})
-            ((message, log_prob, entropy, length),) = sender.output(
-                self.sender_output_key, hidden=hidden_s
-            )
+            if self.sender_answer:
+                ((message, log_prob, entropy, length), sender_answer) = sender.output(
+                    self.sender_output_key, self.sender_answer_key, hidden=hidden_s
+                )
+            else:
+                ((message, log_prob, entropy, length),) = sender.output(
+                    self.sender_output_key, hidden=hidden_s
+                )
+
             hidden_r = receiver.input({self.receiver_input_key: message})
-            (output,) = receiver.output(self.receiver_output_key, hidden=hidden_r)
+            if self.receiver_parrot:
+                (
+                    output,
+                    (message_r, log_prob_r, entropy_r, length_r),
+                ) = receiver.output(
+                    self.receiver_output_key, self.receiver_parrot_key, hidden=hidden_r
+                )
+            else:
+                (output,) = receiver.output(self.receiver_output_key, hidden=hidden_r)
 
             receiver_loss = self.receiver_loss(input=output, target=target)
             sender_loss = self.sender_loss(
                 loss=receiver_loss, log_prob=log_prob, entropy=entropy, length=length
             )
-            loss: th.Tensor = (sender_loss + receiver_loss).mean()
+            loss: th.Tensor = sender_loss + receiver_loss
 
-            loss.backward(retain_graph=True)
+            if self.sender_answer:
+                loss = loss + self.receiver_loss(input=sender_answer, target=target)
+            if self.receiver_parrot:
+                loss = loss + self.parrot_loss(input=message_r, target=message)
+
+            loss.mean().backward(retain_graph=True)
             self.optimizers[sender_name].step()
             self.optimizers[receiver_name].step()
 
