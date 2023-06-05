@@ -20,8 +20,8 @@ class SignalTrainer(Callback):
         sender_loss: th.nn.Module,
         receiver_loss: th.nn.Module,
         sender_input_key,
-        sender_output_key,
         receiver_input_key,
+        sender_output_key,
         receiver_output_key,
         max_batches: int = 1,
         channels: list[tuple[str, str]] | None = None,
@@ -34,8 +34,8 @@ class SignalTrainer(Callback):
         self.sender_loss = sender_loss
         self.receiver_loss = receiver_loss
         self.sender_input_key = sender_input_key
-        self.sender_output_key = sender_output_key
         self.receiver_input_key = receiver_input_key
+        self.sender_output_key = sender_output_key
         self.receiver_output_key = receiver_output_key
         self.max_batches = max_batches
 
@@ -62,7 +62,7 @@ class SignalTrainer(Callback):
             self.optimizers[receiver_name].zero_grad()
 
             hidden_s = sender.input({self.sender_input_key: input})
-            ((message, logprob, entropy, length),) = sender.output(
+            ((message, log_prob, entropy, length),) = sender.output(
                 self.sender_output_key, hidden=hidden_s
             )
             hidden_r = receiver.input({self.receiver_input_key: message})
@@ -70,7 +70,7 @@ class SignalTrainer(Callback):
 
             receiver_loss = self.receiver_loss(input=output, target=target)
             sender_loss = self.sender_loss(
-                loss=receiver_loss, logprob=logprob, entropy=entropy, length=length
+                loss=receiver_loss, log_prob=log_prob, entropy=entropy, length=length
             )
             loss: th.Tensor = (sender_loss + receiver_loss).mean()
 

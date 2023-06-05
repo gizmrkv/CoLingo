@@ -12,7 +12,7 @@ from ..baseline import BatchMeanBaseline
 from ..core.task_runner import TaskRunner
 from ..dataset import concept_dataset, random_split
 from ..logger import WandBLogger
-from ..loss import ConceptLoss, ReinforceLoss
+from ..loss import ConceptLoss, MessageLoss
 from ..metric import ConceptAccuracyMetric, MessageMetric
 from ..task.signal import SignalEvaluator, SignalTrainer
 from ..task.single import SingleEvaluator, SingleTrainer
@@ -185,7 +185,7 @@ def run_monologue(config: dict):
                     agents={cfg.agent_name: agent},
                     optimizers={cfg.agent_name: optimizer},
                     dataloader=train_dataloader,
-                    sender_loss=ReinforceLoss(
+                    sender_loss=MessageLoss(
                         entropy_weight=cfg.entropy_weight,
                         length_weight=cfg.length_weight,
                         baseline=baseline,

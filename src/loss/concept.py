@@ -3,14 +3,6 @@ from torchtyping import TensorType
 
 
 class ConceptLoss(th.nn.Module):
-    """
-    The ConceptLoss class implements a loss function.
-
-    Args:
-        n_attributes (int): The number of attributes in the concept.
-        n_values (int): The number of values each attribute can take.
-    """
-
     def __init__(self, n_attributes: int, n_values: int):
         super().__init__()
         self.n_attributes = n_attributes
@@ -21,16 +13,6 @@ class ConceptLoss(th.nn.Module):
         input: TensorType["batch", "n_attributes", "n_values", float],
         target: th.Tensor,
     ) -> TensorType["batch", float]:
-        """
-        Compute the Concept loss.
-
-        Args:
-            input (TensorType["batch", "n_attributes", "n_values", float]): The prediction from the model.
-            target (th.Tensor): The ground truth.
-
-        Returns:
-            TensorType["batch", float]: The computed Concept loss.
-        """
         input = input.view(-1, self.n_values)
         target = target.view(-1)
         return (
