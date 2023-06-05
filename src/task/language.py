@@ -40,8 +40,8 @@ class LanguageEvaluator(Callback):
                 hidden = agent.input({self.input_key: self.input})
                 ((lang, _, _, _),) = agent.output(self.output_key, hidden=hidden)
 
-            languages[agent_name] = lang.numpy()
-            lengths[agent_name] = lang.numpy().argmin(axis=-1) + 1
+            languages[agent_name] = lang.cpu().numpy()
+            lengths[agent_name] = lang.cpu().numpy().argmin(axis=-1) + 1
 
         logs = {}
         for metric in self.metrics:

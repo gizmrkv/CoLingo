@@ -14,6 +14,6 @@ class TopographicSimilarityMetric(Metric):
     ):
         topsims = {}
         for agent_name, language in languages.items():
-            topsims[agent_name] = topographic_similarity(input.numpy(), language)
+            topsims[agent_name] = topographic_similarity(input.cpu().numpy(), language)
 
         return {self.name: topsims}
