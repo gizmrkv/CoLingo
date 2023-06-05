@@ -38,15 +38,17 @@ class LanguageEvaluator(Callback):
             agent.eval()
             with th.no_grad():
                 hidden = agent.input({self.input_key: self.input})
-                (lang,) = agent.output(self.output_key, hidden=hidden)
+                ((lang, _, _, _),) = agent.output(self.output_key, hidden=hidden)
 
-            languages[agent_name] = lang
-            lengths[agent_name] = th.argmin(lang, dim=1) + 1
+            languages[agent_name] = lang.numpy()
+            lengths[agent_name] = lang.numpy().argmin(axis=-1) + 1
 
         logs = {}
         for metric in self.metrics:
-            met = metric(input=self.input, languages=languages, lengths=lengths)
-            logs = met
+            met = metric.calculate(
+                input=self.input, languages=languages, lengths=lengths
+            )
+            logs |= met
 
         for logger in self.loggers:
-            logger.log({self.name: logs})
+            logger.log({self.name: logs}, flush=True)

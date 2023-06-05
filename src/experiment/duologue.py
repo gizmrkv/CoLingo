@@ -13,7 +13,13 @@ from ..core.task_runner import TaskRunner
 from ..dataset import concept_dataset, random_split
 from ..logger import WandBLogger
 from ..loss import ConceptLoss, MessageLoss
-from ..metric import ConceptAccuracyMetric, MessageMetric
+from ..metric import (
+    ConceptAccuracyMetric,
+    LanguageSimilarityMetric,
+    MessageMetric,
+    TopographicSimilarityMetric,
+)
+from ..task.language import LanguageEvaluator
 from ..task.signal import SignalEvaluator, SignalTrainer
 from ..task.single import SingleEvaluator, SingleTrainer
 from ..util import AgentInitializer, AgentSaver, fix_seed
@@ -71,6 +77,10 @@ class Config:
     # agent
     agent1_name: str = "A1"
     agent2_name: str = "A2"
+
+    # signal option
+    sender_answer: bool = False
+    receiver_parrot: bool = False
 
 
 def run_duologue(config: dict):
@@ -245,6 +255,15 @@ def run_duologue(config: dict):
                     receiver_input_key=1,
                     receiver_output_key=0,
                     name="signal_valid",
+                ),
+                LanguageEvaluator(
+                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
+                    input=train_dataset,
+                    metrics=[TopographicSimilarityMetric(), LanguageSimilarityMetric()],
+                    loggers=loggers,
+                    input_key=0,
+                    output_key=1,
+                    name="lang_analysis",
                 ),
             ]
         )

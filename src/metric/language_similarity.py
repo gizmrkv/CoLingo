@@ -1,3 +1,4 @@
+import numpy as np
 import torch as th
 
 from ..analysis import language_similarity
@@ -10,8 +11,8 @@ class LanguageSimilarityMetric(Metric):
 
     def calculate(
         self,
-        languages: dict[str, th.Tensor],
-        lengths: dict[str, th.Tensor],
+        languages: dict[str, np.ndarray],
+        lengths: dict[str, np.ndarray],
         *args,
         **kwds,
     ):

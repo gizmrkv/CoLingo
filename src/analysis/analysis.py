@@ -97,4 +97,4 @@ def language_similarity(
             language1[i, : length1[i]], language2[i, : length2[i]]
         )
 
-    return 1 - distances / np.maximum(length1, length2)
+    return 1 - (distances / np.maximum(length1, length2)).mean()
