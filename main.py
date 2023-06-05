@@ -3,7 +3,7 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_monologue
+from src.experiment import run_duologue, run_monologue
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]
@@ -19,4 +19,5 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    run_monologue(config)
+    # run_monologue(config)
+    run_duologue(config)
