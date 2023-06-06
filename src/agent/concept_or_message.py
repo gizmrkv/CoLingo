@@ -73,18 +73,24 @@ class ConceptOrMessageAgent(Agent):
             message_embed=self.msg_embed,
         )
 
-    def input(self, inputs: dict):
-        assert (0 in inputs) ^ (1 in inputs)
+    def input(
+        self,
+        input: th.Tensor | None = None,
+        message: th.Tensor | None = None,
+        game_name: str | None = None,
+    ):
+        assert (input is None) != (message is None)
 
-        if 0 in inputs:
-            return self.concept_encoder(inputs[0])
+        if input is not None:
+            return self.concept_encoder(input)
 
-        if 1 in inputs:
-            return self.message_encoder(inputs[1])
+        if message is not None:
+            return self.message_encoder(message)
 
-        raise ValueError(f"Invalid input: {inputs}")
+        raise ValueError("Either input or message must be specified")
 
-    def output(self, *outputs, hidden):
-        return [
-            [self.concept_decoder, self.message_decoder][i](hidden) for i in outputs
-        ]
+    def forward(self, hidden: th.Tensor, game_name: str | None = None):
+        return self.concept_decoder(hidden)
+
+    def message(self, hidden: th.Tensor, game_name: str | None = None):
+        return self.message_decoder(hidden)
