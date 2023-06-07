@@ -1,8 +1,8 @@
 exp_name = "exp1"
-n_iterations = 1000
+n_iterations = 10
 batch_size = 65536
 seed = 42
-device = "cuda"
+device = "cpu"
 model_save_interval = 1000
 
 # wandb
@@ -41,7 +41,11 @@ entropy_weight = 0.1
 length_weight = 0.0
 
 # task
-run_single = false
-run_signal = true
-max_batches_single = 1
 max_batches_signal = 1
+
+# optional
+agent1_name = "A1"
+agent2_name = "A2"
+
+sender_output = false
+receiver_parrot = false

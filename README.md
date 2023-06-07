@@ -1,6 +1,12 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- 指定されたメトリクスを監視し，閾値を超えたり停滞したら発火するイベントをどう作る？
+  - Logger を継承した Metric Observerが発火する?
+- Teskの廃止，Game: nn.Module, Trainer: Callback, Evaluator: Callbackの3つに分割
+- Gameは，逆伝播できる場合は統一，強化学習する場合は個別に実装する．
+  - 強化学習を使う場合，何をロス計算に使うかはデータ形式によるため，Gameはデータ形式を知っている必要がある．
+  - よって統一が難しい．
 - Task
   - Speech
   - Telephon

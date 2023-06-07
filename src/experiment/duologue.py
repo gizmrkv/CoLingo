@@ -3,25 +3,31 @@ import json
 import os
 import uuid
 from dataclasses import dataclass
+from itertools import combinations
 
+import numpy as np
 import torch as th
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..agent import ConceptOrMessageAgent
+from ..analysis import (
+    LanguageEvaluator,
+    concept_accuracy,
+    concept_topographic_similarity,
+    language_similarity,
+    language_uniques,
+)
 from ..baseline import BatchMeanBaseline
 from ..core.task_runner import TaskRunner
 from ..dataset import concept_dataset, random_split
-from ..logger import WandBLogger
-from ..loss import ConceptLoss, MessageLoss
-from ..metric import (
-    ConceptAccuracyMetric,
-    LanguageSimilarityMetric,
-    MessageMetric,
-    TopographicSimilarityMetric,
+from ..game import (
+    MessageSignalingGame,
+    MessageSignalingGameEvaluator,
+    MessageSignalingGameResult,
+    MessageSignalingGameTrainer,
 )
-from ..task.language import LanguageEvaluator
-from ..task.signal import SignalEvaluator, SignalTrainer
-from ..task.single import SingleEvaluator, SingleTrainer
+from ..logger import WandBLogger
+from ..loss import ConceptLoss
 from ..util import AgentInitializer, AgentSaver, fix_seed
 
 
@@ -69,9 +75,6 @@ class Config:
     length_weight: float
 
     # task
-    run_single: bool
-    run_signal: bool
-    max_batches_single: int
     max_batches_signal: int
 
     # agent
@@ -79,12 +82,15 @@ class Config:
     agent2_name: str = "A2"
 
     # signal option
-    sender_answer: bool = False
+    sender_output: bool = False
     receiver_parrot: bool = False
 
 
 def run_duologue(config: dict):
     cfg = Config(**config)
+
+    assert cfg.device in ["cpu", "cuda"]
+    assert cfg.device == "cpu" or th.cuda.is_available()
 
     now = datetime.datetime.now()
     log_id = str(uuid.uuid4())[-4:]
@@ -106,167 +112,159 @@ def run_duologue(config: dict):
         batch_size=cfg.batch_size,
         shuffle=True,
     )
-    # TODO: Fix
-    agent1 = ConceptOrMessageAgent(
-        n_attributes=cfg.n_attributes,
-        n_values=cfg.n_values,
-        max_len=cfg.max_len,
-        vocab_size=cfg.vocab_size,
-        internal_dim=cfg.internal_dim,
-        concept_embed_dim=cfg.concept_embed_dim,
-        concept_hidden_dim=cfg.concept_hidden_dim,
-        message_embed_dim=cfg.message_embed_dim,
-        rnn_type=cfg.rnn_type,
-        message_hidden_dim=cfg.message_hidden_dim,
-        n_layers=cfg.n_layers,
-        share_message_embedding=cfg.share_message_embedding,
-    ).to(cfg.device)
-    agent2 = ConceptOrMessageAgent(
-        n_attributes=cfg.n_attributes,
-        n_values=cfg.n_values,
-        max_len=cfg.max_len,
-        vocab_size=cfg.vocab_size,
-        internal_dim=cfg.internal_dim,
-        concept_embed_dim=cfg.concept_embed_dim,
-        concept_hidden_dim=cfg.concept_hidden_dim,
-        message_embed_dim=cfg.message_embed_dim,
-        rnn_type=cfg.rnn_type,
-        message_hidden_dim=cfg.message_hidden_dim,
-        n_layers=cfg.n_layers,
-        share_message_embedding=cfg.share_message_embedding,
-    ).to(cfg.device)
+    agents = {
+        agent_name: ConceptOrMessageAgent(
+            n_attributes=cfg.n_attributes,
+            n_values=cfg.n_values,
+            max_len=cfg.max_len,
+            vocab_size=cfg.vocab_size,
+            internal_dim=cfg.internal_dim,
+            concept_embed_dim=cfg.concept_embed_dim,
+            concept_hidden_dim=cfg.concept_hidden_dim,
+            message_embed_dim=cfg.message_embed_dim,
+            rnn_type=cfg.rnn_type,
+            message_hidden_dim=cfg.message_hidden_dim,
+            n_layers=cfg.n_layers,
+            share_message_embedding=cfg.share_message_embedding,
+        ).to(cfg.device)
+        for agent_name in [cfg.agent1_name, cfg.agent2_name]
+    }
 
-    optimizers = {
+    optimizer_types = {
         "adam": th.optim.Adam,
         "sgd": th.optim.SGD,
     }
-    optimizer1 = optimizers[cfg.optimizer](agent1.parameters(), lr=cfg.lr)
-    optimizer2 = optimizers[cfg.optimizer](agent2.parameters(), lr=cfg.lr)
+    optimizers = {
+        agent_name: optimizer_types[cfg.optimizer](agent.parameters(), lr=cfg.lr)
+        for agent_name, agent in agents.items()
+    }
 
     tasks = [
         AgentSaver(
-            agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
+            agents=agents,
             interval=cfg.model_save_interval,
             path=f"{log_dir}/models",
         ),
         AgentInitializer(
-            agents=[agent1, agent2],
+            agents=agents.values(),
         ),
     ]
     loggers = [
         WandBLogger(project=cfg.wandb_project, name=cfg.wandb_name),
     ]
+
     tasks.extend(loggers)
 
-    if cfg.run_single:
-        single_metrics = [
-            ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
-        ]
-        tasks.extend(
-            [
-                SingleTrainer(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    optimizers={
-                        cfg.agent1_name: optimizer1,
-                        cfg.agent2_name: optimizer2,
-                    },
-                    dataloader=train_dataloader,
-                    loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(cfg.device),
-                    input_key=0,
-                    output_key=0,
-                    max_batches=cfg.max_batches_single,
-                ),
-                SingleEvaluator(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    input=train_dataset,
-                    target=train_dataset,
-                    metrics=single_metrics,
-                    loggers=loggers,
-                    input_key=0,
-                    output_key=0,
-                    name="single_train",
-                ),
-                SingleEvaluator(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    input=valid_dataset,
-                    target=valid_dataset,
-                    metrics=single_metrics,
-                    loggers=loggers,
-                    input_key=0,
-                    output_key=0,
-                    name="single_valid",
-                ),
-            ]
-        )
-    if cfg.run_signal:
-        baselines = {"batch_mean": BatchMeanBaseline}
-        baseline = baselines[cfg.baseline]()
-        length_baseline = baselines[cfg.baseline]()
+    baselines = {"batch_mean": BatchMeanBaseline}
+    loss_baseline = baselines[cfg.baseline]()
+    length_baseline = baselines[cfg.baseline]()
 
-        signal_metrics = [
-            ConceptAccuracyMetric(cfg.n_attributes, cfg.n_values),
-            MessageMetric(),
-        ]
+    concept_loss = ConceptLoss(n_attributes=cfg.n_attributes, n_values=cfg.n_values).to(
+        cfg.device
+    )
 
-        tasks.extend(
-            [
-                SignalTrainer(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    optimizers={
-                        cfg.agent1_name: optimizer1,
-                        cfg.agent2_name: optimizer2,
-                    },
-                    dataloader=train_dataloader,
-                    sender_loss=MessageLoss(
-                        entropy_weight=cfg.entropy_weight,
-                        length_weight=cfg.length_weight,
-                        baseline=baseline,
-                        length_baseline=length_baseline,
-                    ).to(cfg.device),
-                    receiver_loss=ConceptLoss(cfg.n_attributes, cfg.n_values).to(
-                        cfg.device
-                    ),
-                    sender_input_key=0,
-                    sender_output_key=1,
-                    receiver_input_key=1,
-                    receiver_output_key=0,
-                    max_batches=cfg.max_batches_signal,
-                ),
-                SignalEvaluator(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    input=train_dataset,
-                    target=train_dataset,
-                    metrics=signal_metrics,
-                    loggers=loggers,
-                    sender_input_key=0,
-                    sender_output_key=1,
-                    receiver_input_key=1,
-                    receiver_output_key=0,
-                    name="signal_train",
-                ),
-                SignalEvaluator(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    input=valid_dataset,
-                    target=valid_dataset,
-                    metrics=signal_metrics,
-                    loggers=loggers,
-                    sender_input_key=0,
-                    sender_output_key=1,
-                    receiver_input_key=1,
-                    receiver_output_key=0,
-                    name="signal_valid",
-                ),
-                LanguageEvaluator(
-                    agents={cfg.agent1_name: agent1, cfg.agent2_name: agent2},
-                    input=train_dataset,
-                    metrics=[TopographicSimilarityMetric(), LanguageSimilarityMetric()],
-                    loggers=loggers,
-                    input_key=0,
-                    output_key=1,
-                    name="lang_analysis",
-                ),
-            ]
-        )
+    game = MessageSignalingGame(
+        entropy_weight=cfg.entropy_weight,
+        length_weight=cfg.length_weight,
+        loss_baseline=loss_baseline,
+        length_baseline=length_baseline,
+    ).to(cfg.device)
+
+    game_trainer = MessageSignalingGameTrainer(
+        game=game,
+        loss=concept_loss,
+        agents=agents,
+        optimizers=optimizers,
+        dataloader=train_dataloader,
+    )
+
+    def game_metric(
+        result: MessageSignalingGameResult,
+        sender_name: str,
+        receiver_name: str,
+    ):
+        output_r = result.receiver_output.argmax(dim=-1)
+        acc_part_r, acc_comp_r, acc_r = concept_accuracy(output_r, result.target)
+        metrics_s = {
+            "log_prob": result.sender_log_prob.mean().item(),
+            "entropy": result.sender_entropy.mean().item(),
+            "length": result.sender_length.float().mean().item(),
+            "uniques": language_uniques(result.sender_message)
+            / result.sender_message.shape[0],
+        }
+        metrics_r = {
+            "acc_part": acc_part_r,
+            "acc_comp": acc_comp_r,
+        }
+        metrics_r |= {f"acc_attr{str(i)}": acc for i, acc in enumerate(list(acc_r))}
+
+        return {
+            sender_name: metrics_s,
+            receiver_name: metrics_r,
+        }
+
+    game_train_evaluator = MessageSignalingGameEvaluator(
+        game=game,
+        agents=agents,
+        input=train_dataset,
+        target=train_dataset,
+        metric=game_metric,
+        logger=loggers,
+        name="train",
+    )
+    game_valid_evaluator = MessageSignalingGameEvaluator(
+        game=game,
+        agents=agents,
+        input=valid_dataset,
+        target=valid_dataset,
+        metric=game_metric,
+        logger=loggers,
+        name="valid",
+    )
+
+    tasks.extend(
+        [
+            game_trainer,
+            game_train_evaluator,
+            game_valid_evaluator,
+        ]
+    )
+
+    def language_metric(
+        input: np.ndarray,
+        languages: dict[str, np.ndarray],
+        lengths: dict[str, np.ndarray],
+    ) -> dict:
+        topsims = {}
+        for agent_name, language in languages.items():
+            topsim = concept_topographic_similarity(concept=input, language=language)
+            topsims[agent_name] = topsim
+
+        lansims = {}
+        for agent1, agent2 in combinations(languages, 2):
+            pair_name = f"{agent1} - {agent2}"
+            lansim = language_similarity(
+                language1=languages[agent1],
+                language2=languages[agent2],
+                length1=lengths[agent1],
+                length2=lengths[agent2],
+            )
+            lansims[pair_name] = lansim
+
+        lansims["mean"] = sum(lansims.values()) / len(lansims)
+        return {
+            "topsim": topsims,
+            "lansim": lansims,
+        }
+
+    language_evaluator = LanguageEvaluator(
+        agents=agents,
+        input=dataset,
+        metric=language_metric,
+        logger=loggers,
+        name="language",
+    )
+    tasks.append(language_evaluator)
 
     runner = TaskRunner(tasks)
     runner.run(n_iterations=cfg.n_iterations)

@@ -9,12 +9,13 @@ from torch.utils.data import DataLoader
 from ..agent import Agent
 from ..core import Callback
 from ..logger import Logger
-from ..loss import ConceptLoss, MessageLoss
-from ..metric import Metric
+from ..loss import MessageLoss
 
 
 @dataclass
 class MessageSignalingGameResult:
+    input: th.Tensor
+    target: th.Tensor
     sender_message: th.Tensor
     sender_log_prob: th.Tensor
     sender_entropy: th.Tensor
@@ -69,6 +70,8 @@ class MessageSignalingGame(th.nn.Module):
         output_r = receiver(hidden_r, game_name=self.name)
 
         result = MessageSignalingGameResult(
+            input=input,
+            target=target,
             sender_message=message_s,
             sender_log_prob=log_prob_s,
             sender_entropy=entropy_s,
@@ -125,7 +128,7 @@ class MessageSignalingGameTrainer(Callback):
         game: MessageSignalingGame,
         loss: th.nn.Module,
         agents: dict[str, Agent],
-        optimzers: dict[str, th.optim.Optimizer],
+        optimizers: dict[str, th.optim.Optimizer],
         dataloader: DataLoader,
         channels: list[(str, str)] | None = None,
         max_batches: int = 1,
@@ -136,7 +139,7 @@ class MessageSignalingGameTrainer(Callback):
         self.game = game
         self.loss = loss
         self.agents = agents
-        self.optimzers = optimzers
+        self.optimizers = optimizers
         self.dataloader = dataloader
         self.channels = channels
         self.max_batches = max_batches
@@ -154,8 +157,8 @@ class MessageSignalingGameTrainer(Callback):
         sender_name, receiver_name = random.choice(self.channels)
         sender = self.agents[sender_name]
         receiver = self.agents[receiver_name]
-        sender_optimizer = self.optimzers[sender_name]
-        receiver_optimizer = self.optimzers[receiver_name]
+        sender_optimizer = self.optimizers[sender_name]
+        receiver_optimizer = self.optimizers[receiver_name]
 
         self.game.train()
         sender.train()
@@ -185,10 +188,10 @@ class MessageSignalingGameEvaluator(Callback):
         agents: dict[str, Agent],
         input: th.Tensor,
         target: th.Tensor,
-        metric: Callable[[MessageSignalingGameResult], dict],
+        metric: Callable[[MessageSignalingGameResult, str, str], dict],
         logger: Logger | Iterable[Logger],
+        name: str,
         channels: list[(str, str)] | None = None,
-        max_batches: int = 1,
         sender_output: bool = False,
         receiver_parrot: bool = False,
     ):
@@ -199,8 +202,8 @@ class MessageSignalingGameEvaluator(Callback):
         self.target = target
         self.metric = metric
         self.loggers = [logger] if isinstance(logger, Logger) else logger
+        self.name = name
         self.channels = channels
-        self.max_batches = max_batches
         self.sender_output = sender_output
         self.receiver_parrot = receiver_parrot
 
@@ -230,6 +233,6 @@ class MessageSignalingGameEvaluator(Callback):
                 receiver_parrot=self.receiver_parrot,
             )
 
-        metric = self.metric(result)
+        metric = self.metric(result, sender_name, receiver_name)
         for logger in self.loggers:
-            logger.log(metric)
+            logger.log({self.name: metric})
