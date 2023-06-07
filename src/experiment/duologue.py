@@ -18,7 +18,7 @@ from ..analysis import (
     language_uniques,
 )
 from ..baseline import BatchMeanBaseline
-from ..core.task_runner import TaskRunner
+from ..core.runner import Runner
 from ..dataset import concept_dataset, random_split
 from ..game import (
     MessageSignalingGame,
@@ -139,7 +139,7 @@ def run_duologue(config: dict):
         for agent_name, agent in agents.items()
     }
 
-    tasks = [
+    callbacks = [
         AgentSaver(
             agents=agents,
             interval=cfg.model_save_interval,
@@ -153,7 +153,7 @@ def run_duologue(config: dict):
         WandBLogger(project=cfg.wandb_project, name=cfg.wandb_name),
     ]
 
-    tasks.extend(loggers)
+    callbacks.extend(loggers)
 
     baselines = {"batch_mean": BatchMeanBaseline}
     loss_baseline = baselines[cfg.baseline]()
@@ -222,7 +222,7 @@ def run_duologue(config: dict):
         name="valid",
     )
 
-    tasks.extend(
+    callbacks.extend(
         [
             game_trainer,
             game_train_evaluator,
@@ -264,7 +264,7 @@ def run_duologue(config: dict):
         logger=loggers,
         name="language",
     )
-    tasks.append(language_evaluator)
+    callbacks.append(language_evaluator)
 
-    runner = TaskRunner(tasks)
+    runner = Runner(callbacks)
     runner.run(n_iterations=cfg.n_iterations)

@@ -1,11 +1,11 @@
 from ..core import Callback
-from .custom import CustomTaskScheduler
+from .custom import CustomScheduler
 
 
-class LinearTaskScheduler(CustomTaskScheduler):
+class LinearScheduler(CustomScheduler):
     def __init__(
         self,
-        task: Callback | list[Callback],
+        callback: Callback | list[Callback],
         total_step: int,
         first_freq: float = 1.0,
         final_freq: float = 0.0,
@@ -20,4 +20,4 @@ class LinearTaskScheduler(CustomTaskScheduler):
             else self.first_freq
             + count / self.total_step * (self.final_freq - self.first_freq)
         )
-        super().__init__(task, self.frequency, randomly)
+        super().__init__(callback, self.frequency, randomly)

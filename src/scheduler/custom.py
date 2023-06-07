@@ -5,15 +5,15 @@ from typing import Callable
 from ..core import Callback
 
 
-class CustomTaskScheduler(Callback):
+class CustomScheduler(Callback):
     def __init__(
         self,
-        task: Callback | list[Callback],
+        callback: Callback | list[Callback],
         frequency: Callable[[int], float],
         randomly: bool = False,
     ):
         super().__init__()
-        self.tasks = [task] if isinstance(task, Callback) else task
+        self.callbacks = [callback] if isinstance(callback, Callback) else callback
         self.freq_lambda = frequency
         self.randomly = randomly
 
@@ -24,12 +24,12 @@ class CustomTaskScheduler(Callback):
         self.run_count = 0
 
     def on_begin(self):
-        for task in self.tasks:
-            task.on_begin()
+        for callback in self.callbacks:
+            callback.on_begin()
 
     def on_end(self):
-        for task in self.tasks:
-            task.on_end()
+        for callback in self.callbacks:
+            callback.on_end()
 
     def on_pre_update(self, iteration: int):
         freq = self.freq_lambda(self.call_count)
@@ -41,17 +41,17 @@ class CustomTaskScheduler(Callback):
             self.run_count = int(self.run_count)
 
         if self.run_count > 0:
-            for task in self.tasks:
-                task.on_pre_update()
+            for callback in self.callbacks:
+                callback.on_pre_update()
 
     def on_update(self, iteration: int):
         for _ in range(self.run_count):
-            for task in self.tasks:
-                task.on_update()
+            for callback in self.callbacks:
+                callback.on_update()
 
     def on_post_update(self, iteration: int):
         if self.run_count > 0:
-            for task in self.tasks:
-                task.on_post_update()
+            for callback in self.callbacks:
+                callback.on_post_update()
 
         self.run_count = 0
