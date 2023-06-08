@@ -176,32 +176,33 @@ def run_duologue(config: dict):
         agents=agents,
         optimizers=optimizers,
         dataloader=train_dataloader,
+        sender_output=cfg.sender_output,
+        receiver_parrot=cfg.receiver_parrot,
     )
 
     def game_metric(
         result: MessageSignalingGameResult,
-        sender_name: str,
-        receiver_name: str,
     ):
         output_r = result.receiver_output.argmax(dim=-1)
         acc_part_r, acc_comp_r, acc_r = concept_accuracy(output_r, result.target)
-        metrics_s = {
-            "log_prob": result.sender_log_prob.mean().item(),
-            "entropy": result.sender_entropy.mean().item(),
-            "length": result.sender_length.float().mean().item(),
-            "uniques": language_uniques(result.sender_message)
+        metrics = {
+            "log_prob_s": result.sender_log_prob.mean().item(),
+            "entropy_s": result.sender_entropy.mean().item(),
+            "length_s": result.sender_length.float().mean().item(),
+            "uniques_s": language_uniques(result.sender_message)
             / result.sender_message.shape[0],
-        }
-        metrics_r = {
-            "acc_part": acc_part_r,
+            "acc_part_r": acc_part_r,
             "acc_comp": acc_comp_r,
         }
-        metrics_r |= {f"acc_attr{str(i)}": acc for i, acc in enumerate(list(acc_r))}
+        metrics |= {f"acc_attr{str(i)}_r": acc for i, acc in enumerate(list(acc_r))}
 
-        return {
-            sender_name: metrics_s,
-            receiver_name: metrics_r,
-        }
+        if cfg.sender_output:
+            output_s = result.sender_output.argmax(dim=-1)
+            acc_part_s, acc_comp_s, acc_s = concept_accuracy(output_s, result.target)
+            metrics |= {"acc_part_s": acc_part_s, "acc_comp_s": acc_comp_s}
+            metrics |= {f"acc_attr{i}_s": acc for i, acc in enumerate(list(acc_s))}
+
+        return metrics
 
     game_train_evaluator = MessageSignalingGameEvaluator(
         game=game,
@@ -211,6 +212,8 @@ def run_duologue(config: dict):
         metric=game_metric,
         logger=loggers,
         name="train",
+        sender_output=cfg.sender_output,
+        receiver_parrot=cfg.receiver_parrot,
     )
     game_valid_evaluator = MessageSignalingGameEvaluator(
         game=game,
@@ -220,6 +223,8 @@ def run_duologue(config: dict):
         metric=game_metric,
         logger=loggers,
         name="valid",
+        sender_output=cfg.sender_output,
+        receiver_parrot=cfg.receiver_parrot,
     )
 
     callbacks.extend(

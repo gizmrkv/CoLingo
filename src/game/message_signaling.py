@@ -188,7 +188,7 @@ class MessageSignalingGameEvaluator(Callback):
         agents: dict[str, Agent],
         input: th.Tensor,
         target: th.Tensor,
-        metric: Callable[[MessageSignalingGameResult, str, str], dict],
+        metric: Callable[[MessageSignalingGameResult], dict],
         logger: Logger | Iterable[Logger],
         name: str,
         channels: list[(str, str)] | None = None,
@@ -215,24 +215,27 @@ class MessageSignalingGameEvaluator(Callback):
                         self.channels.append((sender_name, receiver_name))
 
     def on_update(self, iteration: int):
-        sender_name, receiver_name = random.choice(self.channels)
-        sender = self.agents[sender_name]
-        receiver = self.agents[receiver_name]
+        log = {}
+        for sender_name, receiver_name in self.channels:
+            sender = self.agents[sender_name]
+            receiver = self.agents[receiver_name]
 
-        self.game.eval()
-        sender.eval()
-        receiver.eval()
+            self.game.eval()
+            sender.eval()
+            receiver.eval()
 
-        with th.no_grad():
-            result = self.game(
-                sender=sender,
-                receiver=receiver,
-                input=self.input,
-                target=self.target,
-                sender_output=self.sender_output,
-                receiver_parrot=self.receiver_parrot,
-            )
+            with th.no_grad():
+                result = self.game(
+                    sender=sender,
+                    receiver=receiver,
+                    input=self.input,
+                    target=self.target,
+                    sender_output=self.sender_output,
+                    receiver_parrot=self.receiver_parrot,
+                )
 
-        metric = self.metric(result, sender_name, receiver_name)
+            metric = self.metric(result)
+            log |= {f"{sender_name} -> {receiver_name}": metric}
+
         for logger in self.loggers:
-            logger.log({self.name: metric})
+            logger.log({self.name: log})

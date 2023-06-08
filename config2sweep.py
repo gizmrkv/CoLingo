@@ -1,5 +1,4 @@
 import json
-from pprint import pprint
 
 import toml
 import yaml
@@ -23,7 +22,7 @@ if __name__ == "__main__":
         "name": "single1",
         "project": "CoLingo",
         "metric": {
-            "name": "signal_valid.A1 -> A1.concept_accuracy.complete",
+            "name": "valid.A1 -> A2.acc_comp",
             "goal": "maximize",
         },
         "parameters": {key: {"value": value} for key, value in config.items()},
