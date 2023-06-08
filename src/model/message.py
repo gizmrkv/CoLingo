@@ -89,8 +89,8 @@ class MessageDecoder(th.nn.Module):
 
         i = self.sos_embed.repeat(x.size(0), 1)
 
-        sequence = []
-        logits = []
+        message = []
+        log_prob = []
         entropy = []
 
         for _ in range(self.max_len):
@@ -109,26 +109,26 @@ class MessageDecoder(th.nn.Module):
                 x = logit.argmax(dim=-1)
 
             i = self.msg_embed(x)
-            sequence.append(x)
-            logits.append(distr.log_prob(x))
+            message.append(x)
+            log_prob.append(distr.log_prob(x))
             entropy.append(distr.entropy())
 
-        sequence = th.stack(sequence).permute(1, 0)
-        logits = th.stack(logits).permute(1, 0)
+        message = th.stack(message).permute(1, 0)
+        log_prob = th.stack(log_prob).permute(1, 0)
         entropy = th.stack(entropy).permute(1, 0)
 
-        zeros = th.zeros((sequence.size(0), 1)).to(sequence.device)
+        zeros = th.zeros((message.size(0), 1)).to(message.device)
 
-        sequence = th.cat([sequence, zeros.long()], dim=1)
-        logits = th.cat([logits, zeros], dim=1)
+        message = th.cat([message, zeros.long()], dim=1)
+        log_prob = th.cat([log_prob, zeros], dim=1)
         entropy = th.cat([entropy, zeros], dim=1)
 
-        length = sequence.argmin(dim=1) + 1
-        mask_eos = th.arange(self.max_len + 1).expand(sequence.size(0), -1)
+        length = message.argmin(dim=1) + 1
+        mask_eos = th.arange(self.max_len + 1).expand(message.size(0), -1)
         mask_eos = mask_eos.to(length.device) < length.unsqueeze(1)
 
-        sequence = sequence * mask_eos
-        logits = (logits * mask_eos).sum(dim=1)
+        message = message * mask_eos
+        log_prob = (log_prob * mask_eos).sum(dim=1)
         entropy = (entropy * mask_eos).sum(dim=1) / length.float()
 
-        return sequence, logits, entropy, length
+        return message, log_prob, entropy, length
