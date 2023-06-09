@@ -245,6 +245,7 @@ def run_duologue(config: dict):
         for agent_name, language in languages.items():
             topsim = concept_topographic_similarity(concept=input, language=language)
             topsims[agent_name] = topsim
+        topsims["mean"] = sum(topsims.values()) / len(topsims)
         print("done", flush=True)
 
         lansims = {}
