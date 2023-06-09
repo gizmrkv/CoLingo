@@ -241,11 +241,14 @@ def run_duologue(config: dict):
         lengths: dict[str, np.ndarray],
     ) -> dict:
         topsims = {}
+        print("Computing topographic similarities...", end="", flush=True)
         for agent_name, language in languages.items():
             topsim = concept_topographic_similarity(concept=input, language=language)
             topsims[agent_name] = topsim
+        print("done", flush=True)
 
         lansims = {}
+        print("Computing language similarities...", end="", flush=True)
         for agent1, agent2 in combinations(languages, 2):
             pair_name = f"{agent1} - {agent2}"
             lansim = language_similarity(
@@ -257,6 +260,7 @@ def run_duologue(config: dict):
             lansims[pair_name] = lansim
 
         lansims["mean"] = sum(lansims.values()) / len(lansims)
+        print("done", flush=True)
         return {
             "topsim": topsims,
             "lansim": lansims,
