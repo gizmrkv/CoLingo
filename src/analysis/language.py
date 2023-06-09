@@ -91,7 +91,7 @@ class LanguageEvaluator(Callback):
             agent.eval()
             with th.no_grad():
                 hidden = agent.input(input=self.input)
-                language, log_prob, entropy, length = agent.message(
+                language, _, log_prob, entropy, length = agent.message(
                     hidden, game_name=self.name
                 )
 

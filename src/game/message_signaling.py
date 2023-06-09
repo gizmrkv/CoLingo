@@ -62,7 +62,7 @@ class MessageSignalingGame(th.nn.Module):
         receiver_parrot: bool = False,
     ) -> Tuple[th.Tensor, MessageSignalingGameResult] | MessageSignalingGameResult:
         hidden_s = sender.input(input=input, game_name=self.name)
-        message_s, log_prob_s, entropy_s, length_s = sender.message(
+        message_s, prob_s, log_prob_s, entropy_s, length_s = sender.message(
             hidden_s, game_name=self.name
         )
 
@@ -97,7 +97,7 @@ class MessageSignalingGame(th.nn.Module):
                 result.sender_output_loss = sender_output_loss
 
         if receiver_parrot:
-            message_r, log_prob_r, entropy_r, length_r = receiver.message(
+            message_r, prob_r, log_prob_r, entropy_r, length_r = receiver.message(
                 hidden_r, game_name=self.name
             )
             result.receiver_message = message_r
@@ -106,9 +106,12 @@ class MessageSignalingGame(th.nn.Module):
             result.receiver_length = length_r
 
             if self.training:
-                receiver_parrot_loss = -(
-                    (message_r == message_s).float() * log_prob_r
-                ).mean(dim=-1)
+                # receiver_parrot_loss = -(
+                #     (message_r == message_s).float() * log_prob_r
+                # ).mean(dim=-1)
+                receiver_parrot_loss = 1.2 * th.nn.functional.cross_entropy(
+                    prob_r.reshape(-1, 50), message_s[:, :-1].reshape(-1)
+                )
                 receiver_loss = receiver_loss + receiver_parrot_loss
                 result.receiver_parrot_loss = receiver_parrot_loss
 

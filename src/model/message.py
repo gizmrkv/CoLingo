@@ -90,6 +90,7 @@ class MessageDecoder(th.nn.Module):
         i = self.sos_embed.repeat(x.size(0), 1)
 
         message = []
+        prob = []
         log_prob = []
         entropy = []
 
@@ -110,10 +111,12 @@ class MessageDecoder(th.nn.Module):
 
             i = self.msg_embed(x)
             message.append(x)
+            prob.append(logit)
             log_prob.append(distr.log_prob(x))
             entropy.append(distr.entropy())
 
         message = th.stack(message).permute(1, 0)
+        prob = th.stack(prob).permute(1, 0, 2)
         log_prob = th.stack(log_prob).permute(1, 0)
         entropy = th.stack(entropy).permute(1, 0)
 
@@ -131,4 +134,4 @@ class MessageDecoder(th.nn.Module):
         log_prob = (log_prob * mask_eos).sum(dim=1)
         entropy = (entropy * mask_eos).sum(dim=1) / length.float()
 
-        return message, log_prob, entropy, length
+        return message, prob, log_prob, entropy, length
