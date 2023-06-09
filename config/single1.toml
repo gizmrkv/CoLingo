@@ -1,8 +1,8 @@
 exp_name = "exp1"
-n_iterations = 10
+n_iterations = 1000
 batch_size = 65536
 seed = 42
-device = "cpu"
+device = "cuda"
 model_save_interval = 1000
 
 # wandb
@@ -47,5 +47,5 @@ max_batches_signal = 1
 agent1_name = "A1"
 agent2_name = "A2"
 
-sender_output = false
-receiver_parrot = false
+sender_output = true
+receiver_parrot = true
