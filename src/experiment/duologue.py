@@ -28,6 +28,7 @@ from ..game import (
 )
 from ..logger import WandBLogger
 from ..loss import ConceptLoss
+from ..scheduler import IntervalScheduler
 from ..util import AgentInitializer, AgentSaver, fix_seed
 
 
@@ -139,21 +140,20 @@ def run_duologue(config: dict):
         for agent_name, agent in agents.items()
     }
 
-    callbacks = [
-        AgentSaver(
-            agents=agents,
-            interval=cfg.model_save_interval,
-            path=f"{log_dir}/models",
-        ),
-        AgentInitializer(
-            agents=agents.values(),
-        ),
-    ]
+    agent_saver = AgentSaver(
+        agents=agents,
+        path=f"{log_dir}/models",
+    )
+    agent1_initializer = AgentInitializer(
+        agent=agents[cfg.agent1_name],
+    )
+    agent2_initializer = AgentInitializer(
+        agent=agents[cfg.agent2_name],
+    )
+
     loggers = [
         WandBLogger(project=cfg.wandb_project, name=cfg.wandb_name),
     ]
-
-    callbacks.extend(loggers)
 
     baselines = {"batch_mean": BatchMeanBaseline}
     loss_baseline = baselines[cfg.baseline]()
@@ -227,14 +227,6 @@ def run_duologue(config: dict):
         receiver_parrot=cfg.receiver_parrot,
     )
 
-    callbacks.extend(
-        [
-            game_trainer,
-            game_train_evaluator,
-            game_valid_evaluator,
-        ]
-    )
-
     def language_metric(
         input: np.ndarray,
         languages: dict[str, np.ndarray],
@@ -274,7 +266,17 @@ def run_duologue(config: dict):
         logger=loggers,
         name="language",
     )
-    callbacks.append(language_evaluator)
+
+    callbacks = [
+        IntervalScheduler(agent_saver, 1000),
+        IntervalScheduler(language_evaluator, 1000, 1000),
+        IntervalScheduler(agent1_initializer, 2000, 1000),
+        IntervalScheduler(agent2_initializer, 2000, 2000),
+        game_trainer,
+        game_train_evaluator,
+        game_valid_evaluator,
+    ]
+    callbacks.extend(loggers)
 
     runner = Runner(callbacks)
     runner.run(n_iterations=cfg.n_iterations)

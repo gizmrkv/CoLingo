@@ -9,7 +9,7 @@ class IntervalScheduler(Scheduler):
         interval: int,
         offset: int = 0,
     ):
-        assert interval > 0 and offset >= 0
+        assert interval > 0 and offset >= 0, "interval and offset must be positive"
 
         super().__init__(callback)
         self.interval = interval

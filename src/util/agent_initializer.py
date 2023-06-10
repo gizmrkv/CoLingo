@@ -9,12 +9,16 @@ from ..core import Callback
 class AgentInitializer(Callback):
     def __init__(
         self,
-        agents: Iterable[Agent],
+        agent: Agent | Iterable[Agent],
     ):
         super().__init__()
-        self.agents = agents
+        self.agents = [agent] if isinstance(agent, Agent) else agent
 
     def on_begin(self):
+        for agent in self.agents:
+            agent.apply(init_weights)
+
+    def on_update(self, iteration: int):
         for agent in self.agents:
             agent.apply(init_weights)
 

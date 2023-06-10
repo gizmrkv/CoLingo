@@ -83,7 +83,7 @@ class LanguageEvaluator(Callback):
         self.loggers = [logger] if isinstance(logger, Logger) else logger
         self.name = name
 
-    def on_end(self):
+    def on_update(self, iteration: int):
         languages = {}
         lengths = {}
         for agent_name in self.agents:
