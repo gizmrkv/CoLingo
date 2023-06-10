@@ -1,8 +1,9 @@
 from ..core import Callback
-from .custom import CustomScheduler
+from .scheduler import Scheduler
+from .util import lambda_scheduler
 
 
-class StepScheduler(CustomScheduler):
+class StepScheduler(Scheduler):
     def __init__(
         self,
         callback: Callback | list[Callback],
@@ -11,10 +12,17 @@ class StepScheduler(CustomScheduler):
         final_freq: float = 0.0,
         randomly: bool = False,
     ):
+        super().__init__(callback)
         self.step = step
         self.first_freq = first_freq
         self.final_freq = final_freq
-        self.frequency = (
-            lambda count: self.first_freq if count < self.step else self.final_freq
-        )
-        super().__init__(callback, self.frequency, randomly)
+        self.randomly = randomly
+        self.scheduler = lambda_scheduler(self.f, randomly)
+
+    def on_update(self, iteration: int):
+        for _ in range(next(self.scheduler)):
+            for callback in self.callbacks:
+                callback.on_update(iteration)
+
+    def f(self, i: int) -> float:
+        return self.first_freq if i < self.step else self.final_freq
