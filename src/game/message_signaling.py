@@ -197,6 +197,8 @@ class MessageSignalingGameEvaluator(Callback):
         channels: list[(str, str)] | None = None,
         sender_output: bool = False,
         receiver_parrot: bool = False,
+        run_on_begin: bool = True,
+        run_on_end: bool = True,
     ):
         super().__init__()
         self.game = game
@@ -209,6 +211,8 @@ class MessageSignalingGameEvaluator(Callback):
         self.channels = channels
         self.sender_output = sender_output
         self.receiver_parrot = receiver_parrot
+        self.run_on_begin = run_on_begin
+        self.run_on_end = run_on_end
 
         if self.channels is None:
             self.channels = []
@@ -217,7 +221,18 @@ class MessageSignalingGameEvaluator(Callback):
                     if sender_name != receiver_name:
                         self.channels.append((sender_name, receiver_name))
 
+    def on_begin(self):
+        if self.run_on_begin:
+            self.evaluate()
+
+    def on_end(self):
+        if self.run_on_end:
+            self.evaluate()
+
     def on_update(self, iteration: int):
+        self.evaluate()
+
+    def evaluate(self):
         log = {}
         for sender_name, receiver_name in self.channels:
             sender = self.agents[sender_name]

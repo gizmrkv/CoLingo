@@ -75,6 +75,8 @@ class LanguageEvaluator(Callback):
         ],
         logger: Logger | Iterable[Logger],
         name: str,
+        run_on_begin: bool = False,
+        run_on_end: bool = True,
     ):
         super().__init__()
         self.agents = agents
@@ -82,8 +84,21 @@ class LanguageEvaluator(Callback):
         self.metric = metric
         self.loggers = [logger] if isinstance(logger, Logger) else logger
         self.name = name
+        self.run_on_begin = run_on_begin
+        self.run_on_end = run_on_end
+
+    def on_begin(self):
+        if self.run_on_begin:
+            self.evaluate()
+
+    def on_end(self):
+        if self.run_on_end:
+            self.evaluate()
 
     def on_update(self, iteration: int):
+        self.evaluate()
+
+    def evaluate(self):
         languages = {}
         lengths = {}
         for agent_name in self.agents:
