@@ -1,17 +1,18 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- Agentのinput, outputにcommand:strを渡す
+- Agent数の2乗に比例して計算量が増えるEvaluatorの対処
 - 指定されたメトリクスを監視し，閾値を超えたり停滞したら発火するイベントをどう作る？
   - Logger を継承した Metric Observerが発火する?
-- Teskの廃止，Game: nn.Module, Trainer: Callback, Evaluator: Callbackの3つに分割
 - Gameは，逆伝播できる場合は統一，強化学習する場合は個別に実装する．
   - 強化学習を使う場合，何をロス計算に使うかはデータ形式によるため，Gameはデータ形式を知っている必要がある．
   - よって統一が難しい．
+- 大人はフリーズ，子供だけ学習
 - Task
   - Speech
   - Telephon
   - Conversion
-  - Parrot
   - OpenAI Gym
 - documentation
   - torchtyping, typeguard, pytest
@@ -22,14 +23,12 @@
   - (Async)
   - テストのためにハンドメイド言語を用意する
 - 混合精度
-- Periodic model initializer
 - Faction
 - Image input
 - channel noise
   - メッセージの記号をランダムに書き換える
   - 特定の記号ペアは入れ替わりやすい
   - メッセージを前か後にシフトする（話し始めを聞きそびれる的な）
-
 ## メモ
 
 Numbaを使ったscipyのspearmanrの高速化は3倍ほど遅くなる結果に終わった．
