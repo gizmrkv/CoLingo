@@ -2,10 +2,9 @@ import torch as th
 
 from ..model.concept import ConceptDecoder, ConceptEncoder
 from ..model.message import MessageDecoder, MessageEncoder
-from .agent import Agent
 
 
-class ConceptOrMessageAgent(Agent):
+class ConceptOrMessageAgent(th.nn.Module):
     def __init__(
         self,
         n_attributes: int,
@@ -73,24 +72,26 @@ class ConceptOrMessageAgent(Agent):
             message_embed=self.msg_embed,
         )
 
-    def input(
+    def forward(
         self,
         input: th.Tensor | None = None,
         message: th.Tensor | None = None,
-        game_name: str | None = None,
+        hidden: th.Tensor | None = None,
+        command: str | None = None,
     ):
-        assert (input is None) != (message is None)
+        if command == "input":
+            match (input, message):
+                case (input, None):
+                    return self.concept_encoder(input)
+                case (None, message):
+                    return self.message_encoder(message)
+                case (_, _):
+                    raise ValueError("input and message cannot both be provided")
 
-        if input is not None:
-            return self.concept_encoder(input)
-
-        if message is not None:
-            return self.message_encoder(message)
-
-        raise ValueError("Either input or message must be specified")
-
-    def forward(self, hidden: th.Tensor, game_name: str | None = None):
-        return self.concept_decoder(hidden)
-
-    def message(self, hidden: th.Tensor, game_name: str | None = None):
-        return self.message_decoder(hidden)
+        match command:
+            case "output":
+                return self.concept_decoder(hidden)
+            case "message":
+                return self.message_decoder(hidden)
+            case _:
+                raise ValueError(f"unknown command {command}")

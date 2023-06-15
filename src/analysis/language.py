@@ -5,7 +5,6 @@ import torch as th
 from numba import njit
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
-from ..agent import Agent
 from ..core.callback import Callback
 from ..logger import Logger
 from .concept import concept_distance
@@ -68,7 +67,7 @@ def language_similarity(
 class LanguageEvaluator(Callback):
     def __init__(
         self,
-        agents: dict[str, Agent],
+        agents: dict[str, th.nn.Module],
         input: th.Tensor,
         metric: Callable[
             [np.ndarray, dict[str, np.ndarray], dict[str, np.ndarray]], dict
@@ -105,9 +104,9 @@ class LanguageEvaluator(Callback):
             agent = self.agents[agent_name]
             agent.eval()
             with th.no_grad():
-                hidden = agent.input(input=self.input)
-                language, _, log_prob, entropy, length = agent.message(
-                    hidden, game_name=self.name
+                hidden = agent(input=self.input, command="input")
+                language, _, log_prob, entropy, length = agent(
+                    hidden=hidden, command="message"
                 )
 
             languages[agent_name] = language.cpu().numpy()

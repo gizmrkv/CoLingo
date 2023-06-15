@@ -6,7 +6,6 @@ from typing import Callable, Iterable, Tuple
 import torch as th
 from torch.utils.data import DataLoader
 
-from ..agent import Agent
 from ..core import Callback
 from ..logger import Logger
 from ..loss import MessageLoss
@@ -53,21 +52,21 @@ class MessageSignalingGame(th.nn.Module):
 
     def forward(
         self,
-        sender: Agent,
-        receiver: Agent,
+        sender: th.nn.Module,
+        receiver: th.nn.Module,
         input: th.Tensor,
         target: th.Tensor,
         loss: th.nn.Module | None = None,
         sender_output: bool = False,
         receiver_parrot: bool = False,
     ) -> Tuple[th.Tensor, MessageSignalingGameResult] | MessageSignalingGameResult:
-        hidden_s = sender.input(input=input, game_name=self.name)
-        message_s, prob_s, log_prob_s, entropy_s, length_s = sender.message(
-            hidden_s, game_name=self.name
+        hidden_s = sender(input=input, command="input")
+        message_s, prob_s, log_prob_s, entropy_s, length_s = sender(
+            hidden=hidden_s, command="message"
         )
 
-        hidden_r = receiver.input(message=message_s, game_name=self.name)
-        output_r = receiver(hidden_r, game_name=self.name)
+        hidden_r = receiver(message=message_s, command="input")
+        output_r = receiver(hidden=hidden_r, command="output")
 
         result = MessageSignalingGameResult(
             input=input,
@@ -89,7 +88,7 @@ class MessageSignalingGame(th.nn.Module):
             )
 
         if sender_output:
-            output_s = sender(hidden_s, game_name=self.name)
+            output_s = sender(hidden=hidden_s, command="output")
             result.sender_output = output_s
             if self.training:
                 sender_output_loss = loss(output_s, target)
@@ -97,8 +96,8 @@ class MessageSignalingGame(th.nn.Module):
                 result.sender_output_loss = sender_output_loss
 
         if receiver_parrot:
-            message_r, prob_r, log_prob_r, entropy_r, length_r = receiver.message(
-                hidden_r, game_name=self.name
+            message_r, prob_r, log_prob_r, entropy_r, length_r = receiver(
+                hidden=hidden_r, command="message"
             )
             result.receiver_message = message_r
             result.receiver_log_prob = log_prob_r
@@ -130,7 +129,7 @@ class MessageSignalingGameTrainer(Callback):
         self,
         game: MessageSignalingGame,
         loss: th.nn.Module,
-        agents: dict[str, Agent],
+        agents: dict[str, th.nn.Module],
         optimizers: dict[str, th.optim.Optimizer],
         dataloader: DataLoader,
         channels: list[(str, str)] | None = None,
@@ -188,7 +187,7 @@ class MessageSignalingGameEvaluator(Callback):
     def __init__(
         self,
         game: MessageSignalingGame,
-        agents: dict[str, Agent],
+        agents: dict[str, th.nn.Module],
         input: th.Tensor,
         target: th.Tensor,
         metric: Callable[[MessageSignalingGameResult], dict],

@@ -29,7 +29,7 @@ from ..game import (
 from ..logger import WandBLogger
 from ..loss import ConceptLoss
 from ..scheduler import IntervalScheduler
-from ..util import AgentInitializer, AgentSaver, fix_seed
+from ..util import ModelInitializer, ModelSaver, fix_seed
 
 
 @dataclass
@@ -139,12 +139,12 @@ def run_multilogue(config: dict):
         for agent_name, agent in agents.items()
     }
 
-    agent_saver = AgentSaver(
-        agents=agents,
+    agent_saver = ModelSaver(
+        models=agents,
         path=f"{log_dir}/models",
     )
-    agent_initializer = AgentInitializer(
-        agent=agents.values(),
+    agent_initializer = ModelInitializer(
+        model=agents.values(),
     )
 
     loggers = [

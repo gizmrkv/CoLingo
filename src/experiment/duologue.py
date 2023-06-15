@@ -29,7 +29,7 @@ from ..game import (
 from ..logger import WandBLogger
 from ..loss import ConceptLoss
 from ..scheduler import IntervalScheduler
-from ..util import AgentInitializer, AgentSaver, fix_seed
+from ..util import ModelInitializer, ModelSaver, fix_seed
 
 
 @dataclass
@@ -140,15 +140,15 @@ def run_duologue(config: dict):
         for agent_name, agent in agents.items()
     }
 
-    agent_saver = AgentSaver(
+    agent_saver = ModelSaver(
         agents=agents,
         path=f"{log_dir}/models",
     )
-    agent1_initializer = AgentInitializer(
-        agent=agents[cfg.agent1_name],
+    agent1_initializer = ModelInitializer(
+        model=agents[cfg.agent1_name],
     )
-    agent2_initializer = AgentInitializer(
-        agent=agents[cfg.agent2_name],
+    agent2_initializer = ModelInitializer(
+        model=agents[cfg.agent2_name],
     )
 
     loggers = [

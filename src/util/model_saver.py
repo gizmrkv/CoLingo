@@ -2,26 +2,25 @@ import os
 
 import torch as th
 
-from ..agent import Agent
 from ..core import Callback
 
 
-class AgentSaver(Callback):
+class ModelSaver(Callback):
     def __init__(
         self,
-        agents: dict[str, Agent],
+        models: dict[str, th.nn.Module],
         path: str,
     ):
         super().__init__()
-        self.agents = agents
+        self.models = models
         self.path = path
 
     def on_update(self, iteration: int):
-        for agent_name, agent in self.agents.items():
-            save_dir = f"{self.path}/{agent_name}"
+        for model_name, model in self.models.items():
+            save_dir = f"{self.path}/{model_name}"
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             th.save(
-                agent,
+                model,
                 f"{save_dir}/{iteration}.pth",
             )

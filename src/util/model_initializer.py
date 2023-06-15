@@ -2,25 +2,24 @@ from typing import Iterable
 
 import torch as th
 
-from ..agent import Agent
 from ..core import Callback
 
 
-class AgentInitializer(Callback):
+class ModelInitializer(Callback):
     def __init__(
         self,
-        agent: Agent | Iterable[Agent],
+        model: th.nn.Module | Iterable[th.nn.Module],
     ):
         super().__init__()
-        self.agents = [agent] if isinstance(agent, Agent) else agent
+        self.models = [model] if isinstance(model, th.nn.Module) else model
 
     def on_begin(self):
-        for agent in self.agents:
-            agent.apply(init_weights)
+        for model in self.models:
+            model.apply(init_weights)
 
     def on_update(self, iteration: int):
-        for agent in self.agents:
-            agent.apply(init_weights)
+        for model in self.models:
+            model.apply(init_weights)
 
 
 def init_weights(m):
