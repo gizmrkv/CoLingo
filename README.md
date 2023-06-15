@@ -1,7 +1,6 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
-- Agentのinput, outputにcommand:strを渡す
 - Agent数の2乗に比例して計算量が増えるEvaluatorの対処
 - 指定されたメトリクスを監視し，閾値を超えたり停滞したら発火するイベントをどう作る？
   - Logger を継承した Metric Observerが発火する?
