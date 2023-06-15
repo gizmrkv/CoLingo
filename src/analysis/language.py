@@ -76,6 +76,8 @@ class LanguageEvaluator(Callback):
         name: str,
         run_on_begin: bool = False,
         run_on_end: bool = True,
+        input_command: str = "input",
+        message_command: str = "message",
     ):
         super().__init__()
         self.agents = agents
@@ -85,6 +87,8 @@ class LanguageEvaluator(Callback):
         self.name = name
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
+        self.input_command = input_command
+        self.message_command = message_command
 
     def on_begin(self):
         if self.run_on_begin:
@@ -104,9 +108,9 @@ class LanguageEvaluator(Callback):
             agent = self.agents[agent_name]
             agent.eval()
             with th.no_grad():
-                hidden = agent(input=self.input, command="input")
+                hidden = agent(input=self.input, command=self.input_command)
                 language, _, log_prob, entropy, length = agent(
-                    hidden=hidden, command="message"
+                    hidden=hidden, command=self.message_command
                 )
 
             languages[agent_name] = language.cpu().numpy()

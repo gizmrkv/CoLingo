@@ -59,14 +59,17 @@ class MessageSignalingGame(th.nn.Module):
         loss: th.nn.Module | None = None,
         sender_output: bool = False,
         receiver_parrot: bool = False,
+        input_command: str = "input",
+        output_command: str = "output",
+        message_command: str = "message",
     ) -> Tuple[th.Tensor, MessageSignalingGameResult] | MessageSignalingGameResult:
-        hidden_s = sender(input=input, command="input")
+        hidden_s = sender(input=input, command=input_command)
         message_s, prob_s, log_prob_s, entropy_s, length_s = sender(
-            hidden=hidden_s, command="message"
+            hidden=hidden_s, command=message_command
         )
 
-        hidden_r = receiver(message=message_s, command="input")
-        output_r = receiver(hidden=hidden_r, command="output")
+        hidden_r = receiver(message=message_s, command=input_command)
+        output_r = receiver(hidden=hidden_r, command=output_command)
 
         result = MessageSignalingGameResult(
             input=input,
@@ -88,7 +91,7 @@ class MessageSignalingGame(th.nn.Module):
             )
 
         if sender_output:
-            output_s = sender(hidden=hidden_s, command="output")
+            output_s = sender(hidden=hidden_s, command=output_command)
             result.sender_output = output_s
             if self.training:
                 sender_output_loss = loss(output_s, target)
@@ -97,7 +100,7 @@ class MessageSignalingGame(th.nn.Module):
 
         if receiver_parrot:
             message_r, prob_r, log_prob_r, entropy_r, length_r = receiver(
-                hidden=hidden_r, command="message"
+                hidden=hidden_r, command=message_command
             )
             result.receiver_message = message_r
             result.receiver_log_prob = log_prob_r
@@ -136,6 +139,9 @@ class MessageSignalingGameTrainer(Callback):
         max_batches: int = 1,
         sender_output: bool = False,
         receiver_parrot: bool = False,
+        input_command: str = "input",
+        output_command: str = "output",
+        message_command: str = "message",
     ):
         super().__init__()
         self.game = game
@@ -147,6 +153,9 @@ class MessageSignalingGameTrainer(Callback):
         self.max_batches = max_batches
         self.sender_output = sender_output
         self.receiver_parrot = receiver_parrot
+        self.input_command = input_command
+        self.output_command = output_command
+        self.message_command = message_command
 
         if self.channels is None:
             self.channels = []
@@ -177,6 +186,9 @@ class MessageSignalingGameTrainer(Callback):
                 loss=self.loss,
                 sender_output=self.sender_output,
                 receiver_parrot=self.receiver_parrot,
+                input_command=self.input_command,
+                output_command=self.output_command,
+                message_command=self.message_command,
             )
             loss.sum().backward(retain_graph=True)
             sender_optimizer.step()
@@ -198,6 +210,9 @@ class MessageSignalingGameEvaluator(Callback):
         receiver_parrot: bool = False,
         run_on_begin: bool = True,
         run_on_end: bool = True,
+        input_command: str = "input",
+        output_command: str = "output",
+        message_command: str = "message",
     ):
         super().__init__()
         self.game = game
@@ -212,6 +227,9 @@ class MessageSignalingGameEvaluator(Callback):
         self.receiver_parrot = receiver_parrot
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
+        self.input_command = input_command
+        self.output_command = output_command
+        self.message_command = message_command
 
         if self.channels is None:
             self.channels = []
@@ -249,6 +267,9 @@ class MessageSignalingGameEvaluator(Callback):
                     target=self.target,
                     sender_output=self.sender_output,
                     receiver_parrot=self.receiver_parrot,
+                    input_command=self.input_command,
+                    output_command=self.output_command,
+                    message_command=self.message_command,
                 )
 
             metric = self.metric(result)
