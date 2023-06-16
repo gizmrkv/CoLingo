@@ -1,13 +1,24 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- Ec -> Dc, Em -> Dm 自己完結な恒等検証用実験
+- ハイパーパラメータが変わっても結果が変わらないかの検証
+- concept の内部表現と,message の内部表現が等しくなるような圧力
+  - Ec, Em の片方だけ学習なら，収束が早くなるかも
+- 世代交代する場合，しない場合で比較
+- TextMessage dataclass 
+- Evaluator -> Logger の間に WandBProcessor を挟む
 - Agent数の2乗に比例して計算量が増えるEvaluatorの対処
+  - verbose: int = 0 | 1 | 2 で，0は何もしない，1は1エージェントのみ，2は全エージェント
 - 指定されたメトリクスを監視し，閾値を超えたり停滞したら発火するイベントをどう作る？
   - Logger を継承した Metric Observerが発火する?
 - Gameは，逆伝播できる場合は統一，強化学習する場合は個別に実装する．
   - 強化学習を使う場合，何をロス計算に使うかはデータ形式によるため，Gameはデータ形式を知っている必要がある．
   - よって統一が難しい．
 - 大人はフリーズ，子供だけ学習
+  - フリーズするAgentのoptimizerを作らないだけでは不十分
+  - フリーズするならwith no_gradしたいけど，Agent間に計算グラフが渡る場合，学習するAgentまで勾配が渡らない
+- 自分の発言は自分にも聞こえる
 - Task
   - Speech
   - Telephon
