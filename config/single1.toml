@@ -48,4 +48,4 @@ agent1_name = "A1"
 agent2_name = "A2"
 
 sender_output = false
-receiver_parrot = true
+receiver_echo = true

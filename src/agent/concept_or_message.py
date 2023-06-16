@@ -93,5 +93,7 @@ class ConceptOrMessageAgent(th.nn.Module):
                 return self.concept_decoder(hidden)
             case "message":
                 return self.message_decoder(hidden)
+            case "echo":
+                return self.message_decoder(hidden)
             case _:
                 raise ValueError(f"unknown command {command}")

@@ -96,5 +96,5 @@ value = "A2"
 [parameters.sender_output]
 values = [0, 1]
 
-[parameters.receiver_parrot]
+[parameters.receiver_echo]
 value = false

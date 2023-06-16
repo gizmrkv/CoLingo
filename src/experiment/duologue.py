@@ -84,7 +84,7 @@ class Config:
 
     # signal option
     sender_output: bool = False
-    receiver_parrot: bool = False
+    receiver_echo: bool = False
 
 
 def run_duologue(config: dict):
@@ -177,7 +177,7 @@ def run_duologue(config: dict):
         optimizers=optimizers,
         dataloader=train_dataloader,
         sender_output=cfg.sender_output,
-        receiver_parrot=cfg.receiver_parrot,
+        receiver_echo=cfg.receiver_echo,
     )
 
     def game_metric(
@@ -213,7 +213,7 @@ def run_duologue(config: dict):
         logger=loggers,
         name="train",
         sender_output=cfg.sender_output,
-        receiver_parrot=cfg.receiver_parrot,
+        receiver_echo=cfg.receiver_echo,
     )
     game_valid_evaluator = MessageSignalingGameEvaluator(
         game=game,
@@ -224,7 +224,7 @@ def run_duologue(config: dict):
         logger=loggers,
         name="valid",
         sender_output=cfg.sender_output,
-        receiver_parrot=cfg.receiver_parrot,
+        receiver_echo=cfg.receiver_echo,
     )
 
     def language_metric(

@@ -47,4 +47,4 @@ max_batches_signal = 1
 n_agents = 3
 
 sender_output = false
-receiver_parrot = true
+receiver_echo = true

@@ -1,5 +1,5 @@
 method = "grid"
-name = "receiver_parrot_search"
+name = "receiver_echo_search"
 project = "CoLingo"
 
 [metric]
@@ -96,5 +96,5 @@ value = "A2"
 [parameters.sender_output]
 value = false
 
-[parameters.receiver_parrot]
+[parameters.receiver_echo]
 values = [0, 1]

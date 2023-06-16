@@ -26,7 +26,7 @@ class MessageSignalingGameResult:
     receiver_log_prob: th.Tensor | None = None
     receiver_entropy: th.Tensor | None = None
     receiver_length: th.Tensor | None = None
-    receiver_parrot_loss: th.Tensor | None = None
+    receiver_echo_loss: th.Tensor | None = None
     sender_loss: th.Tensor | None = None
     receiver_loss: th.Tensor | None = None
     total_loss: th.Tensor | None = None
@@ -58,10 +58,11 @@ class MessageSignalingGame(th.nn.Module):
         target: th.Tensor,
         loss: th.nn.Module | None = None,
         sender_output: bool = False,
-        receiver_parrot: bool = False,
+        receiver_echo: bool = False,
         input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
     ) -> Tuple[th.Tensor, MessageSignalingGameResult] | MessageSignalingGameResult:
         hidden_s = sender(input=input, command=input_command)
         message_s, prob_s, log_prob_s, entropy_s, length_s = sender(
@@ -98,9 +99,9 @@ class MessageSignalingGame(th.nn.Module):
                 sender_loss = sender_loss + sender_output_loss
                 result.sender_output_loss = sender_output_loss
 
-        if receiver_parrot:
+        if receiver_echo:
             message_r, prob_r, log_prob_r, entropy_r, length_r = receiver(
-                hidden=hidden_r, command=message_command
+                hidden=hidden_r, command=echo_command
             )
             result.receiver_message = message_r
             result.receiver_log_prob = log_prob_r
@@ -108,14 +109,14 @@ class MessageSignalingGame(th.nn.Module):
             result.receiver_length = length_r
 
             if self.training:
-                # receiver_parrot_loss = -(
+                # receiver_echo_loss = -(
                 #     (message_r == message_s).float() * log_prob_r
                 # ).mean(dim=-1)
-                receiver_parrot_loss = 1.2 * th.nn.functional.cross_entropy(
+                receiver_echo_loss = 1.2 * th.nn.functional.cross_entropy(
                     prob_r.reshape(-1, 50), message_s[:, :-1].reshape(-1)
                 )
-                receiver_loss = receiver_loss + receiver_parrot_loss
-                result.receiver_parrot_loss = receiver_parrot_loss
+                receiver_loss = receiver_loss + receiver_echo_loss
+                result.receiver_echo_loss = receiver_echo_loss
 
         if self.training:
             total_loss = sender_loss + receiver_loss
@@ -138,10 +139,11 @@ class MessageSignalingGameTrainer(Callback):
         channels: list[(str, str)] | None = None,
         max_batches: int = 1,
         sender_output: bool = False,
-        receiver_parrot: bool = False,
+        receiver_echo: bool = False,
         input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
     ):
         super().__init__()
         self.game = game
@@ -152,10 +154,11 @@ class MessageSignalingGameTrainer(Callback):
         self.channels = channels
         self.max_batches = max_batches
         self.sender_output = sender_output
-        self.receiver_parrot = receiver_parrot
+        self.receiver_echo = receiver_echo
         self.input_command = input_command
         self.output_command = output_command
         self.message_command = message_command
+        self.echo_command = echo_command
 
         if self.channels is None:
             self.channels = []
@@ -185,10 +188,11 @@ class MessageSignalingGameTrainer(Callback):
                 target=target,
                 loss=self.loss,
                 sender_output=self.sender_output,
-                receiver_parrot=self.receiver_parrot,
+                receiver_echo=self.receiver_echo,
                 input_command=self.input_command,
                 output_command=self.output_command,
                 message_command=self.message_command,
+                echo_command=self.echo_command,
             )
             loss.sum().backward(retain_graph=True)
             sender_optimizer.step()
@@ -207,12 +211,13 @@ class MessageSignalingGameEvaluator(Callback):
         name: str,
         channels: list[(str, str)] | None = None,
         sender_output: bool = False,
-        receiver_parrot: bool = False,
+        receiver_echo: bool = False,
         run_on_begin: bool = True,
         run_on_end: bool = True,
         input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
     ):
         super().__init__()
         self.game = game
@@ -224,12 +229,13 @@ class MessageSignalingGameEvaluator(Callback):
         self.name = name
         self.channels = channels
         self.sender_output = sender_output
-        self.receiver_parrot = receiver_parrot
+        self.receiver_echo = receiver_echo
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
         self.input_command = input_command
         self.output_command = output_command
         self.message_command = message_command
+        self.echo_command = echo_command
 
         if self.channels is None:
             self.channels = []
@@ -266,10 +272,11 @@ class MessageSignalingGameEvaluator(Callback):
                     input=self.input,
                     target=self.target,
                     sender_output=self.sender_output,
-                    receiver_parrot=self.receiver_parrot,
+                    receiver_echo=self.receiver_echo,
                     input_command=self.input_command,
                     output_command=self.output_command,
                     message_command=self.message_command,
+                    echo_command=self.echo_command,
                 )
 
             metric = self.metric(result)
