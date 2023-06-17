@@ -21,13 +21,14 @@ from ..baseline import BatchMeanBaseline
 from ..core.runner import Runner
 from ..dataset import concept_dataset, random_split
 from ..game import (
-    MessageSignalingGame,
-    MessageSignalingGameEvaluator,
-    MessageSignalingGameResult,
-    MessageSignalingGameTrainer,
+    SignalingGame,
+    SignalingGameEvaluator,
+    SignalingGameResult,
+    SignalingGameTrainer,
 )
 from ..logger import WandBLogger
-from ..loss import ConceptLoss
+from ..loss import ConceptLoss, SequenceMessageLoss
+from ..message import SequenceMessage
 from ..scheduler import IntervalScheduler
 from ..util import ModelInitializer, ModelSaver, fix_seed
 
@@ -81,28 +82,29 @@ class Config:
     # agent
     n_agents: int
 
-    # signal option
-    sender_output: bool = False
-    receiver_echo: bool = False
-
 
 def run_multilogue(config: dict):
+    # make config
     cfg = Config(**config)
 
+    # check device
     assert cfg.device in ["cpu", "cuda"]
     assert cfg.device == "cpu" or th.cuda.is_available()
 
+    # make log dir
     now = datetime.datetime.now()
     log_id = str(uuid.uuid4())[-4:]
     log_dir = f"log/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
+    # save config
     with open(f"{log_dir}/config.json", "w") as f:
         json.dump(config, f, indent=4)
 
     fix_seed(cfg.seed)
 
+    # make dataset
     dataset = concept_dataset(cfg.n_attributes, cfg.n_values, device=cfg.device)
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
@@ -112,6 +114,8 @@ def run_multilogue(config: dict):
         batch_size=cfg.batch_size,
         shuffle=True,
     )
+
+    # make model
     agents = {
         f"A{i}": ConceptOrMessageAgent(
             n_attributes=cfg.n_attributes,
@@ -130,6 +134,7 @@ def run_multilogue(config: dict):
         for i in range(cfg.n_agents)
     }
 
+    # make optimizer
     optimizer_types = {
         "adam": th.optim.Adam,
         "sgd": th.optim.SGD,
@@ -139,89 +144,77 @@ def run_multilogue(config: dict):
         for agent_name, agent in agents.items()
     }
 
+    # make agent saver
     agent_saver = ModelSaver(
         models=agents,
         path=f"{log_dir}/models",
     )
+
+    # make agent initializer
     agent_initializer = ModelInitializer(
         model=agents.values(),
     )
 
+    # make loggers
     loggers = [
         WandBLogger(project=cfg.wandb_project, name=cfg.wandb_name),
     ]
 
-    baselines = {"batch_mean": BatchMeanBaseline}
-    loss_baseline = baselines[cfg.baseline]()
-    length_baseline = baselines[cfg.baseline]()
-
+    # make concept loss
     concept_loss = ConceptLoss(n_attributes=cfg.n_attributes, n_values=cfg.n_values).to(
         cfg.device
     )
 
-    game = MessageSignalingGame(
+    # make message loss
+    baselines = {"batch_mean": BatchMeanBaseline}
+    loss_baseline = baselines[cfg.baseline]()
+    length_baseline = baselines[cfg.baseline]()
+    message_loss = SequenceMessageLoss(
         entropy_weight=cfg.entropy_weight,
         length_weight=cfg.length_weight,
-        loss_baseline=loss_baseline,
+        baseline=loss_baseline,
         length_baseline=length_baseline,
     ).to(cfg.device)
 
-    game_trainer = MessageSignalingGameTrainer(
-        game=game,
-        loss=concept_loss,
+    # make game trainer
+    game_trainer = SignalingGameTrainer(
+        output_loss=concept_loss,
+        message_loss=message_loss,
         agents=agents,
         optimizers=optimizers,
         dataloader=train_dataloader,
-        sender_output=cfg.sender_output,
-        receiver_echo=cfg.receiver_echo,
     )
 
     def game_metric(
-        result: MessageSignalingGameResult,
+        result: SignalingGameResult,
     ):
         output_r = result.receiver_output.argmax(dim=-1)
         acc_part_r, acc_comp_r, acc_r = concept_accuracy(output_r, result.target)
+        message_s: SequenceMessage = result.sender_message
         metrics = {
-            "log_prob_s": result.sender_log_prob.mean().item(),
-            "entropy_s": result.sender_entropy.mean().item(),
-            "length_s": result.sender_length.float().mean().item(),
-            "uniques_s": language_uniques(result.sender_message)
-            / result.sender_message.shape[0],
+            "log_prob_s": message_s.log_prob.mean().item(),
+            "entropy_s": message_s.entropy.mean().item(),
+            "length_s": message_s.length.float().mean().item(),
+            "uniques_s": language_uniques(message_s.sequence) / message_s.batch_size,
             "acc_part_r": acc_part_r,
             "acc_comp": acc_comp_r,
         }
         metrics |= {f"acc_attr{str(i)}_r": acc for i, acc in enumerate(list(acc_r))}
 
-        if cfg.sender_output:
-            output_s = result.sender_output.argmax(dim=-1)
-            acc_part_s, acc_comp_s, acc_s = concept_accuracy(output_s, result.target)
-            metrics |= {"acc_part_s": acc_part_s, "acc_comp_s": acc_comp_s}
-            metrics |= {f"acc_attr{i}_s": acc for i, acc in enumerate(list(acc_s))}
-
         return metrics
 
-    game_train_evaluator = MessageSignalingGameEvaluator(
-        game=game,
-        agents=agents,
-        input=train_dataset,
-        target=train_dataset,
-        metric=game_metric,
-        logger=loggers,
-        name="train",
-        sender_output=cfg.sender_output,
-        receiver_echo=cfg.receiver_echo,
-    )
-    game_valid_evaluator = MessageSignalingGameEvaluator(
-        game=game,
-        agents=agents,
-        input=valid_dataset,
-        target=valid_dataset,
-        metric=game_metric,
-        logger=loggers,
-        name="valid",
-        sender_output=cfg.sender_output,
-        receiver_echo=cfg.receiver_echo,
-    )
+    # make game evaluators
+    game_evaluators = [
+        SignalingGameEvaluator(
+            agents=agents,
+            input=dataset,
+            target=dataset,
+            metric=game_metric,
+            logger=loggers,
+            name=name,
+        )
+        for dataset, name in [(train_dataset, "train"), (valid_dataset, "valid")]
+    ]
 
     def language_metric(
         input: np.ndarray,
@@ -255,6 +248,7 @@ def run_multilogue(config: dict):
             "lansim": lansims,
         }
 
+    # make language evaluator
     language_evaluator = LanguageEvaluator(
         agents=agents,
         input=dataset,
@@ -263,15 +257,18 @@ def run_multilogue(config: dict):
         name="language",
     )
 
+    # make callbacks
     callbacks = [
         IntervalScheduler(agent_saver, 1000),
         IntervalScheduler(agent_initializer, 100000),
         game_trainer,
-        IntervalScheduler(game_train_evaluator, 10),
-        IntervalScheduler(game_valid_evaluator, 10),
-        IntervalScheduler(language_evaluator, 1000, 7999),
+        IntervalScheduler(game_evaluators, 10),
+        # IntervalScheduler(language_evaluator, 1000, 7999),
     ]
     callbacks.extend(loggers)
 
+    # make runner
     runner = Runner(callbacks)
+
+    # run
     runner.run(n_iterations=cfg.n_iterations)

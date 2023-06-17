@@ -1,8 +1,10 @@
 import torch as th
 from torchtyping import TensorType
 
+from ..message import SequenceMessage
 
-class MessageLoss(th.nn.Module):
+
+class SequenceMessageLoss(th.nn.Module):
     def __init__(
         self,
         entropy_weight: float = 0.0,
@@ -17,12 +19,12 @@ class MessageLoss(th.nn.Module):
         self.length_baseline = length_baseline
 
     def forward(
-        self,
-        loss: TensorType["batch", float],
-        log_prob: TensorType["batch", float],
-        entropy: TensorType["batch", float],
-        length: TensorType["batch", int],
+        self, sequence: SequenceMessage, loss: TensorType["batch", float]
     ) -> TensorType["batch", float]:
+        log_prob = sequence.log_prob
+        entropy = sequence.entropy
+        length = sequence.length
+
         loss = loss.detach()
         length = length.float() * self.length_weight
 

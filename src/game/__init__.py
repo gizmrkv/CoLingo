@@ -1,6 +1,6 @@
-from .message_signaling import (
-    MessageSignalingGame,
-    MessageSignalingGameEvaluator,
-    MessageSignalingGameResult,
-    MessageSignalingGameTrainer,
+from .signaling import (
+    SignalingGame,
+    SignalingGameEvaluator,
+    SignalingGameResult,
+    SignalingGameTrainer,
 )

@@ -109,12 +109,9 @@ class LanguageEvaluator(Callback):
             agent.eval()
             with th.no_grad():
                 hidden = agent(input=self.input, command=self.input_command)
-                language, _, log_prob, entropy, length = agent(
-                    hidden=hidden, command=self.message_command
-                )
+                message = agent(hidden=hidden, command=self.message_command)
 
-            languages[agent_name] = language.cpu().numpy()
-            lengths[agent_name] = length.cpu().numpy()
+            languages[agent_name] = message
 
         metric = self.metric(self.input.cpu().numpy(), languages, lengths)
 

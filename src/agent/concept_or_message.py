@@ -1,7 +1,7 @@
 import torch as th
 
 from ..model.concept import ConceptDecoder, ConceptEncoder
-from ..model.message import MessageDecoder, MessageEncoder
+from ..model.sequence_message import SequenceMessageDecoder, SequenceMessageEncoder
 
 
 class ConceptOrMessageAgent(th.nn.Module):
@@ -51,7 +51,7 @@ class ConceptOrMessageAgent(th.nn.Module):
             embed_dim=internal_dim,
             hidden_dim=concept_hidden_dim,
         )
-        self.message_encoder = MessageEncoder(
+        self.message_encoder = SequenceMessageEncoder(
             max_len=max_len,
             vocab_size=vocab_size,
             embed_dim=internal_dim,
@@ -61,7 +61,7 @@ class ConceptOrMessageAgent(th.nn.Module):
             message_embed_dim=message_embed_dim,
             message_embed=self.msg_embed,
         )
-        self.message_decoder = MessageDecoder(
+        self.message_decoder = SequenceMessageDecoder(
             max_len=max_len,
             vocab_size=vocab_size,
             embed_dim=internal_dim,

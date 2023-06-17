@@ -3,12 +3,11 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_duologue, run_multilogue
+from src.experiment import run_multilogue
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]
-    # config_path = "config/single1.toml"
-    config_path = "config/single2.toml"
+    config_path = "config/multilogue.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -20,5 +19,4 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    # run_duologue(config)
     run_multilogue(config)

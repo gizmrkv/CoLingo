@@ -2,8 +2,10 @@ import torch as th
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
+from ..message import SequenceMessage
 
-class MessageEncoder(th.nn.Module):
+
+class SequenceMessageEncoder(th.nn.Module):
     def __init__(
         self,
         max_len: int,
@@ -34,8 +36,8 @@ class MessageEncoder(th.nn.Module):
         self.rnn = rnn_type(message_embed_dim, hidden_dim, n_layers, batch_first=True)
         self.embed = th.nn.Linear(hidden_dim, embed_dim)
 
-    def forward(self, x: TensorType["batch", "max_len", int]):
-        x = self.msg_embed(x)
+    def forward(self, x: SequenceMessage):
+        x = self.msg_embed(x.sequence)
         _, h = self.rnn(x)
         if isinstance(self.rnn, th.nn.LSTM):
             h, _ = h
@@ -44,7 +46,7 @@ class MessageEncoder(th.nn.Module):
         return h
 
 
-class MessageDecoder(th.nn.Module):
+class SequenceMessageDecoder(th.nn.Module):
     def __init__(
         self,
         max_len: int,
@@ -89,10 +91,10 @@ class MessageDecoder(th.nn.Module):
 
         i = self.sos_embed.repeat(x.size(0), 1)
 
-        message = []
-        prob = []
-        log_prob = []
-        entropy = []
+        sequence = []
+        logits = []
+        log_probs = []
+        entropies = []
 
         for _ in range(self.max_len):
             i = i.unsqueeze(1)
@@ -110,28 +112,41 @@ class MessageDecoder(th.nn.Module):
                 x = logit.argmax(dim=-1)
 
             i = self.msg_embed(x)
-            message.append(x)
-            prob.append(logit)
-            log_prob.append(distr.log_prob(x))
-            entropy.append(distr.entropy())
+            sequence.append(x)
+            logits.append(logit)
+            log_probs.append(distr.log_prob(x))
+            entropies.append(distr.entropy())
 
-        message = th.stack(message).permute(1, 0)
-        prob = th.stack(prob).permute(1, 0, 2)
-        log_prob = th.stack(log_prob).permute(1, 0)
-        entropy = th.stack(entropy).permute(1, 0)
+        sequence = th.stack(sequence).permute(1, 0)
+        logits = th.stack(logits).permute(1, 0, 2)
+        log_probs = th.stack(log_probs).permute(1, 0)
+        entropies = th.stack(entropies).permute(1, 0)
 
-        zeros = th.zeros((message.size(0), 1)).to(message.device)
+        zeros = th.zeros((sequence.size(0), 1)).to(sequence.device)
 
-        message = th.cat([message, zeros.long()], dim=1)
-        log_prob = th.cat([log_prob, zeros], dim=1)
-        entropy = th.cat([entropy, zeros], dim=1)
+        sequence = th.cat([sequence, zeros.long()], dim=1)
+        log_probs = th.cat([log_probs, zeros], dim=1)
+        entropies = th.cat([entropies, zeros], dim=1)
 
-        length = message.argmin(dim=1) + 1
-        mask_eos = th.arange(self.max_len + 1).expand(message.size(0), -1)
-        mask_eos = mask_eos.to(length.device) < length.unsqueeze(1)
+        length = sequence.argmin(dim=1) + 1
+        eos_mask = th.arange(self.max_len + 1).expand(sequence.size(0), -1)
+        eos_mask = eos_mask.to(length.device) < length.unsqueeze(1)
 
-        message = message * mask_eos
-        log_prob = (log_prob * mask_eos).sum(dim=1)
-        entropy = (entropy * mask_eos).sum(dim=1) / length.float()
+        sequence = sequence * eos_mask
+        log_probs = log_probs * eos_mask
+        log_prob = log_probs.sum(dim=1)
+        entropies = entropies * eos_mask
+        entropy = entropies.sum(dim=1) / length.float()
 
-        return message, prob, log_prob, entropy, length
+        return SequenceMessage(
+            batch_size=sequence.size(0),
+            max_len=self.max_len + 1,
+            vocab_size=self.vocab_size,
+            sequence=sequence,
+            logits=logits,
+            log_probs=log_probs,
+            log_prob=log_prob,
+            entropies=entropies,
+            entropy=entropy,
+            length=length,
+        )
