@@ -8,7 +8,8 @@ from src.experiment import run_echoing, run_inferring, run_multilogue
 if __name__ == "__main__":
     # config_path = sys.argv[1]
     # config_path = "config/multilogue.toml"
-    config_path = "config/inferring.toml"
+    # config_path = "config/inferring.toml"
+    config_path = "config/echoing.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):

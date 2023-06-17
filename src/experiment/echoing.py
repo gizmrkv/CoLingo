@@ -3,17 +3,37 @@ import json
 import os
 import uuid
 from dataclasses import dataclass
+from itertools import combinations
 
+import numpy as np
 import torch as th
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..agent import ConceptOrMessageAgent
-from ..analysis import concept_accuracy
+from ..analysis import (
+    LanguageEvaluator,
+    concept_accuracy,
+    concept_topographic_similarity,
+    edit_distance,
+    language_similarity,
+    language_uniques,
+)
+from ..baseline import BatchMeanBaseline
 from ..core.runner import Runner
 from ..dataset import concept_dataset, random_split
-from ..game import InferringGameEvaluator, InferringGameResult, InferringGameTrainer
+from ..game import (
+    InferringGame,
+    InferringGameEvaluator,
+    InferringGameResult,
+    InferringGameTrainer,
+    SignalingGame,
+    SignalingGameEvaluator,
+    SignalingGameResult,
+    SignalingGameTrainer,
+)
 from ..logger import WandBLogger
-from ..loss import ConceptLoss
+from ..loss import ConceptLoss, SequenceMessageLoss
+from ..message import SequenceMessage
 from ..scheduler import IntervalScheduler
 from ..util import ModelInitializer, ModelSaver, fix_seed
 
@@ -57,7 +77,7 @@ class Config:
     split_ratio: float
 
 
-def run_inferring(config: dict):
+def run_echoing(config: dict):
     # make config
     cfg = Config(**config)
 
@@ -79,7 +99,7 @@ def run_inferring(config: dict):
     fix_seed(cfg.seed)
 
     # make dataset
-    dataset = concept_dataset(cfg.n_attributes, cfg.n_values, device=cfg.device)
+    dataset = th.randint(0, cfg.vocab_size, (100, cfg.max_len)).to(cfg.device)
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )
@@ -133,26 +153,24 @@ def run_inferring(config: dict):
     ]
 
     # make concept loss
-    concept_loss = ConceptLoss(n_attributes=cfg.n_attributes, n_values=cfg.n_values).to(
-        cfg.device
-    )
+    def sequence_loss(output: th.Tensor, target: th.Tensor):
+        output = output.view(-1, cfg.vocab_size)
+        target = target.view(-1)
+        return th.nn.functional.cross_entropy(output, target)
 
     trainer = InferringGameTrainer(
         agents=agents,
         optimizers=optimizers,
         dataloader=train_dataloader,
-        loss=concept_loss,
+        loss=sequence_loss,
+        output_command="echo",
     )
 
     def inferring_metric(result: InferringGameResult):
-        output = result.output.argmax(dim=-1)
-        acc_part, acc_comp, acc = concept_accuracy(output, result.target)
-        metrics = {
-            "acc_part": acc_part,
-            "acc_comp": acc_comp,
-        }
-        metrics |= {f"acc_attr{i}": acc for i, acc in enumerate(list(acc))}
-        return metrics
+        output = result.output.argmax(dim=-1).cpu().numpy()
+        target = result.target.cpu().numpy()
+        lansim = language_similarity(output, target)
+        return {"lansim": lansim}
 
     evaluators = [
         InferringGameEvaluator(
@@ -162,6 +180,7 @@ def run_inferring(config: dict):
             metric=inferring_metric,
             logger=loggers,
             name=name,
+            output_command="echo",
         )
         for dataset, name in [(train_dataset, "train"), (valid_dataset, "valid")]
     ]

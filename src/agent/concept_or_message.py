@@ -82,18 +82,22 @@ class ConceptOrMessageAgent(th.nn.Module):
         if command == "input":
             match (input, message):
                 case (input, None):
-                    return self.concept_encoder(input)
+                    return (input, self.concept_encoder(input))
                 case (None, message):
-                    return self.message_encoder(message)
+                    return (message, self.message_encoder(message))
                 case (_, _):
                     raise ValueError("input and message cannot both be provided")
 
         match command:
             case "output":
-                return self.concept_decoder(hidden)
+                return self.concept_decoder(hidden[1])
             case "message":
-                return self.message_decoder(hidden)
+                return self.message_decoder(hidden[1])
             case "echo":
-                return self.message_decoder(hidden)
+                rnn_hidden = self.message_decoder.rnn_hidden(hidden[1])
+                msg_emb = self.message_decoder.msg_embed(hidden[0])
+                logits, _ = self.message_decoder.rnn(msg_emb, rnn_hidden)
+                logits = self.message_decoder.hidden2logits(logits)
+                return logits
             case _:
                 raise ValueError(f"unknown command {command}")

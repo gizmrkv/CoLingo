@@ -83,11 +83,18 @@ class SequenceMessageDecoder(th.nn.Module):
             else message_embed
         )
 
-    def forward(self, x: TensorType["batch", "internal_size", float]):
+    def rnn_hidden(self, x: TensorType["batch", "embed_dim", float]):
         h = th.stack([e2h(x) for e2h in self.embed2hiddens])
 
         if isinstance(self.rnn, th.nn.LSTM):
-            c = th.zeros_like(h)
+            h = (h, th.zeros_like(h))
+
+        return h
+
+    def forward(self, x: TensorType["batch", "internal_size", float]):
+        h = self.rnn_hidden(x)
+        if isinstance(self.rnn, th.nn.LSTM):
+            h, c = h
 
         i = self.sos_embed.repeat(x.size(0), 1)
 
