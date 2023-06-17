@@ -15,12 +15,19 @@ class ModelSaver(Callback):
         self.models = models
         self.path = path
 
-    def on_update(self, iteration: int):
-        for model_name, model in self.models.items():
+        for model_name in self.models:
             save_dir = f"{self.path}/{model_name}"
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
-            th.save(
-                model,
-                f"{save_dir}/{iteration}.pth",
-            )
+
+    def on_begin(self):
+        for model_name, model in self.models.items():
+            th.save(model, f"{self.path}/{model_name}/begin.pth")
+
+    def on_update(self, iteration: int):
+        for model_name, model in self.models.items():
+            th.save(model, f"{self.path}/{model_name}/{iteration}.pth")
+
+    def on_end(self):
+        for model_name, model in self.models.items():
+            th.save(model, f"{self.path}/{model_name}/end.pth")

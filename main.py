@@ -3,7 +3,7 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_inferring, run_multilogue
+from src.experiment import run_echoing, run_inferring, run_multilogue
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]
@@ -21,4 +21,5 @@ if __name__ == "__main__":
             raise ValueError(f"Unknown file extension: {config_path}")
 
     # run_multilogue(config)
-    run_inferring(config)
+    # run_inferring(config)
+    run_echoing(config)
