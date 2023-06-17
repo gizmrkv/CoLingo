@@ -3,11 +3,12 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_multilogue
+from src.experiment import run_inferring, run_multilogue
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]
-    config_path = "config/multilogue.toml"
+    # config_path = "config/multilogue.toml"
+    config_path = "config/inferring.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -19,4 +20,5 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    run_multilogue(config)
+    # run_multilogue(config)
+    run_inferring(config)
