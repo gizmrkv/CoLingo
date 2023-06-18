@@ -6,10 +6,10 @@ import yaml
 from src.experiment import run_echoing, run_inferring, run_multilogue
 
 if __name__ == "__main__":
+    exp = "echoing"
+
     # config_path = sys.argv[1]
-    # config_path = "config/multilogue.toml"
-    # config_path = "config/inferring.toml"
-    config_path = "config/echoing.toml"
+    config_path = f"config/{exp}.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -21,6 +21,9 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    # run_multilogue(config)
-    # run_inferring(config)
-    run_echoing(config)
+    if exp == "echoing":
+        run_echoing(config)
+    elif exp == "inferring":
+        run_inferring(config)
+    elif exp == "multilogue":
+        run_multilogue(config)

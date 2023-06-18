@@ -46,6 +46,7 @@ class Config:
     seed: int
     device: str
     model_save_interval: int
+    data_size: int
 
     # wandb
     wandb_project: str
@@ -99,7 +100,7 @@ def run_echoing(config: dict):
     fix_seed(cfg.seed)
 
     # make dataset
-    dataset = th.randint(0, cfg.vocab_size, (1000, cfg.max_len)).to(cfg.device)
+    dataset = th.randint(0, cfg.vocab_size, (cfg.data_size, cfg.max_len)).to(cfg.device)
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )
@@ -163,6 +164,7 @@ def run_echoing(config: dict):
         optimizers=optimizers,
         dataloader=train_dataloader,
         loss=sequence_loss,
+        input_command="echo_input",
         output_command="echo",
     )
 
@@ -180,6 +182,7 @@ def run_echoing(config: dict):
             metric=inferring_metric,
             logger=loggers,
             name=name,
+            input_command="echo_input",
             output_command="echo",
         )
         for dataset, name in [(train_dataset, "train"), (valid_dataset, "valid")]

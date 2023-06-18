@@ -88,6 +88,9 @@ class ConceptOrMessageAgent(th.nn.Module):
                 case (_, _):
                     raise ValueError("input and message cannot both be provided")
 
+        if command == "echo_input":
+            return (input, self.message_encoder(input))
+
         match command:
             case "output":
                 return self.concept_decoder(hidden[1])

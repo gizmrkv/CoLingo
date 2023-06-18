@@ -4,14 +4,15 @@ batch_size = 65536
 seed = 42
 device = "cuda"
 model_save_interval = 1000
+data_size = 1000
 
 # wandb
 wandb_project = "hoge"
 wandb_name = "huga"
 
 # channel
-max_len = 5
-vocab_size = 10
+max_len = 10
+vocab_size = 50
 
 # model
 internal_dim = 512

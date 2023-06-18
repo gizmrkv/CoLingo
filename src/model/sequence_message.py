@@ -36,8 +36,8 @@ class SequenceMessageEncoder(th.nn.Module):
         self.rnn = rnn_type(message_embed_dim, hidden_dim, n_layers, batch_first=True)
         self.embed = th.nn.Linear(hidden_dim, embed_dim)
 
-    def forward(self, x: SequenceMessage):
-        x = self.msg_embed(x.sequence)
+    def forward(self, x: SequenceMessage | TensorType["batch", "max_len", int]):
+        x = self.msg_embed(x.sequence if isinstance(x, SequenceMessage) else x)
         _, h = self.rnn(x)
         if isinstance(self.rnn, th.nn.LSTM):
             h, _ = h
