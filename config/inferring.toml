@@ -14,10 +14,6 @@ wandb_name = "huga"
 n_attributes = 2
 n_values = 50
 
-# channel
-max_len = 10
-vocab_size = 50
-
 # model
 internal_dim = 512
 concept_embed_dim = 64

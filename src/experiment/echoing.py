@@ -51,10 +51,6 @@ class Config:
     wandb_project: str
     wandb_name: str
 
-    # concept
-    n_attributes: int
-    n_values: int
-
     # channel
     max_len: int
     vocab_size: int
@@ -76,6 +72,10 @@ class Config:
     # dataset
     split_ratio: float
 
+    # concept
+    n_attributes: int = 1
+    n_values: int = 1
+
 
 def run_echoing(config: dict):
     # make config
@@ -83,7 +83,7 @@ def run_echoing(config: dict):
 
     # check device
     assert cfg.device in ["cpu", "cuda"]
-    assert cfg.device == "cpu" or th.cuda.is_available()
+    # assert cfg.device == "cpu" or th.cuda.is_available()
 
     # make log dir
     now = datetime.datetime.now()
@@ -99,7 +99,7 @@ def run_echoing(config: dict):
     fix_seed(cfg.seed)
 
     # make dataset
-    dataset = th.randint(0, cfg.vocab_size, (100, cfg.max_len)).to(cfg.device)
+    dataset = th.randint(0, cfg.vocab_size, (1000, cfg.max_len)).to(cfg.device)
     train_dataset, valid_dataset = random_split(
         dataset, [cfg.split_ratio, 1 - cfg.split_ratio]
     )

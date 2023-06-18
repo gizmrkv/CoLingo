@@ -35,10 +35,6 @@ class Config:
     n_attributes: int
     n_values: int
 
-    # channel
-    max_len: int
-    vocab_size: int
-
     # model
     internal_dim: int
     concept_embed_dim: int
@@ -55,6 +51,10 @@ class Config:
 
     # dataset
     split_ratio: float
+
+    # channel
+    max_len: int = 1
+    vocab_size: int = 1
 
 
 def run_inferring(config: dict):

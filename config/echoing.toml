@@ -9,14 +9,9 @@ model_save_interval = 1000
 wandb_project = "hoge"
 wandb_name = "huga"
 
-
-# concept 
-n_attributes = 2
-n_values = 50
-
 # channel
-max_len = 10
-vocab_size = 50
+max_len = 5
+vocab_size = 10
 
 # model
 internal_dim = 512
