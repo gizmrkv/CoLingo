@@ -4,6 +4,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from itertools import combinations
+from typing import Tuple
 
 import numpy as np
 import torch as th
@@ -24,6 +25,7 @@ from ..dataset import concept_dataset, random_split
 from ..game import (
     InferringGameEvaluator,
     SignalingGameEvaluator,
+    SignalingGameOption,
     SignalingGameResult,
     SignalingGameTrainer,
 )
@@ -85,6 +87,7 @@ class Config:
 
     # echo
     receiver_echo: bool
+    sender_internal: bool
 
 
 def run_signaling(config: dict):
@@ -175,6 +178,9 @@ def run_signaling(config: dict):
         target = target.sequence.view(-1)
         return th.nn.functional.cross_entropy(output, target)
 
+    def internal_loss(x: Tuple[th.Tensor, th.Tensor], y: Tuple[th.Tensor, th.Tensor]):
+        return th.nn.functional.mse_loss(x[1], y[1])
+
     # make message loss
     baselines = {"batch_mean": BatchMeanBaseline}
     loss_baseline = baselines[cfg.baseline]()
@@ -187,14 +193,19 @@ def run_signaling(config: dict):
     ).to(cfg.device)
 
     # make game trainer
+    game_option = SignalingGameOption(
+        receiver_echo=cfg.receiver_echo,
+        receiver_echo_loss=sequence_loss,
+        sender_internal=cfg.sender_internal,
+        sender_internal_loss=internal_loss,
+    )
     trainer = SignalingGameTrainer(
         output_loss=concept_loss,
         message_loss=message_loss,
         agents=agents,
         optimizers=optimizers,
         dataloader=train_dataloader,
-        receiver_echo=cfg.receiver_echo,
-        receiver_echo_loss=sequence_loss,
+        option=game_option,
     )
 
     def game_metric(
@@ -224,8 +235,7 @@ def run_signaling(config: dict):
             metric=game_metric,
             logger=loggers,
             name=name,
-            receiver_echo=cfg.receiver_echo,
-            receiver_echo_loss=sequence_loss,
+            option=game_option,
         )
         for dataset, name in [(train_dataset, "train"), (valid_dataset, "valid")]
     ]
@@ -240,7 +250,7 @@ def run_signaling(config: dict):
             )
             topsims[agent_name] = topsim
         topsims["mean"] = sum(topsims.values()) / len(topsims)
-        print("done", flush=True)
+        print(f"done: {topsims['mean']}", flush=True)
 
         lansims = {}
         print("Computing language similarities...", end="", flush=True)
@@ -257,7 +267,7 @@ def run_signaling(config: dict):
             lansims[pair_name] = lansim
 
         lansims["mean"] = sum(lansims.values()) / len(lansims)
-        print("done", flush=True)
+        print(f"done: {lansims['mean']}", flush=True)
         return {
             "topsim": topsims,
             "lansim": lansims,

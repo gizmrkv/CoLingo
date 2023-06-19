@@ -47,4 +47,5 @@ length_weight = 0.0
 max_batches_signal = 1
 
 # echo 
-receiver_echo = true
+receiver_echo = false
+sender_internal = true

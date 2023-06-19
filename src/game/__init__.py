@@ -7,6 +7,7 @@ from .inferring import (
 from .signaling import (
     SignalingGame,
     SignalingGameEvaluator,
+    SignalingGameOption,
     SignalingGameResult,
     SignalingGameTrainer,
 )
