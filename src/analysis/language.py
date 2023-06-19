@@ -1,4 +1,5 @@
-from typing import Callable, Iterable
+from dataclasses import dataclass
+from typing import Any, Callable, Iterable
 
 import numpy as np
 import torch as th
@@ -64,14 +65,18 @@ def language_similarity(
     return 1 - (distances / np.maximum(length1, length2)).mean()
 
 
+@dataclass
+class LanguageResult:
+    input: th.Tensor
+    languages: dict[str, Any]
+
+
 class LanguageEvaluator(Callback):
     def __init__(
         self,
         agents: dict[str, th.nn.Module],
         input: th.Tensor,
-        metric: Callable[
-            [np.ndarray, dict[str, np.ndarray], dict[str, np.ndarray]], dict
-        ],
+        metric: Callable[[LanguageResult], dict],
         logger: Logger | Iterable[Logger],
         name: str,
         run_on_begin: bool = False,
@@ -93,17 +98,23 @@ class LanguageEvaluator(Callback):
     def on_begin(self):
         if self.run_on_begin:
             self.evaluate()
+            for logger in self.loggers:
+                logger.flush()
 
     def on_end(self):
         if self.run_on_end:
             self.evaluate()
+            for logger in self.loggers:
+                logger.flush()
 
     def on_update(self, iteration: int):
         self.evaluate()
 
     def evaluate(self):
-        languages = {}
-        lengths = {}
+        result = LanguageResult(
+            input=self.input,
+            languages={},
+        )
         for agent_name in self.agents:
             agent = self.agents[agent_name]
             agent.eval()
@@ -111,9 +122,9 @@ class LanguageEvaluator(Callback):
                 hidden = agent(input=self.input, command=self.input_command)
                 message = agent(hidden=hidden, command=self.message_command)
 
-            languages[agent_name] = message
+            result.languages[agent_name] = message
 
-        metric = self.metric(self.input.cpu().numpy(), languages, lengths)
+        metric = self.metric(result)
 
         for logger in self.loggers:
-            logger.log({self.name: metric}, flush=True)
+            logger.log({self.name: metric})

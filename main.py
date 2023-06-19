@@ -3,10 +3,10 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_echoing, run_inferring, run_multilogue
+from src.experiment import run_echoing, run_inferring, run_multilogue, run_signaling
 
 if __name__ == "__main__":
-    exp = "echoing"
+    exp = "signaling"
 
     # config_path = sys.argv[1]
     config_path = f"config/{exp}.toml"
@@ -25,5 +25,7 @@ if __name__ == "__main__":
         run_echoing(config)
     elif exp == "inferring":
         run_inferring(config)
+    elif exp == "signaling":
+        run_signaling(config)
     elif exp == "multilogue":
         run_multilogue(config)

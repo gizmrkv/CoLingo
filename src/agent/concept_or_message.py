@@ -1,5 +1,6 @@
 import torch as th
 
+from ..message import SequenceMessage
 from ..model.concept import ConceptDecoder, ConceptEncoder
 from ..model.sequence_message import SequenceMessageDecoder, SequenceMessageEncoder
 
@@ -98,7 +99,11 @@ class ConceptOrMessageAgent(th.nn.Module):
                 return self.message_decoder(hidden[1])
             case "echo":
                 rnn_hidden = self.message_decoder.rnn_hidden(hidden[1])
-                msg_emb = self.message_decoder.msg_embed(hidden[0])
+                msg_emb = self.message_decoder.msg_embed(
+                    hidden[0].sequence
+                    if isinstance(hidden[0], SequenceMessage)
+                    else hidden[0]
+                )
                 logits, _ = self.message_decoder.rnn(msg_emb, rnn_hidden)
                 logits = self.message_decoder.hidden2logits(logits)
                 return logits

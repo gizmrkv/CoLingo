@@ -16,8 +16,10 @@ class SignalingGameResult:
     target: th.Tensor
     sender_message: Any
     receiver_output: th.Tensor
+    receiver_echo: Any | None = None
     sender_loss: th.Tensor | None = None
     receiver_loss: th.Tensor | None = None
+    receiver_echo_loss: th.Tensor | None = None
     total_loss: th.Tensor | None = None
 
 
@@ -33,14 +35,18 @@ class SignalingGame(th.nn.Module):
         target: th.Tensor,
         output_loss: th.nn.Module | None = None,
         message_loss: th.nn.Module | None = None,
-        input_command: str = "input",
+        sender_input_command: str = "input",
+        receiver_input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
+        receiver_echo: bool = False,
+        receiver_echo_loss: th.nn.Module | None = None,
     ) -> SignalingGameResult:
-        hidden_s = sender(input=input, command=input_command)
+        hidden_s = sender(input=input, command=sender_input_command)
         message_s = sender(hidden=hidden_s, command=message_command)
 
-        hidden_r = receiver(message=message_s, command=input_command)
+        hidden_r = receiver(message=message_s, command=receiver_input_command)
         output_r = receiver(hidden=hidden_r, command=output_command)
 
         result = SignalingGameResult(
@@ -50,12 +56,22 @@ class SignalingGame(th.nn.Module):
             receiver_output=output_r,
         )
 
+        if receiver_echo:
+            result.receiver_echo = receiver(hidden=hidden_r, command=echo_command)
+
         if self.training:
             result.receiver_loss = output_loss(output_r, target)
             result.sender_loss = message_loss(message_s, result.receiver_loss)
 
-        if self.training:
+            if receiver_echo:
+                result.receiver_echo_loss = receiver_echo_loss(
+                    result.receiver_echo, message_s
+                )
+
             result.total_loss = result.sender_loss + result.receiver_loss
+
+            if receiver_echo:
+                result.total_loss += result.receiver_echo_loss
 
         return result
 
@@ -70,9 +86,13 @@ class SignalingGameTrainer(Callback):
         message_loss: th.nn.Module,
         channels: list[(str, str)] | None = None,
         max_batches: int = 1,
-        input_command: str = "input",
+        sender_input_command: str = "input",
+        receiver_input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
+        receiver_echo: bool = False,
+        receiver_echo_loss: th.nn.Module | None = None,
     ):
         super().__init__()
         self.game = SignalingGame()
@@ -83,9 +103,13 @@ class SignalingGameTrainer(Callback):
         self.message_loss = message_loss
         self.channels = channels
         self.max_batches = max_batches
-        self.input_command = input_command
+        self.sender_input_command = sender_input_command
+        self.receiver_input_command = receiver_input_command
         self.output_command = output_command
         self.message_command = message_command
+        self.echo_command = echo_command
+        self.receiver_echo = receiver_echo
+        self.receiver_echo_loss = receiver_echo_loss
 
         if self.channels is None:
             self.channels = []
@@ -115,9 +139,13 @@ class SignalingGameTrainer(Callback):
                 target=target,
                 output_loss=self.output_loss,
                 message_loss=self.message_loss,
-                input_command=self.input_command,
+                sender_input_command=self.sender_input_command,
+                receiver_input_command=self.receiver_input_command,
                 output_command=self.output_command,
                 message_command=self.message_command,
+                echo_command=self.echo_command,
+                receiver_echo=self.receiver_echo,
+                receiver_echo_loss=self.receiver_echo_loss,
             )
             result.total_loss.sum().backward(retain_graph=True)
             sender_optimizer.step()
@@ -136,9 +164,13 @@ class SignalingGameEvaluator(Callback):
         channels: list[(str, str)] | None = None,
         run_on_begin: bool = True,
         run_on_end: bool = True,
-        input_command: str = "input",
+        sender_input_command: str = "input",
+        receiver_input_command: str = "input",
         output_command: str = "output",
         message_command: str = "message",
+        echo_command: str = "echo",
+        receiver_echo: bool = False,
+        receiver_echo_loss: th.nn.Module | None = None,
     ):
         super().__init__()
         self.game = SignalingGame()
@@ -151,9 +183,13 @@ class SignalingGameEvaluator(Callback):
         self.channels = channels
         self.run_on_begin = run_on_begin
         self.run_on_end = run_on_end
-        self.input_command = input_command
+        self.sender_input_command = sender_input_command
+        self.receiver_input_command = receiver_input_command
         self.output_command = output_command
         self.message_command = message_command
+        self.echo_command = echo_command
+        self.receiver_echo = receiver_echo
+        self.receiver_echo_loss = receiver_echo_loss
 
         if self.channels is None:
             self.channels = []
@@ -189,9 +225,13 @@ class SignalingGameEvaluator(Callback):
                     receiver=receiver,
                     input=self.input,
                     target=self.target,
-                    input_command=self.input_command,
+                    sender_input_command=self.sender_input_command,
+                    receiver_input_command=self.receiver_input_command,
                     output_command=self.output_command,
                     message_command=self.message_command,
+                    echo_command=self.echo_command,
+                    receiver_echo=self.receiver_echo,
+                    receiver_echo_loss=self.receiver_echo_loss,
                 )
 
             metric = self.metric(result)
