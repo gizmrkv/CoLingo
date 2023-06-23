@@ -4,6 +4,15 @@
 
 - Signaling Game Loss Processors
   - GameResultをもらって，Agentに入出力させたり，ロスを計算をカスタムして加えたりする機能．mod
+  - game(input): GameResult
+    - mod1(result): Mod1Result
+    - mod2(result): Mod2Result
+    - mod3(result): Mod3Result
+  - integrated_game(game, mods, input) -> list[results; 1+|mods|]
+  - loss(results) -> loss: float
+  - metrics(results) -> metrics: dict
+  - optimziers(results) -> optimizers: list[optimizer]
+
 
 - 世代交代する場合，しない場合で比較
 - TextMessage dataclass 
