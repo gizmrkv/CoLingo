@@ -11,24 +11,15 @@ import torch as th
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..agent import ConceptOrMessageAgent
-from ..analysis import (
-    LanguageEvaluator,
-    LanguageResult,
-    concept_accuracy,
-    concept_topographic_similarity,
-    language_similarity,
-    language_uniques,
-)
+from ..analysis import (LanguageEvaluator, LanguageResult, concept_accuracy,
+                        concept_topographic_similarity, language_similarity,
+                        language_uniques)
 from ..baseline import BatchMeanBaseline
 from ..core.runner import Runner
 from ..dataset import concept_dataset, random_split
-from ..game import (
-    InferringGameEvaluator,
-    SignalingGameEvaluator,
-    SignalingGameOption,
-    SignalingGameResult,
-    SignalingGameTrainer,
-)
+from ..game import (InferringGameEvaluator, SignalingGame,
+                    SignalingGameEvaluator, SignalingGameResult,
+                    SignalingGameTrainer)
 from ..logger import WandBLogger
 from ..loss import ConceptLoss, SequenceMessageLoss
 from ..message import SequenceMessage
@@ -85,9 +76,20 @@ class Config:
     # task
     max_batches_signal: int
 
-    # echo
-    receiver_echo: bool
-    sender_internal: bool
+    # option
+    sender_output: bool
+    sender_receive: bool
+    receiver_send: bool
+    receiver_input: bool
+
+    receiver_ruminate: bool
+
+    sender_message_loss_weight: float
+    receiver_output_loss_weight: float
+    sender_output_loss_weight: float
+    receiver_message_loss_weight: float
+    receiver_latent_loss_weight: float
+    sender_latent_loss_weight: float
 
 
 def run_signaling(config: dict):
@@ -173,7 +175,7 @@ def run_signaling(config: dict):
     )
 
     # make sequence loss
-    def sequence_loss(output: th.Tensor, target: SequenceMessage):
+    def echo_loss(output: th.Tensor, target: SequenceMessage):
         output = output.view(-1, cfg.vocab_size)
         target = target.sequence.view(-1)
         return th.nn.functional.cross_entropy(output, target)
@@ -192,50 +194,125 @@ def run_signaling(config: dict):
         length_baseline=length_baseline,
     ).to(cfg.device)
 
+    def loss(result: SignalingGameResult):
+        loss_r = cfg.receiver_output_loss_weight * concept_loss(
+            result.receiver_output, result.target
+        )
+        loss_s = cfg.sender_message_loss_weight * message_loss(
+            result.sender_message, loss_r
+        )
+
+        if result.sender_output is not None:
+            loss_s += cfg.sender_output_loss_weight * concept_loss(
+                result.sender_output, result.target
+            )
+
+        if result.receiver_message is not None:
+            loss_r += cfg.receiver_message_loss_weight * echo_loss(
+                result.receiver_message, result.sender_message
+            )
+
+        if cfg.sender_receive:
+            _, message_latent_s = result.sender(
+                message=result.sender_message, command="receive"
+            )
+            _, input_latent_s = result.sender_latent
+            loss_s += cfg.sender_latent_loss_weight * th.nn.functional.mse_loss(
+                input_latent_s, message_latent_s
+            )
+
+        if cfg.receiver_input:
+            output_r = result.receiver_output.argmax(dim=-1)
+            _, input_latent_r = result.receiver(input=output_r, command="input")
+            _, message_latent_r = result.receiver_latent
+            loss_r += cfg.receiver_latent_loss_weight * th.nn.functional.mse_loss(
+                input_latent_r, message_latent_r
+            )
+
+        if cfg.receiver_ruminate:
+            output_r = result.receiver_output.argmax(dim=-1)
+            latent_r = result.receiver(input=output_r, command="input")
+            message_r: SequenceMessage = result.receiver(
+                latent=latent_r, command="send"
+            )
+            message_s: SequenceMessage = result.sender_message
+            ruminate_loss = th.nn.functional.cross_entropy(
+                message_r.logits.reshape(-1, cfg.vocab_size),
+                message_s.sequence[:, :-1].reshape(-1),
+            )
+            loss_r += ruminate_loss
+
+        total_loss = loss_r + loss_s
+        return total_loss.sum()
+
     # make game trainer
-    game_option = SignalingGameOption(
-        receiver_echo=cfg.receiver_echo,
-        receiver_echo_loss=sequence_loss,
-        sender_internal=cfg.sender_internal,
-        sender_internal_loss=internal_loss,
+    game = SignalingGame(
+        run_sender_output=cfg.sender_output,
+        run_receiver_send=cfg.receiver_send,
+        receiver_send_command="echo",
     )
+
     trainer = SignalingGameTrainer(
-        output_loss=concept_loss,
-        message_loss=message_loss,
+        game=game,
         agents=agents,
         optimizers=optimizers,
         dataloader=train_dataloader,
-        option=game_option,
+        loss=loss,
     )
 
-    def game_metric(
+    def metric(
         result: SignalingGameResult,
     ):
-        output_r = result.receiver_output.argmax(dim=-1)
-        acc_part_r, acc_comp_r, acc_r = concept_accuracy(output_r, result.target)
         message_s: SequenceMessage = result.sender_message
         metrics = {
             "log_prob_s": message_s.log_prob.mean().item(),
             "entropy_s": message_s.entropy.mean().item(),
             "length_s": message_s.length.float().mean().item(),
             "uniques_s": language_uniques(message_s.sequence) / message_s.batch_size,
-            "acc_part_r": acc_part_r,
-            "acc_comp": acc_comp_r,
         }
+
+        output_r = result.receiver_output.argmax(dim=-1)
+        acc_part_r, acc_comp_r, acc_r = concept_accuracy(output_r, result.target)
+        metrics |= {"acc_part_r": acc_part_r, "acc_comp_r": acc_comp_r}
         metrics |= {f"acc_attr{str(i)}_r": acc for i, acc in enumerate(list(acc_r))}
+
+        if result.sender_output is not None:
+            output_s = result.sender_output.argmax(dim=-1)
+            acc_part_s, acc_comp_s, acc_s = concept_accuracy(output_s, result.target)
+            metrics |= {"acc_part_s": acc_part_s, "acc_comp_s": acc_comp_s}
+            metrics |= {f"acc_attr{str(i)}_s": acc for i, acc in enumerate(list(acc_s))}
+
+        if cfg.sender_receive:
+            _, message_latent_s = result.sender(
+                message=result.sender_message, command="receive"
+            )
+            _, input_latent_s = result.sender_latent
+            sender_latent_loss = th.nn.functional.mse_loss(
+                input_latent_s, message_latent_s
+            )
+            metrics |= {"sender_latent_loss": sender_latent_loss.sum().item()}
+
+        if cfg.receiver_input:
+            output_r = result.receiver_output.argmax(dim=-1)
+            _, input_latent_r = result.receiver(input=output_r, command="input")
+            _, message_latent_r = result.receiver_latent
+            receiver_latent_loss = th.nn.functional.mse_loss(
+                input_latent_r, message_latent_r
+            )
+            metrics |= {"receiver_latent_loss": receiver_latent_loss.sum().item()}
 
         return metrics
 
     # make game evaluators
     evaluators = [
         SignalingGameEvaluator(
+            game=game,
             agents=agents,
             input=dataset,
             target=dataset,
-            metric=game_metric,
+            metric=metric,
             logger=loggers,
             name=name,
-            option=game_option,
         )
         for dataset, name in [(train_dataset, "train"), (valid_dataset, "valid")]
     ]
@@ -288,7 +365,7 @@ def run_signaling(config: dict):
         IntervalScheduler(agent_initializer, 100000),
         IntervalScheduler(evaluators, cfg.eval_interval),
         IntervalScheduler(trainer, 1),
-        IntervalScheduler(language_evaluator, 100000, 1000000),
+        IntervalScheduler(language_evaluator, 100, 0),
     ]
     callbacks.extend(loggers)
 

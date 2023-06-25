@@ -46,6 +46,18 @@ length_weight = 0.0
 # task
 max_batches_signal = 1
 
-# echo 
-receiver_echo = false
-sender_internal = true
+# option 
+sender_output = false
+sender_receive = false
+receiver_send = false
+receiver_input = false
+
+receiver_ruminate = true
+
+# weight
+sender_message_loss_weight = 1.0
+receiver_output_loss_weight = 1.0
+sender_output_loss_weight = 1.0
+receiver_message_loss_weight = 1.0
+receiver_latent_loss_weight = 1.0
+sender_latent_loss_weight = 1.0

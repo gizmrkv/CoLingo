@@ -77,32 +77,27 @@ class ConceptOrMessageAgent(th.nn.Module):
         self,
         input: th.Tensor | None = None,
         message: th.Tensor | None = None,
-        hidden: th.Tensor | None = None,
+        latent: th.Tensor | None = None,
         command: str | None = None,
     ):
-        if command == "input":
-            match (input, message):
-                case (input, None):
-                    return (input, self.concept_encoder(input))
-                case (None, message):
-                    return (message, self.message_encoder(message))
-                case (_, _):
-                    raise ValueError("input and message cannot both be provided")
-
-        if command == "echo_input":
-            return (input, self.message_encoder(input))
-
         match command:
+            case "input":
+                return (input, self.concept_encoder(input))
             case "output":
-                return self.concept_decoder(hidden[1])
-            case "message":
-                return self.message_decoder(hidden[1])
+                _, latent = latent
+                return self.concept_decoder(latent)
+            case "receive":
+                return (message, self.message_encoder(message))
+            case "send":
+                _, latent = latent
+                return self.message_decoder(latent)
             case "echo":
-                rnn_hidden = self.message_decoder.rnn_hidden(hidden[1])
+                message, latent = latent
+                rnn_hidden = self.message_decoder.rnn_hidden(latent)
                 msg_emb = self.message_decoder.msg_embed(
-                    hidden[0].sequence
-                    if isinstance(hidden[0], SequenceMessage)
-                    else hidden[0]
+                    message.sequence
+                    if isinstance(message, SequenceMessage)
+                    else message
                 )
                 logits, _ = self.message_decoder.rnn(msg_emb, rnn_hidden)
                 logits = self.message_decoder.hidden2logits(logits)
