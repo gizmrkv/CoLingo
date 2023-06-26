@@ -1,21 +1,17 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- 部品を差し替えられるAgent
+  - encoders, shared model, decoders
+  - MLPEncoder, MLPDecoder, MLPSharedNet (Mixed)
+  - RNNEncoder, RNNDecoder
+  - TransformerEncoder, TransformerDecoder
+  - Seq2SeqEncoder, Seq2SeqDecoder
+  - VAEncoder, VADecoder
 
-- Signaling Game Loss Processors
-  - GameResultをもらって，Agentに入出力させたり，ロスを計算をカスタムして加えたりする機能．mod
-  - game(input): GameResult
-    - mod1(result): Mod1Result
-    - mod2(result): Mod2Result
-    - mod3(result): Mod3Result
-  - integrated_game(game, mods, input) -> list[results; 1+|mods|]
-  - loss(results) -> loss: float
-  - metrics(results) -> metrics: dict
-  - optimziers(results) -> optimizers: list[optimizer]
+- Agentのcommandに対する挙動は外部から差し替えられるように
+  - command: strをキー，挙動関数を値とする辞書を渡す
 
-
-- 世代交代する場合，しない場合で比較
-- TextMessage dataclass 
 - Evaluator -> Logger の間に WandBProcessor を挟む
 - Agent数の2乗に比例して計算量が増えるEvaluatorの対処
   - verbose: int = 0 | 1 | 2 で，0は何もしない，1は1エージェントのみ，2は全エージェント
@@ -24,12 +20,6 @@
   - 初めて閾値を超えたとき
   - 移動分散がしきい値を下回ったとき
 
-- Gameは，逆伝播できる場合は統一，強化学習する場合は個別に実装する．
-  - 強化学習を使う場合，何をロス計算に使うかはデータ形式によるため，Gameはデータ形式を知っている必要がある．
-  - よって統一が難しい．
-- 大人はフリーズ，子供だけ学習
-  - フリーズするAgentのoptimizerを作らないだけでは不十分
-  - フリーズするならwith no_gradしたいけど，Agent間に計算グラフが渡る場合，学習するAgentまで勾配が渡らない
 - 自分の発言は自分にも聞こえる
 - Task
   - Speech
