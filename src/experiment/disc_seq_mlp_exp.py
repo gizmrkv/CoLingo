@@ -94,7 +94,7 @@ def run_disc_seq_mlp_exp(cfg: dict):
         use_residual=cfg.decoder_use_residual,
         n_blocks=cfg.n_decoder_blocks,
     )
-    agent = Agent(encoder, decoder)
+    agent = Agent(encoder, decoder).to(cfg.device)
     optimizer = optim.Adam(agent.parameters(), lr=cfg.lr)
 
     agents = {"A": agent}
