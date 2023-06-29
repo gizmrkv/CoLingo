@@ -1,13 +1,26 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- 先行研究から，具体的にどんな実験設定を構築できるべきかを列挙するべき
+- attribute-value のクロスエントロピー誤差によるSupervised Learning(SV)，または正答率によるReinforcement Learning(RF)の選択
+- 報酬のタイプを選べるようにしたい．ロスか正答率か
+- Reconstruction か Discrimination か選択
+- 活性化関数の選択（ReLU，ERU，GELUなど）
+- train, testデータセットに対するtopsim, lansimの計算
+- みんなの話す言語がシンクロしていると言語の学習が早いという方針
+
+- dataclassの統一
+  1. DiscreteSequence
+  2. ContinuousSequence
+  3. 
+
+
 - 部品を差し替えられるAgent
   - encoders, shared model, decoders
-  - MLPEncoder, MLPDecoder, MLPSharedNet (Mixed)
-  - RNNEncoder, RNNDecoder
   - TransformerEncoder, TransformerDecoder
   - Seq2SeqEncoder, Seq2SeqDecoder
   - VAEncoder, VADecoder
+  - MLPSharedNet (Mixed)
 
 - Agentのcommandに対する挙動は外部から差し替えられるように
   - command: strをキー，挙動関数を値とする辞書を渡す
