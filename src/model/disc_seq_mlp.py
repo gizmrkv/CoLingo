@@ -53,15 +53,17 @@ class DiscSeqMLPEncoder(nn.Module):
         )
 
         if use_layer_norm:
-            self.layer_norm = nn.LayerNorm(hidden_dim)
+            self.layer_norms = nn.ModuleList(
+                [nn.LayerNorm(hidden_dim) for _ in range(n_blocks)]
+            )
 
     def forward(self, x: TensorType["batch", "length", int]):
         x = self.embed(x)
         x = x.view(-1, self.length * self.embed_dim)
         x = self.embed2hidden(x)
-        for layer in self.mlp:
+        for layer, norm in zip(self.mlp, self.layer_norms):
             if self.use_layer_norm:
-                x = self.layer_norm(x)
+                x = norm(x)
 
             if self.use_residual:
                 x = x + layer(x)
@@ -116,13 +118,15 @@ class DiscSeqMLPDecoder(nn.Module):
             ]
         )
         if use_layer_norm:
-            self.layer_norm = nn.LayerNorm(hidden_dim)
+            self.layer_norms = nn.ModuleList(
+                [nn.LayerNorm(hidden_dim) for _ in range(n_blocks)]
+            )
 
     def forward(self, x: TensorType["batch", "input_dim", float]):
         x = self.input2hidden(x)
-        for layer in self.mlp:
+        for layer, norm in zip(self.mlp, self.layer_norms):
             if self.use_layer_norm:
-                x = self.layer_norm(x)
+                x = norm(x)
 
             if self.use_residual:
                 x = x + layer(x)
