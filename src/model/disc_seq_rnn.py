@@ -97,8 +97,7 @@ class DiscSeqRNNDecoder(nn.Module):
 
                 i = self.embed(x)
                 output.append(x)
-                if self.training:
-                    logits.append(logit)
+                logits.append(logit)
 
             output = torch.cat(output, dim=1)
             logits = torch.cat(logits, dim=1)
