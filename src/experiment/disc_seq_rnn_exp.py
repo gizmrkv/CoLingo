@@ -40,7 +40,6 @@ def run_disc_seq_rnn_exp(cfg: dict):
     cfg = Config(**cfg)
 
     encoder = DiscSeqRNNEncoder(
-        length=cfg.length,
         n_values=cfg.n_values,
         output_dim=cfg.latent_dim,
         hidden_dim=cfg.encoder_hidden_dim,

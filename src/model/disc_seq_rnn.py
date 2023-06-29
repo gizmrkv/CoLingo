@@ -8,7 +8,6 @@ from torchtyping import TensorType
 class DiscSeqRNNEncoder(nn.Module):
     def __init__(
         self,
-        length: int,
         n_values: int,
         output_dim: int,
         hidden_dim: int,
@@ -17,7 +16,6 @@ class DiscSeqRNNEncoder(nn.Module):
         n_layers: int = 1,
     ):
         super().__init__()
-        self.length = length
         self.n_values = n_values
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
