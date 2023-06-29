@@ -13,6 +13,7 @@ from ..logger import Logger
 
 @dataclass
 class InferringGameResult:
+    agent: Any
     input: Any
     output: Any
     info: Any
@@ -27,7 +28,7 @@ class InferringGame(nn.Module):
     def forward(self, agent, input) -> InferringGameResult:
         latent = agent(input=input, command=self.input_command)
         output, info = agent(latent=latent, command=self.output_command)
-        result = InferringGameResult(input=input, output=output, info=info)
+        result = InferringGameResult(agent=agent, input=input, output=output, info=info)
         return result
 
 
