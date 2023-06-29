@@ -3,10 +3,24 @@ from itertools import product
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
 
+from ..core import Runner
 from ..dataset import random_split
-from ..model import DiscSeqRNNDecoder, DiscSeqRNNEncoder
+from ..game import (
+    InferringGame,
+    InferringGameEvaluator,
+    InferringGameResult,
+    InferringGameTrainer,
+)
+from ..logger import WandBLogger
+from ..model import (
+    DiscSeqMLPDecoder,
+    DiscSeqMLPEncoder,
+    DiscSeqRNNDecoder,
+    DiscSeqRNNEncoder,
+)
 
 
 @dataclass
@@ -16,6 +30,7 @@ class Config:
     batch_size: int
     seed: int
     device: str
+    wandb_project: str
 
     # common config
     lr: float
@@ -36,8 +51,29 @@ class Config:
     n_decoder_layers: int
 
 
+class Agent(nn.Module):
+    def __init__(self, encoder, decoder):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(
+        self,
+        input: torch.Tensor | None = None,
+        latent: torch.Tensor | None = None,
+        command: str | None = None,
+    ):
+        match command:
+            case "input":
+                return self.encoder(input)
+            case "output":
+                return self.decoder(latent)
+            case _:
+                raise ValueError(f"Unknown command: {command}")
+
+
 def run_disc_seq_rnn_exp(cfg: dict):
-    cfg = Config(**cfg)
+    cfg: Config = Config(**cfg)
 
     encoder = DiscSeqRNNEncoder(
         n_values=cfg.n_values,
@@ -56,6 +92,11 @@ def run_disc_seq_rnn_exp(cfg: dict):
         rnn_type=cfg.decoder_rnn_type,
         n_layers=cfg.n_decoder_layers,
     )
+    agent = Agent(encoder, decoder).to(cfg.device)
+    optimizer = optim.Adam(agent.parameters(), lr=cfg.lr)
+
+    agents = {"A": agent}
+    optimizers = {"A": optimizer}
 
     dataset = (
         torch.Tensor(list(product(torch.arange(cfg.n_values), repeat=cfg.length)))
@@ -63,33 +104,54 @@ def run_disc_seq_rnn_exp(cfg: dict):
         .to(cfg.device)
     )
     train_dataset, valid_dataset = random_split(dataset, [0.8, 0.2])
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=cfg.batch_size)
-
-    optimizer = torch.optim.Adam(
-        list(encoder.parameters()) + list(decoder.parameters()), lr=cfg.lr
+    train_dataloader = DataLoader(
+        TensorDataset(train_dataset, train_dataset),
+        batch_size=cfg.batch_size,
+        shuffle=True,
     )
-    criterion = torch.nn.CrossEntropyLoss()
 
-    for epoch in range(cfg.n_epochs):
-        for batch in train_dataloader:
-            optimizer.zero_grad()
-            z = encoder(batch)
-            _, logits = decoder(z, input=batch)
-            logits = logits.view(-1, cfg.n_values)
-            batch = batch.view(-1)
-            loss = criterion(logits, batch)
-            loss.backward()
-            optimizer.step()
+    def loss(result: InferringGameResult, target: torch.Tensor):
+        logits = result.info.view(-1, cfg.n_values)
+        target = target.view(-1)
+        return F.cross_entropy(logits, target)
 
-        with torch.no_grad():
-            mean_acc = 0
-            for batch in valid_dataloader:
-                z = encoder(batch)
-                x, _ = decoder(z, input=batch)
-                x = x.view(-1)
-                batch = batch.view(-1)
-                acc = (x == batch).float().mean().item()
-                mean_acc += acc
+    game = InferringGame()
+    trainer = InferringGameTrainer(
+        game=game,
+        agents=agents,
+        optimizers=optimizers,
+        dataloader=train_dataloader,
+        loss=loss,
+    )
 
-            print(f"Epoch {epoch} | Valid Acc: {mean_acc:.4f}")
+    def metric(result: InferringGameResult):
+        mark = result.output == result.input
+        acc_comp = mark.all(dim=-1).float().mean().item()
+        acc = mark.float().mean(dim=0)
+        acc_part = acc.mean().item()
+        met = {"acc_comp": acc_comp, "acc_part": acc_part}
+        met |= {f"acc{i}": a for i, a in enumerate(list(acc))}
+        return met
+
+    loggers = [WandBLogger(project=cfg.wandb_project)]
+
+    evaluators = [
+        InferringGameEvaluator(
+            game=game,
+            agents=agents,
+            input=input,
+            metric=metric,
+            logger=loggers,
+            name=name,
+        )
+        for name, input in [("train", train_dataset), ("valid", valid_dataset)]
+    ]
+
+    callbacks = [
+        trainer,
+        *evaluators,
+        *loggers,
+    ]
+
+    runner = Runner(callbacks)
+    runner.run(cfg.n_epochs)
