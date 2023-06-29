@@ -3,10 +3,11 @@ n_epochs = 500
 batch_size = 1000000
 seed = 42
 device = "cpu"
+wandb_project = "hoge"
 
 # common config
 lr = 1e-3
-length = 3
+length = 2
 n_values = 50
 latent_dim = 256
 embed_dim = 64
