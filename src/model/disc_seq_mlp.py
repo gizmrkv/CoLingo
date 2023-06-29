@@ -141,4 +141,4 @@ class DiscSeqMLPDecoder(nn.Module):
             x = distr.sample()
             return x, logits
         else:
-            return x.argmax(dim=-1)
+            return logits.argmax(dim=-1), logits

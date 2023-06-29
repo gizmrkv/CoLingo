@@ -114,7 +114,4 @@ class DiscSeqRNNDecoder(nn.Module):
             else:
                 output = logits.argmax(dim=-1)
 
-        if self.training:
-            return output, logits
-        else:
-            return output
+        return output, logits
