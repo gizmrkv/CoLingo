@@ -1,0 +1,26 @@
+# exp config
+n_epochs = 500
+batch_size = 1000000
+seed = 42
+device = "cpu"
+
+# common config
+lr = 1e-3
+length = 3
+n_values = 50
+latent_dim = 256
+embed_dim = 64
+
+# encoder config
+encoder_hidden_dim = 256
+encoder_activation = "relu"
+encoder_use_layer_norm = true
+encoder_use_residual = true
+n_encoder_blocks = 1
+
+# decoder config
+decoder_hidden_dim = 256
+decoder_activation = "relu"
+decoder_use_layer_norm = true
+decoder_use_residual = true
+n_decoder_blocks = 1

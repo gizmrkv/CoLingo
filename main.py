@@ -3,13 +3,20 @@ import json
 import toml
 import yaml
 
-from src.experiment import run_echoing, run_inferring, run_multilogue, run_signaling
+from src.experiment import (
+    run_disc_seq_mlp_exp,
+    run_echoing,
+    run_inferring,
+    run_multilogue,
+    run_signaling,
+)
 
 if __name__ == "__main__":
     exp = "signaling"
+    exp = "disc_seq_mlp_exp"
 
     # config_path = sys.argv[1]
-    config_path = f"config/{exp}.toml"
+    config_path = f"config/{exp}/1.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -29,3 +36,5 @@ if __name__ == "__main__":
         run_signaling(config)
     elif exp == "multilogue":
         run_multilogue(config)
+    elif exp == "disc_seq_mlp_exp":
+        run_disc_seq_mlp_exp(config)
