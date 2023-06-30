@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from itertools import islice
 from typing import Any, Callable, Iterable
 
-import torch as th
+import torch
+from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from ..core import Callback
@@ -15,71 +16,98 @@ class SignalingGameResult:
     sender: Any
     receiver: Any
     input: Any
-    target: Any
 
-    sender_latent: Any
-    sender_message: Any
-    receiver_latent: Any
-    receiver_output: Any
+    latent_s: Any
+    message_s: Any
+    message_info_s: Any
+    latent_r: Any
+    output_r: Any
+    output_info_r: Any
 
-    sender_output: Any | None = None
-    receiver_message: Any | None = None
+    output_s: Any | None = None
+    output_info_s: Any | None = None
+    message_r: Any | None = None
+    message_info_r: Any | None = None
+    latent_rec_s: Any | None = None
+    latent_rec_r: Any | None = None
 
 
-class SignalingGame(th.nn.Module):
+class SignalingGame(nn.Module):
     def __init__(
         self,
         run_sender_output: bool = False,
         run_receiver_send: bool = False,
+        run_sender_recursion: bool = False,
+        run_receiver_recursion: bool = False,
         sender_input_command: str = "input",
         sender_output_command: str = "output",
         sender_send_command: str = "send",
+        sender_receive_command: str = "receive",
+        receiver_input_command: str = "input",
         receiver_output_command: str = "output",
-        receiver_receive_command: str = "receive",
         receiver_send_command: str = "send",
+        receiver_receive_command: str = "receive",
     ):
         super().__init__()
         self.run_sender_output = run_sender_output
         self.run_receiver_send = run_receiver_send
+        self.run_sender_recursion = run_sender_recursion
+        self.run_receiver_recursion = run_receiver_recursion
         self.sender_input_command = sender_input_command
         self.sender_output_command = sender_output_command
         self.sender_send_command = sender_send_command
+        self.sender_receive_command = sender_receive_command
+        self.receiver_input_command = receiver_input_command
         self.receiver_output_command = receiver_output_command
-        self.receiver_receive_command = receiver_receive_command
         self.receiver_send_command = receiver_send_command
+        self.receiver_receive_command = receiver_receive_command
 
     def forward(
         self,
-        sender: th.nn.Module,
-        receiver: th.nn.Module,
-        input: th.Tensor,
-        target: th.Tensor,
+        sender: nn.Module,
+        receiver: nn.Module,
+        input: torch.Tensor,
     ) -> SignalingGameResult:
         latent_s = sender(input=input, command=self.sender_input_command)
-        message_s = sender(latent=latent_s, command=self.sender_send_command)
+        message_s, message_info_s = sender(
+            latent=latent_s, command=self.sender_send_command
+        )
 
         latent_r = receiver(message=message_s, command=self.receiver_receive_command)
-        output_r = receiver(latent=latent_r, command=self.receiver_output_command)
+        output_r, output_info_r = receiver(
+            latent=latent_r, command=self.receiver_output_command
+        )
 
         result = SignalingGameResult(
             sender=sender,
             receiver=receiver,
             input=input,
-            target=target,
-            sender_latent=latent_s,
-            sender_message=message_s,
-            receiver_latent=latent_r,
-            receiver_output=output_r,
+            latent_s=latent_s,
+            message_s=message_s,
+            message_info_s=message_info_s,
+            latent_r=latent_r,
+            output_r=output_r,
+            output_info_r=output_info_r,
         )
 
         if self.run_sender_output:
-            result.sender_output = sender(
+            result.output_s, result.output_info_s = sender(
                 latent=latent_s, command=self.sender_output_command
             )
 
         if self.run_receiver_send:
-            result.receiver_message = receiver(
+            result.message_r, result.message_info_r = receiver(
                 latent=latent_r, command=self.receiver_send_command
+            )
+
+        if self.run_sender_recursion:
+            result.latent_rec_s = sender(
+                message=message_s, command=self.sender_receive_command
+            )
+
+        if self.run_receiver_recursion:
+            result.latent_rec_r = receiver(
+                input=output_r, command=self.receiver_input_command
             )
 
         return result
@@ -89,10 +117,10 @@ class SignalingGameTrainer(Callback):
     def __init__(
         self,
         game: SignalingGame,
-        agents: dict[str, th.nn.Module],
-        optimizers: dict[str, th.optim.Optimizer],
+        agents: dict[str, nn.Module],
+        optimizers: dict[str, optim.Optimizer],
         dataloader: DataLoader,
-        loss: th.nn.Module,
+        loss: Callable[[SignalingGameResult, torch.Tensor], torch.Tensor],
         channels: list[(str, str)] | None = None,
         max_batches: int = 1,
     ):
@@ -116,37 +144,24 @@ class SignalingGameTrainer(Callback):
         name_s, name_r = random.choice(self.channels)
         sender = self.agents[name_s]
         receiver = self.agents[name_r]
-        optim_s = self.optimizers[name_s] if name_s in self.optimizers else None
-        optim_r = self.optimizers[name_r] if name_r in self.optimizers else None
+        optim_s = self.optimizers.get(name_s)
+        optim_r = self.optimizers.get(name_r)
 
         sender.train()
         receiver.train()
-        optim_s.zero_grad()
-        optim_r.zero_grad()
+        if optim_s is not None:
+            optim_s.zero_grad()
+        if optim_r is not None:
+            optim_r.zero_grad()
 
         for input, target in islice(self.dataloader, self.max_batches):
-            # result: SignalingGameResult = self.game(
-            #     sender=sender,
-            #     receiver=receiver,
-            #     input=input,
-            #     target=target,
-            # )
-            # self.loss(result).backward(retain_graph=True)
-            result1: SignalingGameResult = self.game(
+            result: SignalingGameResult = self.game(
                 sender=sender,
                 receiver=receiver,
                 input=input,
-                target=target,
             )
-            result2: SignalingGameResult = self.game(
-                sender=receiver,
-                receiver=sender,
-                input=input,
-                target=target,
-            )
-            loss1 = self.loss(result1)
-            loss2 = self.loss(result2)
-            (loss1 + loss2).backward(retain_graph=True)
+            loss: torch.Tensor = self.loss(result, target)
+            loss.sum().backward(retain_graph=True)
 
             if optim_s is not None:
                 optim_s.step()
@@ -158,9 +173,9 @@ class SignalingGameEvaluator(Callback):
     def __init__(
         self,
         game: SignalingGame,
-        agents: dict[str, th.nn.Module],
-        input: th.Tensor,
-        target: th.Tensor,
+        agents: dict[str, nn.Module],
+        input: torch.Tensor,
+        target: torch.Tensor,
         metric: Callable[[SignalingGameResult], dict],
         logger: Logger | Iterable[Logger],
         name: str,
@@ -200,23 +215,18 @@ class SignalingGameEvaluator(Callback):
 
     def evaluate(self):
         log = {}
-        for sender_name, receiver_name in self.channels:
-            sender = self.agents[sender_name]
-            receiver = self.agents[receiver_name]
+        for name_s, name_r in self.channels:
+            sender = self.agents[name_s]
+            receiver = self.agents[name_r]
 
             sender.eval()
             receiver.eval()
 
-            with th.no_grad():
-                result = self.game(
-                    sender=sender,
-                    receiver=receiver,
-                    input=self.input,
-                    target=self.target,
-                )
+            with torch.no_grad():
+                result = self.game(sender=sender, receiver=receiver, input=self.input)
 
             metric = self.metric(result)
-            log |= {f"{sender_name} -> {receiver_name}": metric}
+            log |= {f"{name_s} -> {name_r}": metric}
 
         for logger in self.loggers:
             logger.log({self.name: log})
