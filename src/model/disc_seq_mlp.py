@@ -36,41 +36,38 @@ class DiscSeqMLPEncoder(nn.Module):
         self.activation = (
             activations[activation] if isinstance(activation, str) else activation
         )
-
         self.embed = nn.Embedding(n_values, embed_dim)
-        self.embed2hidden = nn.Linear(length * embed_dim, hidden_dim)
+        self.input2hidden = nn.Linear(length * embed_dim, hidden_dim)
         self.hidden2output = nn.Linear(hidden_dim, output_dim)
 
-        self.mlp = nn.ModuleList(
+        self.tower = nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(hidden_dim, hidden_dim),
                     self.activation,
                     nn.Linear(hidden_dim, hidden_dim),
                 )
                 for _ in range(n_blocks)
             ]
         )
-
         if use_layer_norm:
             self.layer_norms = nn.ModuleList(
                 [nn.LayerNorm(hidden_dim) for _ in range(n_blocks)]
             )
 
     def forward(self, x: TensorType["batch", "length", int]):
-        x = self.embed(x)
-        x = x.view(-1, self.length * self.embed_dim)
-        x = self.embed2hidden(x)
-        for layer, norm in zip(self.mlp, self.layer_norms):
-            if self.use_layer_norm:
-                x = norm(x)
-
+        x = torch.cat([self.embed(x[:, i]) for i in range(self.length)], dim=1)
+        x = self.input2hidden(x)
+        for i, block in enumerate(self.tower):
             if self.use_residual:
-                x = x + layer(x)
+                x = x + block(x)
             else:
-                x = layer(x)
+                x = block(x)
+            if self.use_layer_norm:
+                x = self.layer_norms[i](x)
 
+        x = self.activation(x)
         x = self.hidden2output(x)
+
         return x
 
 
@@ -104,36 +101,15 @@ class DiscSeqMLPDecoder(nn.Module):
             activations[activation] if isinstance(activation, str) else activation
         )
 
-        self.input2hidden = nn.Linear(input_dim, hidden_dim)
-        self.hidden2output = nn.Linear(hidden_dim, length * n_values)
-
-        self.mlp = nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.Linear(hidden_dim, hidden_dim),
-                    self.activation,
-                    nn.Linear(hidden_dim, hidden_dim),
-                )
-                for _ in range(n_blocks)
-            ]
+        self.input2output = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            self.activation,
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, length * n_values),
         )
-        if use_layer_norm:
-            self.layer_norms = nn.ModuleList(
-                [nn.LayerNorm(hidden_dim) for _ in range(n_blocks)]
-            )
 
     def forward(self, x: TensorType["batch", "input_dim", float]):
-        x = self.input2hidden(x)
-        for layer, norm in zip(self.mlp, self.layer_norms):
-            if self.use_layer_norm:
-                x = norm(x)
-
-            if self.use_residual:
-                x = x + layer(x)
-            else:
-                x = layer(x)
-
-        x = self.hidden2output(x)
+        x = self.input2output(x)
         logits = x.view(-1, self.length, self.n_values)
 
         if self.training:

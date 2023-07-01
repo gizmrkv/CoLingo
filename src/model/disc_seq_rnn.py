@@ -75,17 +75,15 @@ class DiscSeqRNNDecoder(nn.Module):
         x: TensorType["batch", "input_dim", float],
         input: TensorType["batch", "length", int] | None = None,
     ):
-        h = torch.stack([i2h(x) for i2h in self.input2hidden], dim=0)
+        h = torch.stack([i2h(x) for i2h in self.input2hidden])
         if isinstance(self.rnn, nn.LSTM):
-            h = (h, h)
-
-        output = []
-        logits = []
+            h = (h, torch.zeros_like(h))
 
         if input is None:
+            output = []
+            logits = []
             i = self.sos_embed.repeat(x.shape[0], 1, 1)
             for _ in range(self.length):
-                # i = i.unsqueeze(1)
                 y, h = self.rnn(i, h)
                 logit = self.hidden2output(y)
 
@@ -105,7 +103,7 @@ class DiscSeqRNNDecoder(nn.Module):
         else:
             i = self.embed(input)
             y, _ = self.rnn(i, h)
-            logits = self.hidden2output(y)
+            logits: torch.Tensor = self.hidden2output(y)
 
             if self.training:
                 distr = Categorical(logits=logits)
