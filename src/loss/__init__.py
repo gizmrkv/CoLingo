@@ -1,2 +1,1 @@
-from .concept import ConceptLoss, OnehotConceptLoss
-from .sequence_message import SequenceMessageLoss
+from .disc_seq_reinforce import DiscSeqReinforceLoss
