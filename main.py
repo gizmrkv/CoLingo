@@ -6,16 +6,13 @@ import yaml
 from src.experiment import (
     run_disc_seq_mlp_exp,
     run_disc_seq_rnn_exp,
-    run_echoing,
-    run_inferring,
-    run_multilogue,
-    run_signaling,
+    run_mlp_rnn_signaling_exp,
 )
 
 if __name__ == "__main__":
-    exp = "signaling"
     exp = "disc_seq_mlp_exp"
     exp = "disc_seq_rnn_exp"
+    exp = "mlp_rnn_signaling_exp"
 
     # config_path = sys.argv[1]
     config_path = f"config/{exp}/1.toml"
@@ -30,15 +27,9 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    if exp == "echoing":
-        run_echoing(config)
-    elif exp == "inferring":
-        run_inferring(config)
-    elif exp == "signaling":
-        run_signaling(config)
-    elif exp == "multilogue":
-        run_multilogue(config)
-    elif exp == "disc_seq_mlp_exp":
+    if exp == "disc_seq_mlp_exp":
         run_disc_seq_mlp_exp(config)
     elif exp == "disc_seq_rnn_exp":
         run_disc_seq_rnn_exp(config)
+    elif exp == "mlp_rnn_signaling_exp":
+        run_mlp_rnn_signaling_exp(config)

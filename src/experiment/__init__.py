@@ -1,6 +1,3 @@
 from .disc_seq_mlp_exp import run_disc_seq_mlp_exp
 from .disc_seq_rnn_exp import run_disc_seq_rnn_exp
-from .echoing import run_echoing
-from .inferring import run_inferring
-from .multilogue import run_multilogue
-from .signaling import run_signaling
+from .mlp_rnn_signaling import run_mlp_rnn_signaling_exp
