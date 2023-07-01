@@ -175,7 +175,6 @@ class SignalingGameEvaluator(Callback):
         game: SignalingGame,
         agents: dict[str, nn.Module],
         input: torch.Tensor,
-        target: torch.Tensor,
         metric: Callable[[SignalingGameResult], dict],
         logger: Logger | Iterable[Logger],
         name: str,
@@ -187,7 +186,6 @@ class SignalingGameEvaluator(Callback):
         self.game = game
         self.agents = agents
         self.input = input
-        self.target = target
         self.metric = metric
         self.loggers = [logger] if isinstance(logger, Logger) else logger
         self.name = name
