@@ -1,18 +1,16 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## TODO
+- 非常に大きなデータセットの部分集合を作るデータセット
+  - 何個作るか？学習用と検証用で分けるには？
+
 - 先行研究から，具体的にどんな実験設定を構築できるべきかを列挙するべき
 - attribute-value のクロスエントロピー誤差によるSupervised Learning(SV)，または正答率によるReinforcement Learning(RF)の選択
 - 報酬のタイプを選べるようにしたい．ロスか正答率か
-- Reconstruction か Discrimination か選択
+- Reconstruction(Generation) か Discrimination か選択
 - 活性化関数の選択（ReLU，ERU，GELUなど）
 - train, testデータセットに対するtopsim, lansimの計算
 - みんなの話す言語がシンクロしていると言語の学習が早いという方針
-
-- dataclassの統一
-  1. DiscreteSequence
-  2. ContinuousSequence
-  3. 
 
 
 - 部品を差し替えられるAgent
