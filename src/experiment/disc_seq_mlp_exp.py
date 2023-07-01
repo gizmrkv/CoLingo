@@ -39,14 +39,14 @@ class Config:
     encoder_activation: str
     encoder_use_layer_norm: bool
     encoder_use_residual: bool
-    n_encoder_blocks: int
+    encoder_n_blocks: int
 
     # decoder config
     decoder_hidden_dim: int
     decoder_activation: str
     decoder_use_layer_norm: bool
     decoder_use_residual: bool
-    n_decoder_blocks: int
+    decoder_n_blocks: int
 
 
 class Agent(nn.Module):
@@ -82,7 +82,7 @@ def run_disc_seq_mlp_exp(cfg: dict):
         activation=cfg.encoder_activation,
         use_layer_norm=cfg.encoder_use_layer_norm,
         use_residual=cfg.encoder_use_residual,
-        n_blocks=cfg.n_encoder_blocks,
+        n_blocks=cfg.encoder_n_blocks,
     )
     decoder = DiscSeqMLPDecoder(
         length=cfg.length,
@@ -92,7 +92,7 @@ def run_disc_seq_mlp_exp(cfg: dict):
         activation=cfg.decoder_activation,
         use_layer_norm=cfg.decoder_use_layer_norm,
         use_residual=cfg.decoder_use_residual,
-        n_blocks=cfg.n_decoder_blocks,
+        n_blocks=cfg.decoder_n_blocks,
     )
     agent = Agent(encoder, decoder).to(cfg.device)
     optimizer = optim.Adam(agent.parameters(), lr=cfg.lr)

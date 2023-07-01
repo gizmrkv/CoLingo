@@ -42,13 +42,13 @@ class Config:
     encoder_hidden_dim: int
     encoder_embed_dim: int
     encoder_rnn_type: str
-    n_encoder_layers: int
+    encoder_n_layers: int
 
     # decoder config
     decoder_hidden_dim: int
     decoder_embed_dim: int
     decoder_rnn_type: str
-    n_decoder_layers: int
+    decoder_n_layers: int
 
 
 class Agent(nn.Module):
@@ -81,7 +81,7 @@ def run_disc_seq_rnn_exp(cfg: dict):
         hidden_dim=cfg.encoder_hidden_dim,
         embed_dim=cfg.encoder_embed_dim,
         rnn_type=cfg.encoder_rnn_type,
-        n_layers=cfg.n_encoder_layers,
+        n_layers=cfg.encoder_n_layers,
     )
     decoder = DiscSeqRNNDecoder(
         length=cfg.length,
@@ -90,7 +90,7 @@ def run_disc_seq_rnn_exp(cfg: dict):
         hidden_dim=cfg.decoder_hidden_dim,
         embed_dim=cfg.decoder_embed_dim,
         rnn_type=cfg.decoder_rnn_type,
-        n_layers=cfg.n_decoder_layers,
+        n_layers=cfg.decoder_n_layers,
     )
     agent = Agent(encoder, decoder).to(cfg.device)
     optimizer = optim.Adam(agent.parameters(), lr=cfg.lr)

@@ -2,7 +2,8 @@
 n_epochs = 500
 batch_size = 1000000
 seed = 42
-device = "cpu"
+device = "cuda"
+wandb_project = "hoge"
 
 # common config
 lr = 1e-3
