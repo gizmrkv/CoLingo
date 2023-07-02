@@ -153,7 +153,7 @@ class DiscSeqAdapter(nn.Module):
             log_prob = log_prob * mask
             entropy = entropy * mask
 
-        return x, (log_prob, entropy, length, mask)
+        return x, (log_prob, entropy, length, mask, logits)
 
 
 def run_mlp_rnn_signaling_exp(config: dict):
@@ -256,22 +256,45 @@ def run_mlp_rnn_signaling_exp(config: dict):
     )
 
     def loss(result: SignalingGameResult, target: torch.Tensor):
-        out_logits_r = result.output_info_r
-        out_logits_r = out_logits_r.view(-1, cfg.input_n_values)
-        loss_out_r = F.cross_entropy(out_logits_r, target.view(-1), reduction="none")
+        logits_out_r = result.output_info_r
+        logits_out_r = logits_out_r.view(-1, cfg.input_n_values)
+        loss_out_r = F.cross_entropy(logits_out_r, target.view(-1), reduction="none")
         loss_out_r = loss_out_r.view(-1, cfg.input_length).sum(dim=-1)
+        total_loss = loss_out_r
 
-        log_prob_msg_s, entropy_msg_s, length_msg_s, _ = result.message_info_s
+        log_prob_msg_s, entropy_msg_s, length_msg_s, _, _ = result.message_info_s
         loss_msg_s = disc_seq_rf_loss(
             reward=-loss_out_r.detach(),
             log_prob=log_prob_msg_s,
             entropy=entropy_msg_s,
             length=length_msg_s,
         )
+        total_loss += loss_msg_s
 
-        return loss_out_r + loss_msg_s
+        if result.output_s is not None:
+            logits_out_s = result.output_info_s
+            logits_out_s = logits_out_s.view(-1, cfg.input_n_values)
+            loss_out_s = F.cross_entropy(
+                logits_out_s, target.view(-1), reduction="none"
+            )
+            loss_out_s = loss_out_s.view(-1, cfg.input_length).sum(dim=-1)
+            total_loss += loss_out_s
 
-    game = SignalingGame()
+        if result.message_r is not None:
+            _, _, _, _, logits_msg_r = result.message_info_r
+            msg_s = result.message_s
+            # bsz, len, n_values
+            loss_msg_r = F.cross_entropy(
+                logits_msg_r.view(-1, cfg.message_n_values),
+                msg_s.view(-1),
+                reduction="none",
+            )
+            loss_msg_r = loss_msg_r.view(-1, cfg.message_length).sum(dim=-1)
+            total_loss += loss_msg_r
+
+        return total_loss
+
+    game = SignalingGame(run_sender_output=True, run_receiver_send=True)
     trainer = SignalingGameTrainer(
         game=game,
         agents=agents,
@@ -376,7 +399,7 @@ def run_mlp_rnn_signaling_exp(config: dict):
         *evaluators,
         *loggers,
         IntervalScheduler(lansim_evaluators, 100),
-        IntervalScheduler(topsim_evaluators, 500),
+        IntervalScheduler(topsim_evaluators, 100),
         IntervalScheduler(agent_initializer, 100000),
     ]
 
