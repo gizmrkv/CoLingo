@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from itertools import combinations, product
 from typing import Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
@@ -13,12 +14,7 @@ from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 from torchtyping import TensorType
 
-from ..analysis import (
-    levenshtein_language_similarity,
-    norm_edit,
-    norm_hamming,
-    topographic_similarity,
-)
+from ..analysis import language_similarity, topographic_similarity
 from ..baseline import BatchMeanBaseline
 from ..core import Runner
 from ..dataset import random_split
@@ -29,7 +25,6 @@ from ..game import (
     InferringGame,
     InferringGameEvaluator,
     InferringGameResult,
-    InferringGameTrainer,
     SignalingGame,
     SignalingGameEvaluator,
     SignalingGameResult,
@@ -308,10 +303,80 @@ def run_mlp_rnn_signaling_exp(config: dict):
         for name, input in [("train", train_dataset), ("valid", valid_dataset)]
     ]
 
+    def drop_padding(x: np.ndarray):
+        i = np.argwhere(x == 0)
+        return x if len(i) == 0 else x[: i[0, 0]]
+
+    def lansim_metric(result: CollectiveInferringGameResult):
+        names = list(result.agents)
+        met = {}
+        for name1, name2 in combinations(names, 2):
+            output1: torch.Tensor = result.outputs[name1]
+            output2: torch.Tensor = result.outputs[name2]
+            output1 = output1.cpu().numpy()
+            output2 = output2.cpu().numpy()
+
+            lansim = language_similarity(
+                output1,
+                output2,
+                dist="Levenshtein",
+                processor=drop_padding,
+                normalized=True,
+            )
+            met[f"{name1}-{name2}"] = lansim
+
+        met["mean"] = np.mean(list(met.values()))
+        return met
+
+    def topsim_metric(result: CollectiveInferringGameResult):
+        input = result.input.cpu().numpy()
+        met = {}
+        for name in result.agents:
+            output = result.outputs[name].cpu().numpy()
+            topsim = topographic_similarity(
+                input, output, y_processor=drop_padding, workers=-1
+            )
+            met[name] = topsim
+
+        met["mean"] = np.mean(list(met.values()))
+        return met
+
+    lansim_game = CollectiveInferringGame(output_command="send")
+    lansim_evaluators = [
+        CollectiveInferringGameEvaluator(
+            game=lansim_game,
+            agents=agents,
+            input=input,
+            metric=lansim_metric,
+            logger=loggers,
+            name=name,
+        )
+        for name, input in [
+            ("train_sync", train_dataset),
+            ("valid_sync", valid_dataset),
+        ]
+    ]
+    topsim_evaluators = [
+        CollectiveInferringGameEvaluator(
+            game=lansim_game,
+            agents=agents,
+            input=input,
+            metric=topsim_metric,
+            logger=loggers,
+            name=name,
+        )
+        for name, input in [
+            ("train_topo", train_dataset),
+            ("valid_topo", valid_dataset),
+        ]
+    ]
+
     callbacks = [
         trainer,
         *evaluators,
         *loggers,
+        IntervalScheduler(lansim_evaluators, 100),
+        IntervalScheduler(topsim_evaluators, 500),
         IntervalScheduler(agent_initializer, 100000),
     ]
 

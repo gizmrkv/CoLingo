@@ -81,4 +81,4 @@ class CollectiveInferringGameEvaluator(Callback):
         result = self.game(self.agents, self.input)
         metrics = self.metric(result)
         for logger in self.loggers:
-            logger.log(metrics, self.name)
+            logger.log({self.name: metrics})

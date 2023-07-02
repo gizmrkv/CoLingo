@@ -2,7 +2,6 @@ from typing import Callable
 
 import numpy as np
 import torch as th
-from numba import njit
 from rapidfuzz.distance import (
     OSA,
     DamerauLevenshtein,
@@ -18,7 +17,18 @@ from rapidfuzz.distance import (
 from rapidfuzz.process import cdist
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
-from .distance import norm_edit, pdist
+str2distance = {
+    "DamerauLevenshtein": DamerauLevenshtein,
+    "Levenshtein": Levenshtein,
+    "Hamming": Hamming,
+    "Indel": Indel,
+    "Jaro": Jaro,
+    "JaroWinkler": JaroWinkler,
+    "LCSseq": LCSseq,
+    "OSA": OSA,
+    "Postfix": Postfix,
+    "Prefix": Prefix,
+}
 
 
 def topographic_similarity(
@@ -26,26 +36,14 @@ def topographic_similarity(
     y: np.ndarray,
     x_dist: str = "Hamming",
     y_dist: str = "Levenshtein",
+    corr: str = "spearman",
     x_processor: Callable[[np.ndarray], np.ndarray] | None = None,
     y_processor: Callable[[np.ndarray], np.ndarray] | None = None,
-    corr: str = "spearman",
-    normalized: bool = False,
+    normalized: bool = True,
     workers: int = 1,
 ) -> float:
-    dists = {
-        "DamerauLevenshtein": DamerauLevenshtein,
-        "Levenshtein": Levenshtein,
-        "Hamming": Hamming,
-        "Indel": Indel,
-        "Jaro": Jaro,
-        "JaroWinkler": JaroWinkler,
-        "LCSseq": LCSseq,
-        "OSA": OSA,
-        "Postfix": Postfix,
-        "Prefix": Prefix,
-    }
-    x_dist = dists[x_dist]
-    y_dist = dists[y_dist]
+    x_dist = str2distance[x_dist]
+    y_dist = str2distance[y_dist]
 
     if normalized:
         x_dist = x_dist.normalized_distance
@@ -69,11 +67,21 @@ def topographic_similarity(
     return corr(x_pdist, y_pdist).correlation
 
 
-@njit
-def levenshtein_language_similarity(
-    x: np.ndarray, y: np.ndarray, x_len: np.ndarray, y_len: np.ndarray
+def language_similarity(
+    x: np.ndarray,
+    y: np.ndarray,
+    dist: str,
+    processor: Callable[[np.ndarray], np.ndarray] | None = None,
+    normalized: bool = True,
 ) -> float:
-    dist = np.arange(x.shape[0])
-    for i in range(x.shape[0]):
-        dist[i] = norm_edit(x[i, : x_len[i]], y[i, : y_len[i]])
-    return 1 - dist.mean()
+    dist = str2distance[dist]
+    if normalized:
+        dist = dist.normalized_similarity
+    else:
+        dist = dist.similarity
+
+    mean_dist = 0
+    for xx, yy in zip(x, y):
+        mean_dist += dist(xx, yy, processor=processor)
+
+    return mean_dist / len(x)
