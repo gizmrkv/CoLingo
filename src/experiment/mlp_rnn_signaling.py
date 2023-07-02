@@ -13,10 +13,19 @@ from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 from torchtyping import TensorType
 
+from ..analysis import (
+    levenshtein_language_similarity,
+    norm_edit,
+    norm_hamming,
+    topographic_similarity,
+)
 from ..baseline import BatchMeanBaseline
 from ..core import Runner
 from ..dataset import random_split
 from ..game import (
+    CollectiveInferringGame,
+    CollectiveInferringGameEvaluator,
+    CollectiveInferringGameResult,
     InferringGame,
     InferringGameEvaluator,
     InferringGameResult,

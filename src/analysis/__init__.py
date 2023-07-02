@@ -1,9 +1,2 @@
-from .concept import concept_accuracy, concept_distance
-from .language import (
-    LanguageEvaluator,
-    LanguageResult,
-    concept_topographic_similarity,
-    language_similarity,
-    language_uniques,
-)
-from .util import edit_distance, pdist
+from .distance import edit, hamming, norm_edit, norm_hamming, pdist
+from .language import levenshtein_language_similarity, topographic_similarity
