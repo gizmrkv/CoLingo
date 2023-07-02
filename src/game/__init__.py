@@ -1,3 +1,8 @@
+from .collective_inferring import (
+    CollectiveInferringGame,
+    CollectiveInferringGameEvaluator,
+    CollectiveInferringGameResult,
+)
 from .inferring import (
     InferringGame,
     InferringGameEvaluator,
