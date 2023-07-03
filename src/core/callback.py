@@ -34,30 +34,31 @@ class Callback(ABC):
     def random(self, prob: float):
         return Random(self, prob)
 
-    def count(self):
-        return Count(self)
-
 
 class CallbackWrapper(Callback):
     def __init__(self, callback: Callback | Iterable[Callback]):
         super().__init__()
         self.callbacks = [callback] if isinstance(callback, Callback) else callback
+        self.active = True
 
     def on_begin(self):
         for callback in self.callbacks:
             callback.on_begin()
 
     def on_pre_update(self, iteration: int):
-        for callback in self.callbacks:
-            callback.on_pre_update(iteration)
+        if self.active:
+            for callback in self.callbacks:
+                callback.on_pre_update(iteration)
 
     def on_update(self, iteration: int):
-        for callback in self.callbacks:
-            callback.on_update(iteration)
+        if self.active:
+            for callback in self.callbacks:
+                callback.on_update(iteration)
 
     def on_post_update(self, iteration: int):
-        for callback in self.callbacks:
-            callback.on_post_update(iteration)
+        if self.active:
+            for callback in self.callbacks:
+                callback.on_post_update(iteration)
 
     def on_end(self):
         for callback in self.callbacks:
@@ -73,13 +74,7 @@ class Never(CallbackWrapper):
         super().__init__(callback)
 
     def on_pre_update(self, iteration: int):
-        pass
-
-    def on_update(self, iteration: int):
-        pass
-
-    def on_post_update(self, iteration: int):
-        pass
+        self.active = False
 
 
 class Timer(CallbackWrapper):
@@ -87,27 +82,13 @@ class Timer(CallbackWrapper):
         super().__init__(callback)
         self._due_time = due_time
         self._period = period
-
-        self._run = False
         self._cnt = 0
 
     def on_pre_update(self, iteration: int):
         diff = self._cnt - self._due_time
-        self._run = diff >= 0 and diff % self._period == 0
+        self.active = diff >= 0 and diff % self._period == 0
         self._cnt += 1
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_pre_update(iteration)
-
-    def on_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_update(iteration)
-
-    def on_post_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_post_update(iteration)
+        super().on_pre_update(iteration)
 
 
 class Range(CallbackWrapper):
@@ -119,21 +100,9 @@ class Range(CallbackWrapper):
         self._cnt = 0
 
     def on_pre_update(self, iteration: int):
-        self._run = self._cnt >= self._start and self._cnt < self._start + self._count
+        self.active = self._cnt >= self._start and self._cnt < self._start + self._count
         self._cnt += 1
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_pre_update(iteration)
-
-    def on_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_update(iteration)
-
-    def on_post_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_post_update(iteration)
+        super().on_pre_update(iteration)
 
 
 class Random(CallbackWrapper):
@@ -141,42 +110,8 @@ class Random(CallbackWrapper):
         super().__init__(callback)
         self._prob = prob
 
-        self._run = False
-
     def on_pre_update(self, iteration: int):
-        self._run = random.random() < self._prob
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_pre_update(iteration)
-
-    def on_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_update(iteration)
-
-    def on_post_update(self, iteration: int):
-        if self._run:
-            for callback in self.callbacks:
-                callback.on_post_update(iteration)
-
-
-class Count(CallbackWrapper):
-    def __init__(self, callback: Callback):
-        super().__init__(callback)
-        self._cnt = 0
-
-    def on_pre_update(self, iteration: int):
-        self._cnt += 1
-        for callback in self.callbacks:
-            callback.on_pre_update(self._cnt)
-
-    def on_update(self, iteration: int):
-        for callback in self.callbacks:
-            callback.on_update(self._cnt)
-
-    def on_post_update(self, iteration: int):
-        for callback in self.callbacks:
-            callback.on_post_update(self._cnt)
+        self.active = random.random() < self._prob
 
 
 class InOrder(CallbackWrapper):
@@ -188,21 +123,21 @@ class InOrder(CallbackWrapper):
         ), "The length of callbacks and intervals must be the same."
 
         super().__init__(callbacks)
-        self.intervals = intervals
-        self.loop = loop
+        self._intervals = intervals
+        self._loop = loop
 
         self._len = len(callbacks)
         self._cnt = 0
         self._idx = 0
 
     def on_pre_update(self, iteration: int):
-        if self._cnt < self.intervals[self._idx]:
+        if self._cnt < self._intervals[self._idx]:
             self._cnt += 1
         else:
             self._idx += 1
             self._cnt = 1
 
-        if self.loop and self._idx >= self._len:
+        if self._loop and self._idx >= self._len:
             self._idx = 0
 
         if self._idx < self._len:
@@ -220,17 +155,20 @@ class InOrder(CallbackWrapper):
 class Shuffle(CallbackWrapper):
     def __init__(self, callbacks: list[Callback]):
         super().__init__(callbacks)
-        self.order = list(range(len(self.callbacks)))
+        self._order = list(range(len(self.callbacks)))
+        self._idx = 0
+        random.shuffle(self._order)
 
     def on_pre_update(self, iteration: int):
-        random.shuffle(self.order)
-        for i in self.order:
-            self.callbacks[i].on_pre_update(iteration)
+        if self._idx == len(self._order):
+            random.shuffle(self._order)
+            self._idx = 0
+
+        self.callbacks[self._order[self._idx]].on_pre_update(iteration)
 
     def on_update(self, iteration: int):
-        for i in self.order:
-            self.callbacks[i].on_update(iteration)
+        self.callbacks[self._order[self._idx]].on_update(iteration)
 
     def on_post_update(self, iteration: int):
-        for i in self.order:
-            self.callbacks[i].on_post_update(iteration)
+        self.callbacks[self._order[self._idx]].on_post_update(iteration)
+        self._idx += 1
