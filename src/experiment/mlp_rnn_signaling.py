@@ -161,8 +161,10 @@ def run_mlp_rnn_signaling_exp(config: dict):
     cfg = Config(**config)
 
     # check device
-    assert cfg.device in ["cpu", "cuda"]
-    assert cfg.device == "cpu" or torch.cuda.is_available()
+    assert cfg.device in ["cpu", "cuda"], "Invalid device"
+    if cfg.device == "cuda" and not torch.cuda.is_available():
+        print("CUDA is not available. Use CPU instead.")
+        cfg.device = "cpu"
 
     # make log dir
     now = datetime.datetime.now()
