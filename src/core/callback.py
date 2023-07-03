@@ -1,7 +1,7 @@
-from abc import ABC
+class Callback:
+    def __init__(self, activated: bool = True):
+        self.activated = activated
 
-
-class Callback(ABC):
     def on_begin(self):
         pass
 
@@ -15,4 +15,7 @@ class Callback(ABC):
         pass
 
     def on_end(self):
+        pass
+
+    def on_early_stop(self, iteration: int):
         pass

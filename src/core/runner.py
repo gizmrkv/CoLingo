@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Callable, Iterable
 
 import tqdm
 
@@ -6,27 +6,39 @@ from .callback import Callback
 
 
 class Runner:
-    def __init__(self, callback: Callback | Iterable[Callback], use_tqdm: bool = True):
-        self.callbacks = [callback] if isinstance(callback, Callback) else callback
+    def __init__(
+        self,
+        task: Callback | Iterable[Callback],
+        early_stop: Callable[[int], bool] | None = None,
+        use_tqdm: bool = True,
+    ):
+        self.tasks = [task] if isinstance(task, Callback) else task
+        self.early_stop = lambda _: True if early_stop is None else early_stop
         self.use_tqdm = use_tqdm
 
     def run(self, n_iterations: int):
-        for callback in self.callbacks:
-            callback.on_begin()
+        for task in self.tasks:
+            task.on_begin()
 
         rg = range(n_iterations)
         if self.use_tqdm:
             rg = tqdm.tqdm(rg)
 
         for iter in rg:
-            for callback in self.callbacks:
-                callback.on_pre_update(iter)
+            if self.early_stop(iter):
+                for task in self.tasks:
+                    task.on_early_stop(iter)
+                break
 
-            for callback in self.callbacks:
-                callback.on_update(iter)
+            else:
+                for task in self.tasks:
+                    task.on_pre_update(iter)
 
-            for callback in self.callbacks:
-                callback.on_post_update(iter)
+                for task in self.tasks:
+                    task.on_update(iter)
 
-        for callback in self.callbacks:
-            callback.on_end()
+                for task in self.tasks:
+                    task.on_post_update(iter)
+
+        for task in self.tasks:
+            task.on_end()
