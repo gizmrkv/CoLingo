@@ -13,7 +13,7 @@ class Runner:
         use_tqdm: bool = True,
     ):
         self.tasks = [task] if isinstance(task, Callback) else task
-        self.early_stop = lambda _: True if early_stop is None else early_stop
+        self.early_stop = lambda _: False if early_stop is None else early_stop
         self.use_tqdm = use_tqdm
 
     def run(self, n_iterations: int):
@@ -29,7 +29,6 @@ class Runner:
                 for task in self.tasks:
                     task.on_early_stop(iter)
                 break
-
             else:
                 for task in self.tasks:
                     task.on_pre_update(iter)
