@@ -85,15 +85,15 @@ class Never(CallbackWrapper):
 class Timer(CallbackWrapper):
     def __init__(self, callback: Callback, due_time: int = 0, period: int = 1):
         super().__init__(callback)
-        self.due_time = due_time
-        self.period = period
+        self._due_time = due_time
+        self._period = period
 
         self._run = False
         self._cnt = 0
 
     def on_pre_update(self, iteration: int):
-        diff = self._cnt - self.due_time
-        self._run = diff >= 0 and diff % self.period == 0
+        diff = self._cnt - self._due_time
+        self._run = diff >= 0 and diff % self._period == 0
         self._cnt += 1
         if self._run:
             for callback in self.callbacks:
@@ -113,13 +113,13 @@ class Timer(CallbackWrapper):
 class Range(CallbackWrapper):
     def __init__(self, callback: Callback, start: int, count: int):
         super().__init__(callback)
-        self.start = start
-        self.count = count
+        self._start = start
+        self._count = count
 
         self._cnt = 0
 
     def on_pre_update(self, iteration: int):
-        self._run = self._cnt >= self.start and self._cnt < self.start + self.count
+        self._run = self._cnt >= self._start and self._cnt < self._start + self._count
         self._cnt += 1
         if self._run:
             for callback in self.callbacks:
@@ -139,12 +139,12 @@ class Range(CallbackWrapper):
 class Random(CallbackWrapper):
     def __init__(self, callback: Callback, prob: float):
         super().__init__(callback)
-        self.prob = prob
+        self._prob = prob
 
         self._run = False
 
     def on_pre_update(self, iteration: int):
-        self._run = random.random() < self.prob
+        self._run = random.random() < self._prob
         if self._run:
             for callback in self.callbacks:
                 callback.on_pre_update(iteration)
