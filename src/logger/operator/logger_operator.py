@@ -1,5 +1,3 @@
-from typing import Any
-
 from ..logger import Logger
 
 
