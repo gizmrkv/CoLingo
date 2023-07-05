@@ -2,7 +2,7 @@ from ..logger import Logger
 from .logger_operator import LoggerOperator
 
 
-class CountLoggerOperator(LoggerOperator):
+class EnumerateLoggerOperator(LoggerOperator):
     def __init__(self, *loggers: Logger):
         super().__init__(*loggers)
         self._count = 0
@@ -13,5 +13,5 @@ class CountLoggerOperator(LoggerOperator):
         self._count += 1
 
 
-def count(*loggers: Logger):
-    return CountLoggerOperator(*loggers)
+def enumerate(*loggers: Logger):
+    return EnumerateLoggerOperator(*loggers)
