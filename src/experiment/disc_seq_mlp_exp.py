@@ -1,3 +1,7 @@
+import datetime
+import json
+import os
+import uuid
 from dataclasses import dataclass
 from itertools import product
 
@@ -6,7 +10,7 @@ import torch.nn.functional as F
 from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
-from ..core import Runner
+from ..core import Callback, Runner, fix_seed
 from ..dataset import random_split
 from ..game import (
     InferringGame,
@@ -14,7 +18,7 @@ from ..game import (
     InferringGameResult,
     InferringGameTrainer,
 )
-from ..logger import WandBLogger
+from ..logger import Logger, WandBLogger
 from ..model import DiscSeqMLPDecoder, DiscSeqMLPEncoder
 
 
@@ -25,6 +29,7 @@ class Config:
     batch_size: int
     seed: int
     device: str
+    exp_name: str
     wandb_project: str
 
     # common config
@@ -70,8 +75,24 @@ class Agent(nn.Module):
                 raise ValueError(f"Unknown command: {command}")
 
 
-def run_disc_seq_mlp_exp(cfg: dict):
-    cfg: Config = Config(**cfg)
+def run_disc_seq_mlp_exp(config: dict):
+    cfg: Config = Config(**config)
+
+    assert cfg.device in ["cpu", "cuda"], "Invalid device"
+    if cfg.device == "cuda" and not torch.cuda.is_available():
+        print("CUDA is not available. Use CPU instead.")
+        cfg.device = "cpu"
+
+    now = datetime.datetime.now()
+    log_id = str(uuid.uuid4())[-4:]
+    log_dir = f"log/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    with open(f"{log_dir}/config.json", "w") as f:
+        json.dump(config, f, indent=4)
+
+    fix_seed(cfg.seed)
 
     encoder = DiscSeqMLPEncoder(
         length=cfg.length,
@@ -135,25 +156,54 @@ def run_disc_seq_mlp_exp(cfg: dict):
         met |= {f"acc{i}": a for i, a in enumerate(list(acc))}
         return met
 
-    loggers = [WandBLogger(project=cfg.wandb_project)]
+    class EarlyStopLogger(Logger):
+        def __init__(self):
+            self._stop = False
 
-    evaluators = [
-        InferringGameEvaluator(
-            game=game,
-            agents=agents,
-            input=input,
-            metric=metric,
-            logger=loggers,
-            name=name,
-        )
-        for name, input in [("train", train_dataset), ("valid", valid_dataset)]
-    ]
+        def log(self, met: dict):
+            if met["valid"]["A"]["acc_comp"] >= 0.9999:
+                self._stop = True
 
-    callbacks = [
+        def __call__(self, iteration: int):
+            return self._stop
+
+    wandb_logger = WandBLogger(project=cfg.wandb_project)
+    early_stopper = EarlyStopLogger()
+
+    train_eval = InferringGameEvaluator(
+        game=game,
+        agents=agents,
+        input=train_dataset,
+        metric=metric,
+        logger=wandb_logger,
+        name="train",
+    )
+    valid_eval = InferringGameEvaluator(
+        game=game,
+        agents=agents,
+        input=valid_dataset,
+        metric=metric,
+        logger=[wandb_logger, early_stopper],
+        name="valid",
+    )
+
+    class CountSteps(Callback):
+        def __init__(self, logger: Logger):
+            self.logger = logger
+            self._steps = 0
+
+        def on_update(self, iteration: int):
+            self._steps += 1
+
+        def on_end(self):
+            self.logger.log({"steps": self._steps})
+
+    runner = Runner(
         trainer,
-        *evaluators,
-        *loggers,
-    ]
-
-    runner = Runner(callbacks)
+        train_eval,
+        valid_eval,
+        CountSteps(wandb_logger),
+        wandb_logger,
+        early_stop=early_stopper,
+    )
     runner.run(cfg.n_epochs)

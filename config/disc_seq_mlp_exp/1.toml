@@ -3,6 +3,7 @@ n_epochs = 500
 batch_size = 1000000
 seed = 42
 device = "cpu"
+exp_name = "disc_seq_mlp_exp"
 wandb_project = "hoge"
 
 # common config
@@ -17,11 +18,11 @@ encoder_hidden_dim = 256
 encoder_activation = "relu"
 encoder_use_layer_norm = true
 encoder_use_residual = true
-n_encoder_blocks = 1
+encoder_n_blocks = 1
 
 # decoder config
 decoder_hidden_dim = 256
 decoder_activation = "relu"
 decoder_use_layer_norm = true
 decoder_use_residual = true
-n_decoder_blocks = 1
+decoder_n_blocks = 1
