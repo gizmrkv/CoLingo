@@ -5,6 +5,7 @@ seed = 42
 device = "cuda"
 exp_name = "mlp_rnn_signaling_exp"
 wandb_project = "hoge"
+use_tqdm = true
 
 # common config
 lr = 1e-3

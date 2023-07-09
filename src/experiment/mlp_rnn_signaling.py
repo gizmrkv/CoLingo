@@ -4,7 +4,6 @@ import os
 import uuid
 from dataclasses import dataclass
 from itertools import combinations, product
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -12,25 +11,21 @@ import torch.nn.functional as F
 from torch import nn, optim
 from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
-from torchtyping import TensorType
 
 from ..analysis import language_similarity, topographic_similarity
 from ..baseline import BatchMeanBaseline
-from ..core import ModelInitializer, ModelSaver, Runner, fix_seed
+from ..core import Interval, Runner, fix_seed, init_weights
 from ..dataset import random_split
 from ..game import (
     CollectiveInferringGame,
     CollectiveInferringGameEvaluator,
     CollectiveInferringGameResult,
-    InferringGame,
-    InferringGameEvaluator,
-    InferringGameResult,
     SignalingGame,
     SignalingGameEvaluator,
     SignalingGameResult,
     SignalingGameTrainer,
 )
-from ..logger import WandBLogger
+from ..logger import EarlyStopper, StepCounter, WandBLogger
 from ..loss import DiscSeqReinforceLoss
 from ..model import (
     DiscSeqMLPDecoder,
@@ -49,6 +44,7 @@ class Config:
     device: str
     exp_name: str
     wandb_project: str
+    use_tqdm: bool
 
     # common config
     lr: float
@@ -89,6 +85,10 @@ class Config:
     rnn_decoder_embed_dim: int
     rnn_decoder_rnn_type: str
     rnn_decoder_n_layers: int
+
+    # optional config
+    run_sender_output: bool = False
+    run_receiver_send: bool = False
 
 
 class Agent(nn.Module):
@@ -155,28 +155,26 @@ class DiscSeqAdapter(nn.Module):
 
 
 def run_mlp_rnn_signaling_exp(config: dict):
-    # make config
+    # pre process
     cfg = Config(**config)
 
-    # check device
     assert cfg.device in ["cpu", "cuda"], "Invalid device"
     if cfg.device == "cuda" and not torch.cuda.is_available():
         print("CUDA is not available. Use CPU instead.")
         cfg.device = "cpu"
 
-    # make log dir
     now = datetime.datetime.now()
     log_id = str(uuid.uuid4())[-4:]
     log_dir = f"log/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # save config
     with open(f"{log_dir}/config.json", "w") as f:
         json.dump(config, f, indent=4)
 
     fix_seed(cfg.seed)
 
+    # model
     agents = {
         f"A{i}": Agent(
             input_encoder=DiscSeqMLPEncoder(
@@ -224,15 +222,15 @@ def run_mlp_rnn_signaling_exp(config: dict):
         for i in range(cfg.n_agents)
     }
 
-    optimziers = {
+    for agent in agents.values():
+        agent.apply(init_weights)
+
+    optimizers = {
         name: optim.Adam(agent.parameters(), lr=cfg.lr)
         for name, agent in agents.items()
     }
 
-    agent_initializer = ModelInitializer(
-        model=agents.values(),
-    )
-
+    # data
     dataset = (
         torch.Tensor(
             list(product(torch.arange(cfg.input_n_values), repeat=cfg.input_length))
@@ -247,6 +245,7 @@ def run_mlp_rnn_signaling_exp(config: dict):
         shuffle=True,
     )
 
+    # game
     baselines = {"batch_mean": BatchMeanBaseline}
     disc_seq_rf_loss = DiscSeqReinforceLoss(
         entropy_weight=cfg.entropy_weight,
@@ -256,12 +255,14 @@ def run_mlp_rnn_signaling_exp(config: dict):
     )
 
     def loss(result: SignalingGameResult, target: torch.Tensor):
+        # cross entropy loss for receiver output
         logits_out_r = result.output_info_r
         logits_out_r = logits_out_r.view(-1, cfg.input_n_values)
         loss_out_r = F.cross_entropy(logits_out_r, target.view(-1), reduction="none")
         loss_out_r = loss_out_r.view(-1, cfg.input_length).sum(dim=-1)
         total_loss = loss_out_r
 
+        # reinforce loss for sender message
         log_prob_msg_s, entropy_msg_s, length_msg_s, _, _ = result.message_info_s
         loss_msg_s = disc_seq_rf_loss(
             reward=-loss_out_r.detach(),
@@ -272,6 +273,7 @@ def run_mlp_rnn_signaling_exp(config: dict):
         total_loss += loss_msg_s
 
         if result.output_s is not None:
+            # cross entropy loss for sender output
             logits_out_s = result.output_info_s
             logits_out_s = logits_out_s.view(-1, cfg.input_n_values)
             loss_out_s = F.cross_entropy(
@@ -281,6 +283,7 @@ def run_mlp_rnn_signaling_exp(config: dict):
             total_loss += loss_out_s
 
         if result.message_r is not None:
+            # cross entropy loss for receiver message
             _, _, _, _, logits_msg_r = result.message_info_r
             msg_s = result.message_s
             # bsz, len, n_values
@@ -294,11 +297,14 @@ def run_mlp_rnn_signaling_exp(config: dict):
 
         return total_loss
 
-    game = SignalingGame(run_sender_output=True, run_receiver_send=True)
+    game = SignalingGame(
+        run_sender_output=cfg.run_sender_output,
+        run_receiver_send=cfg.run_receiver_send,
+    )
     trainer = SignalingGameTrainer(
         game=game,
         agents=agents,
-        optimizers=optimziers,
+        optimizers=optimizers,
         dataloader=train_dataloader,
         loss=loss,
     )
@@ -312,19 +318,26 @@ def run_mlp_rnn_signaling_exp(config: dict):
         met |= {f"acc{i}": a for i, a in enumerate(list(acc))}
         return met
 
-    loggers = [WandBLogger(project=cfg.wandb_project)]
+    # evaluation
+    wandb_logger = WandBLogger(project=cfg.wandb_project)
+    early_stopper = EarlyStopper("valid.A0 -> A1.acc_comp", threshold=1 - 1e-6)
 
-    evaluators = [
-        SignalingGameEvaluator(
-            game=game,
-            agents=agents,
-            input=input,
-            metric=metric,
-            logger=loggers,
-            name=name,
-        )
-        for name, input in [("train", train_dataset), ("valid", valid_dataset)]
-    ]
+    train_eval = SignalingGameEvaluator(
+        game=game,
+        agents=agents,
+        input=train_dataset,
+        metric=metric,
+        logger=wandb_logger,
+        name="train",
+    )
+    valid_eval = SignalingGameEvaluator(
+        game=game,
+        agents=agents,
+        input=valid_dataset,
+        metric=metric,
+        logger=[wandb_logger, early_stopper],
+        name="valid",
+    )
 
     def drop_padding(x: np.ndarray):
         i = np.argwhere(x == 0)
@@ -365,43 +378,44 @@ def run_mlp_rnn_signaling_exp(config: dict):
         return met
 
     lansim_game = CollectiveInferringGame(output_command="send")
-    lansim_evaluators = [
+    lansim_evals = [
         CollectiveInferringGameEvaluator(
             game=lansim_game,
             agents=agents,
             input=input,
             metric=lansim_metric,
-            logger=loggers,
+            logger=wandb_logger,
             name=name,
         )
         for name, input in [
-            ("train_sync", train_dataset),
-            ("valid_sync", valid_dataset),
+            ("train_lansim", train_dataset),
+            ("valid_lansim", valid_dataset),
         ]
     ]
-    topsim_evaluators = [
+    topsim_evals = [
         CollectiveInferringGameEvaluator(
             game=lansim_game,
             agents=agents,
             input=input,
             metric=topsim_metric,
-            logger=loggers,
+            logger=wandb_logger,
             name=name,
         )
         for name, input in [
-            ("train_topo", train_dataset),
-            ("valid_topo", valid_dataset),
+            ("train_topsim", train_dataset),
+            ("valid_topsim", valid_dataset),
         ]
     ]
 
-    callbacks = [
+    runner = Runner(
         trainer,
-        *evaluators,
-        *loggers,
-        IntervalScheduler(lansim_evaluators, 100),
-        IntervalScheduler(topsim_evaluators, 100),
-        IntervalScheduler(agent_initializer, 100000),
-    ]
-
-    runner = Runner(callbacks)
+        train_eval,
+        valid_eval,
+        Interval(*lansim_evals, period=100),
+        Interval(*topsim_evals, period=100),
+        StepCounter(wandb_logger),
+        wandb_logger,
+        early_stop=early_stopper,
+        use_tqdm=cfg.use_tqdm,
+    )
     runner.run(cfg.n_epochs)

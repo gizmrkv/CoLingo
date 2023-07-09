@@ -12,7 +12,7 @@ from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..baseline import BatchMeanBaseline
-from ..core import Runner, fix_seed
+from ..core import Runner, fix_seed, init_weights
 from ..dataset import random_split
 from ..game import (
     InferringGame,
@@ -42,9 +42,6 @@ class Config:
     n_values: int
     latent_dim: int
     embed_dim: int
-    reinforce: bool
-    baseline: str
-    entropy_weight: float
 
     # encoder config
     encoder_hidden_dim: int
@@ -59,6 +56,11 @@ class Config:
     decoder_use_layer_norm: bool
     decoder_use_residual: bool
     decoder_n_blocks: int
+
+    # optional config
+    reinforce: bool = False
+    baseline: str = "batch_mean"
+    entropy_weight: float = 0.0
 
 
 class Agent(nn.Module):
@@ -125,6 +127,7 @@ def run_disc_seq_mlp_exp(config: dict):
         n_blocks=cfg.decoder_n_blocks,
     )
     agent = Agent(encoder, decoder).to(cfg.device)
+    init_weights(agent)
     optimizer = optim.Adam(agent.parameters(), lr=cfg.lr)
 
     agents = {"A": agent}
