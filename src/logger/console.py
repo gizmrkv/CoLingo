@@ -12,9 +12,14 @@ class ConsoleLogger(Logger):
         self._logs |= log
         assert len(self._logs) == size + len(log), "Duplicate keys found."
 
+    def on_begin(self):
+        pprint(self._logs)
+        self._logs.clear()
+
     def on_update(self, iteration: int):
         pprint(self._logs)
-        self._logs = {}
+        self._logs.clear()
 
     def on_end(self):
         pprint(self._logs)
+        self._logs.clear()
