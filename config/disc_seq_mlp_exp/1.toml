@@ -2,7 +2,7 @@
 n_epochs = 500
 batch_size = 1000000
 seed = 42
-device = "cpu"
+device = "cuda"
 exp_name = "disc_seq_mlp_exp"
 wandb_project = "hoge"
 use_tqdm = true

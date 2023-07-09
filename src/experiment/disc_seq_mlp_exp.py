@@ -12,7 +12,7 @@ from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 
 from ..baseline import BatchMeanBaseline
-from ..core import Callback, Runner, fix_seed
+from ..core import Runner, fix_seed
 from ..dataset import random_split
 from ..game import (
     InferringGame,
@@ -20,7 +20,7 @@ from ..game import (
     InferringGameResult,
     InferringGameTrainer,
 )
-from ..logger import EarlyStopper, Logger, StepCounter, WandBLogger
+from ..logger import EarlyStopper, StepCounter, WandBLogger
 from ..loss import DiscSeqReinforceLoss
 from ..model import DiscSeqMLPDecoder, DiscSeqMLPEncoder
 

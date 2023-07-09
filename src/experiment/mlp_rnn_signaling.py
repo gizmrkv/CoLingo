@@ -16,7 +16,7 @@ from torchtyping import TensorType
 
 from ..analysis import language_similarity, topographic_similarity
 from ..baseline import BatchMeanBaseline
-from ..core import Runner
+from ..core import ModelInitializer, ModelSaver, Runner, fix_seed
 from ..dataset import random_split
 from ..game import (
     CollectiveInferringGame,
@@ -38,8 +38,6 @@ from ..model import (
     DiscSeqRNNDecoder,
     DiscSeqRNNEncoder,
 )
-from ..scheduler import IntervalScheduler
-from ..util import ModelInitializer, fix_seed
 
 
 @dataclass

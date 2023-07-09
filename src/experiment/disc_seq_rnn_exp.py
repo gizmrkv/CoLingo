@@ -1,12 +1,18 @@
+import datetime
+import json
+import os
+import uuid
 from dataclasses import dataclass
 from itertools import product
 
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
+from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 
-from ..core import Runner
+from ..baseline import BatchMeanBaseline
+from ..core import Runner, fix_seed
 from ..dataset import random_split
 from ..game import (
     InferringGame,
@@ -14,13 +20,9 @@ from ..game import (
     InferringGameResult,
     InferringGameTrainer,
 )
-from ..logger import WandBLogger
-from ..model import (
-    DiscSeqMLPDecoder,
-    DiscSeqMLPEncoder,
-    DiscSeqRNNDecoder,
-    DiscSeqRNNEncoder,
-)
+from ..logger import EarlyStopper, StepCounter, WandBLogger
+from ..loss import DiscSeqReinforceLoss
+from ..model import DiscSeqRNNDecoder, DiscSeqRNNEncoder
 
 
 @dataclass
@@ -30,13 +32,18 @@ class Config:
     batch_size: int
     seed: int
     device: str
+    exp_name: str
     wandb_project: str
+    use_tqdm: bool
 
     # common config
     lr: float
     length: int
     n_values: int
     latent_dim: int
+    reinforce: bool
+    baseline: str
+    entropy_weight: float
 
     # encoder config
     encoder_hidden_dim: int
@@ -72,9 +79,27 @@ class Agent(nn.Module):
                 raise ValueError(f"Unknown command: {command}")
 
 
-def run_disc_seq_rnn_exp(cfg: dict):
-    cfg: Config = Config(**cfg)
+def run_disc_seq_rnn_exp(config: dict):
+    # pre process
+    cfg: Config = Config(**config)
 
+    assert cfg.device in ["cpu", "cuda"], "Invalid device"
+    if cfg.device == "cuda" and not torch.cuda.is_available():
+        print("CUDA is not available. Use CPU instead.")
+        cfg.device = "cpu"
+
+    now = datetime.datetime.now()
+    log_id = str(uuid.uuid4())[-4:]
+    log_dir = f"log/{cfg.exp_name}_{now.date()}_{now.strftime('%H%M%S')}_{log_id}"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    with open(f"{log_dir}/config.json", "w") as f:
+        json.dump(config, f, indent=4)
+
+    fix_seed(cfg.seed)
+
+    # model
     encoder = DiscSeqRNNEncoder(
         n_values=cfg.n_values,
         output_dim=cfg.latent_dim,
@@ -98,6 +123,7 @@ def run_disc_seq_rnn_exp(cfg: dict):
     agents = {"A": agent}
     optimizers = {"A": optimizer}
 
+    # data
     dataset = (
         torch.Tensor(list(product(torch.arange(cfg.n_values), repeat=cfg.length)))
         .long()
@@ -110,10 +136,24 @@ def run_disc_seq_rnn_exp(cfg: dict):
         shuffle=True,
     )
 
+    # game
+    if cfg.reinforce:
+        baselines = {"batch_mean": BatchMeanBaseline()}
+        reinforce_loss = DiscSeqReinforceLoss(
+            entropy_weight=cfg.entropy_weight, baseline=baselines[cfg.baseline]
+        )
+
     def loss(result: InferringGameResult, target: torch.Tensor):
-        logits = result.info.view(-1, cfg.n_values)
-        target = target.view(-1)
-        return F.cross_entropy(logits, target)
+        if cfg.reinforce:
+            acc = (result.output == result.input).float().mean(dim=-1)
+            distr = Categorical(logits=result.info)
+            log_prob = distr.log_prob(result.output)
+            entropy = distr.entropy()
+            return reinforce_loss(acc, log_prob, entropy)
+        else:
+            logits = result.info.view(-1, cfg.n_values)
+            target = target.view(-1)
+            return F.cross_entropy(logits, target)
 
     game = InferringGame()
     trainer = InferringGameTrainer(
@@ -124,6 +164,7 @@ def run_disc_seq_rnn_exp(cfg: dict):
         loss=loss,
     )
 
+    # eval
     def metric(result: InferringGameResult):
         mark = result.output == result.input
         acc_comp = mark.all(dim=-1).float().mean().item()
@@ -133,25 +174,33 @@ def run_disc_seq_rnn_exp(cfg: dict):
         met |= {f"acc{i}": a for i, a in enumerate(list(acc))}
         return met
 
-    loggers = [WandBLogger(project=cfg.wandb_project)]
+    wandb_logger = WandBLogger(project=cfg.wandb_project)
+    early_stopper = EarlyStopper(metric="valid.A.acc_comp", threshold=1 - 1e-6)
 
-    evaluators = [
-        InferringGameEvaluator(
-            game=game,
-            agents=agents,
-            input=input,
-            metric=metric,
-            logger=loggers,
-            name=name,
-        )
-        for name, input in [("train", train_dataset), ("valid", valid_dataset)]
-    ]
+    train_eval = InferringGameEvaluator(
+        game=game,
+        agents=agents,
+        input=train_dataset,
+        metric=metric,
+        logger=wandb_logger,
+        name="train",
+    )
+    valid_eval = InferringGameEvaluator(
+        game=game,
+        agents=agents,
+        input=valid_dataset,
+        metric=metric,
+        logger=[wandb_logger, early_stopper],
+        name="valid",
+    )
 
-    callbacks = [
+    runner = Runner(
         trainer,
-        *evaluators,
-        *loggers,
-    ]
-
-    runner = Runner(callbacks)
+        train_eval,
+        valid_eval,
+        StepCounter(wandb_logger),
+        wandb_logger,
+        early_stop=early_stopper,
+        use_tqdm=cfg.use_tqdm,
+    )
     runner.run(cfg.n_epochs)

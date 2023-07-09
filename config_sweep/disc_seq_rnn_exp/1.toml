@@ -1,0 +1,53 @@
+method = "bayes"
+name = "disc_seq_rnn_exp"
+project = "CoLingo"
+
+[metric]
+name = "steps"
+goal = "minimize"
+
+# exp config
+[parameters.n_epochs]
+value = 500
+[parameters.batch_size]
+value = 1000000
+[parameters.seed]
+values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+[parameters.device]
+value = "cuda"
+[parameters.exp_name]
+value = "disc_seq_rnn_exp"
+[parameters.wandb_project]
+value = "CoLingo"
+[parameters.use_tqdm]
+value = false
+
+# common config
+[parameters.lr]
+value = 1e-3
+[parameters.length]
+value = 2
+[parameters.n_values]
+value = 50
+[parameters.latent_dim]
+values = [2, 4, 8, 16, 32, 64, 128, 256, 512]
+
+# encoder config
+[parameters.encoder_hidden_dim]
+values = [2, 4, 8, 16, 32, 64, 128, 256]
+[parameters.encoder_embed_dim]
+values = [2, 4, 8, 16, 32, 64]
+[parameters.encoder_rnn_type]
+values = ["rnn", "lstm", "gru"]
+[parameters.encoder_n_layers]
+values = [1, 2, 3, 4]
+
+# decoder config
+[parameters.decoder_hidden_dim]
+values = [2, 4, 8, 16, 32, 64, 128, 256]
+[parameters.decoder_embed_dim]
+values = [2, 4, 8, 16, 32, 64]
+[parameters.decoder_rnn_type]
+values = ["rnn", "lstm", "gru"]
+[parameters.decoder_n_layers]
+values = [1, 2, 3, 4]
