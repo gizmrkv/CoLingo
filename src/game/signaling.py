@@ -224,7 +224,7 @@ class SignalingGameEvaluator(Callback):
                 result = self.game(sender=sender, receiver=receiver, input=self.input)
 
             metric = self.metric(result)
-            log |= {f"{name_s} -> {name_r}": metric}
+            log |= {f"{name_s} -> {name_r}.{k}": v for k, v in metric.items()}
 
         for logger in self.loggers:
-            logger.log({self.name: log})
+            logger.log({f"{self.name}.{k}": v for k, v in log.items()})
