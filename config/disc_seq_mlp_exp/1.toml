@@ -5,6 +5,7 @@ seed = 42
 device = "cpu"
 exp_name = "disc_seq_mlp_exp"
 wandb_project = "hoge"
+use_tqdm = true
 
 # common config
 lr = 1e-3
@@ -12,6 +13,9 @@ length = 2
 n_values = 50
 latent_dim = 256
 embed_dim = 64
+reinforce = true
+baseline = "batch_mean"
+entropy_weight = 0.01
 
 # encoder config
 encoder_hidden_dim = 256

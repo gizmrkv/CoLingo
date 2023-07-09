@@ -8,8 +8,10 @@ from itertools import product
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
+from torch.distributions import Categorical
 from torch.utils.data import DataLoader, TensorDataset
 
+from ..baseline import BatchMeanBaseline
 from ..core import Callback, Runner, fix_seed
 from ..dataset import random_split
 from ..game import (
@@ -18,7 +20,8 @@ from ..game import (
     InferringGameResult,
     InferringGameTrainer,
 )
-from ..logger import Logger, WandBLogger
+from ..logger import EarlyStopper, Logger, StepCounter, WandBLogger
+from ..loss import DiscSeqReinforceLoss
 from ..model import DiscSeqMLPDecoder, DiscSeqMLPEncoder
 
 
@@ -31,6 +34,7 @@ class Config:
     device: str
     exp_name: str
     wandb_project: str
+    use_tqdm: bool
 
     # common config
     lr: float
@@ -38,6 +42,9 @@ class Config:
     n_values: int
     latent_dim: int
     embed_dim: int
+    reinforce: bool
+    baseline: str
+    entropy_weight: float
 
     # encoder config
     encoder_hidden_dim: int
@@ -76,6 +83,7 @@ class Agent(nn.Module):
 
 
 def run_disc_seq_mlp_exp(config: dict):
+    # pre process
     cfg: Config = Config(**config)
 
     assert cfg.device in ["cpu", "cuda"], "Invalid device"
@@ -94,6 +102,7 @@ def run_disc_seq_mlp_exp(config: dict):
 
     fix_seed(cfg.seed)
 
+    # model
     encoder = DiscSeqMLPEncoder(
         length=cfg.length,
         n_values=cfg.n_values,
@@ -121,6 +130,7 @@ def run_disc_seq_mlp_exp(config: dict):
     agents = {"A": agent}
     optimizers = {"A": optimizer}
 
+    # data
     dataset = (
         torch.Tensor(list(product(torch.arange(cfg.n_values), repeat=cfg.length)))
         .long()
@@ -133,10 +143,24 @@ def run_disc_seq_mlp_exp(config: dict):
         shuffle=True,
     )
 
+    # game
+    if cfg.reinforce:
+        baselines = {"batch_mean": BatchMeanBaseline()}
+        reinforce_loss = DiscSeqReinforceLoss(
+            entropy_weight=cfg.entropy_weight, baseline=baselines[cfg.baseline]
+        )
+
     def loss(result: InferringGameResult, target: torch.Tensor):
-        logits = result.info.view(-1, cfg.n_values)
-        target = target.view(-1)
-        return F.cross_entropy(logits, target)
+        if cfg.reinforce:
+            acc = (result.output == result.input).float().mean(dim=-1)
+            distr = Categorical(logits=result.info)
+            log_prob = distr.log_prob(result.output)
+            entropy = distr.entropy()
+            return reinforce_loss(acc, log_prob, entropy)
+        else:
+            logits = result.info.view(-1, cfg.n_values)
+            target = target.view(-1)
+            return F.cross_entropy(logits, target)
 
     game = InferringGame()
     trainer = InferringGameTrainer(
@@ -147,6 +171,7 @@ def run_disc_seq_mlp_exp(config: dict):
         loss=loss,
     )
 
+    # eval
     def metric(result: InferringGameResult):
         mark = result.output == result.input
         acc_comp = mark.all(dim=-1).float().mean().item()
@@ -156,19 +181,8 @@ def run_disc_seq_mlp_exp(config: dict):
         met |= {f"acc{i}": a for i, a in enumerate(list(acc))}
         return met
 
-    class EarlyStopLogger(Logger):
-        def __init__(self):
-            self._stop = False
-
-        def log(self, met: dict):
-            if met["valid"]["A"]["acc_comp"] >= 0.9999:
-                self._stop = True
-
-        def __call__(self, iteration: int):
-            return self._stop
-
     wandb_logger = WandBLogger(project=cfg.wandb_project)
-    early_stopper = EarlyStopLogger()
+    early_stopper = EarlyStopper(metric="valid.A.acc_comp", threshold=1 - 1e-6)
 
     train_eval = InferringGameEvaluator(
         game=game,
@@ -187,23 +201,13 @@ def run_disc_seq_mlp_exp(config: dict):
         name="valid",
     )
 
-    class CountSteps(Callback):
-        def __init__(self, logger: Logger):
-            self.logger = logger
-            self._steps = 0
-
-        def on_update(self, iteration: int):
-            self._steps += 1
-
-        def on_end(self):
-            self.logger.log({"steps": self._steps})
-
     runner = Runner(
         trainer,
         train_eval,
         valid_eval,
-        CountSteps(wandb_logger),
+        StepCounter(wandb_logger),
         wandb_logger,
         early_stop=early_stopper,
+        use_tqdm=cfg.use_tqdm,
     )
     runner.run(cfg.n_epochs)
