@@ -112,7 +112,7 @@ class InferringGameEvaluator(Callback):
                 result = self.game(agent=agent, input=self.input)
 
             metric = self.metric(result)
-            log |= {agent_name: metric}
+            log |= {f"{agent_name}.{k}": v for k, v in metric.items()}
 
         for logger in self.loggers:
-            logger.log({self.name: log})
+            logger.log({f"{self.name}.{k}": v for k, v in log.items()})
