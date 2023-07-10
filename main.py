@@ -3,19 +3,14 @@ import json
 import toml
 import yaml
 
-from src.experiment import (
-    run_disc_seq_mlp_exp,
-    run_disc_seq_rnn_exp,
-    run_mlp_rnn_signaling_exp,
-)
+from src.experiment import mlp_train, rnn_train
 
 if __name__ == "__main__":
-    exp = "disc_seq_mlp_exp"
-    exp = "disc_seq_rnn_exp"
-    exp = "mlp_rnn_signaling_exp"
+    exp = "disc_seq_inferring/mlp1"
+    exp = "disc_seq_inferring/rnn1"
 
     # config_path = sys.argv[1]
-    config_path = f"config/{exp}/1.toml"
+    config_path = f"config/{exp}.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -27,9 +22,7 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {config_path}")
 
-    if exp == "disc_seq_mlp_exp":
-        run_disc_seq_mlp_exp(config)
-    elif exp == "disc_seq_rnn_exp":
-        run_disc_seq_rnn_exp(config)
-    elif exp == "mlp_rnn_signaling_exp":
-        run_mlp_rnn_signaling_exp(config)
+    if exp.startswith("disc_seq_inferring/mlp"):
+        mlp_train(config)
+    elif exp.startswith("disc_seq_inferring/rnn"):
+        rnn_train(config)

@@ -18,7 +18,7 @@ class WandBLogger(Logger):
         wandb.log(self._logs)
         self._logs.clear()
 
-    def on_update(self, iteration: int):
+    def on_update(self, step: int):
         wandb.log(self._logs)
         self._logs.clear()
 

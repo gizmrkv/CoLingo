@@ -8,7 +8,7 @@ class StepCounter(Callback):
         self._steps = 0
         self._name = name
 
-    def on_update(self, iteration: int):
+    def on_update(self, step: int):
         self._steps += 1
 
     def on_end(self):

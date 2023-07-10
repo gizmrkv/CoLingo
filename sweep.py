@@ -10,7 +10,8 @@ from src.experiment import run_disc_seq_mlp_exp, run_disc_seq_rnn_exp
 def sweep():
     wandb.init()
     config = dict(wandb.config)
-    run_disc_seq_mlp_exp(config)
+    # run_disc_seq_mlp_exp(config)
+    run_disc_seq_rnn_exp(config)
 
 
 import argparse

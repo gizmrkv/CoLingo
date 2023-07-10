@@ -17,7 +17,7 @@ class ModelInitializer(Callback):
         for model in self.models:
             model.apply(init_weights)
 
-    def on_update(self, iteration: int):
+    def on_update(self, step: int):
         for model in self.models:
             model.apply(init_weights)
 

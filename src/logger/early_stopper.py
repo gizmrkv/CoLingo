@@ -11,5 +11,5 @@ class EarlyStopper(Logger):
         if log[self._metric] >= self._threshold:
             self._stop = True
 
-    def __call__(self, iteration: int):
+    def __call__(self):
         return self._stop

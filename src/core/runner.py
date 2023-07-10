@@ -24,14 +24,14 @@ class Runner:
         if self.use_tqdm:
             rg = tqdm.tqdm(rg)
 
-        for iter in rg:
-            if self.early_stop(iter):
+        for step in rg:
+            if self.early_stop():
                 for callback in self.callbacks:
-                    callback.on_early_stop(iter)
+                    callback.on_early_stop(step)
                 break
             else:
                 for callback in self.callbacks:
-                    callback.on_update(iter)
+                    callback.on_update(step)
 
         for callback in self.callbacks:
             callback.on_end()

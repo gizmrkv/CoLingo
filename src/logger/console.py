@@ -16,7 +16,7 @@ class ConsoleLogger(Logger):
         pprint(self._logs)
         self._logs.clear()
 
-    def on_update(self, iteration: int):
+    def on_update(self, step: int):
         pprint(self._logs)
         self._logs.clear()
 

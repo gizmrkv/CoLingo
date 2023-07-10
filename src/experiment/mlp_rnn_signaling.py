@@ -89,6 +89,7 @@ class Config:
     # optional config
     run_sender_output: bool = False
     run_receiver_send: bool = False
+    run_receiver_rec: bool = False
 
 
 class Agent(nn.Module):

@@ -24,9 +24,9 @@ class ModelSaver(Callback):
         for model_name, model in self.models.items():
             th.save(model, f"{self.path}/{model_name}/begin.pth")
 
-    def on_update(self, iteration: int):
+    def on_update(self, step: int):
         for model_name, model in self.models.items():
-            th.save(model, f"{self.path}/{model_name}/{iteration}.pth")
+            th.save(model, f"{self.path}/{model_name}/{step}.pth")
 
     def on_end(self):
         for model_name, model in self.models.items():

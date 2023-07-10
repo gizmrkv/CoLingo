@@ -3,7 +3,7 @@ n_epochs = 500
 batch_size = 1000000
 seed = 42
 device = "cuda"
-exp_name = "disc_seq_mlp_exp"
+exp_name = "disc_seq_inferring_mlp"
 wandb_project = "hoge"
 use_tqdm = true
 
@@ -13,7 +13,7 @@ length = 2
 n_values = 50
 latent_dim = 256
 embed_dim = 64
-reinforce = true
+reinforce = false
 baseline = "batch_mean"
 entropy_weight = 0.01
 
