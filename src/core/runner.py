@@ -13,7 +13,7 @@ class Runner:
         use_tqdm: bool = True,
     ):
         self.callbacks = callbacks
-        self.early_stop = (lambda _: False) if early_stop is None else early_stop
+        self.early_stop = (lambda: False) if early_stop is None else early_stop
         self.use_tqdm = use_tqdm
 
     def run(self, n_steps: int):

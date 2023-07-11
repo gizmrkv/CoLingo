@@ -94,8 +94,7 @@ def main(agent: nn.Module, config: dict):
             return reinforce_loss(acc, log_prob, entropy)
         else:
             logits = result.info.view(-1, cfg.n_values)
-            target = result.input.view(-1)
-            return F.cross_entropy(logits, target)
+            return F.cross_entropy(logits, result.input.view(-1))
 
     game = InferringGame(agent)
     trainer = Trainer(game, [optimizer], train_dataloader, loss)

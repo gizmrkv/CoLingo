@@ -45,7 +45,7 @@ class SignalingGame(nn.Module):
     ):
         super().__init__()
         self._sender = sender
-        self._receivers = receivers
+        self._receivers = nn.ModuleList(receivers)
         self._run_sender_output = run_sender_output
         self._run_receiver_send = run_receiver_send
         self._input_command = input_command
@@ -57,10 +57,13 @@ class SignalingGame(nn.Module):
         ltt_s = self._sender(input=input, command=self._input_command)
         msg_s, msg_info_s = self._sender(latent=ltt_s, command=self._send_command)
 
-        ltts_r = [receiver(msg_s) for receiver in self._receivers]
+        ltts_r = [
+            receiver(message=msg_s, command=self._receive_command)
+            for receiver in self._receivers
+        ]
         outputs_r, output_infos_r = zip(
             *[
-                receiver(latent=ltt_r, command=self._receive_command)
+                receiver(latent=ltt_r, command=self._output_command)
                 for receiver, ltt_r in zip(self._receivers, ltts_r)
             ]
         )
