@@ -1,0 +1,48 @@
+# exp config
+n_epochs = 500
+batch_size = 10000
+seed = 42
+device = "cuda"
+zoo_name = "signaling_with_mlp_rnn"
+wandb_project = "hoge"
+use_tqdm = true
+
+# common config
+lr = 1e-3
+object_length = 2
+object_n_values = 50
+message_length = 10
+message_n_values = 50
+latent_dim = 256
+use_reinforce = false
+baseline = "batch_mean"
+entropy_weight = 0.01
+n_agents = 3
+
+# mlp encoder config
+mlp_encoder_hidden_dim = 256
+mlp_encoder_embed_dim = 64
+mlp_encoder_activation = "relu"
+mlp_encoder_use_layer_norm = true
+mlp_encoder_use_residual = true
+mlp_encoder_n_blocks = 1
+
+# mlp decoder config
+mlp_decoder_hidden_dim = 256
+mlp_decoder_activation = "relu"
+mlp_decoder_use_layer_norm = true
+mlp_decoder_use_residual = true
+mlp_decoder_n_blocks = 1
+
+
+# rnn encoder config
+rnn_encoder_hidden_dim = 256
+rnn_encoder_embed_dim = 64
+rnn_encoder_rnn_type = "gru"
+rnn_encoder_n_layers = 2
+
+# rnn decoder config
+rnn_decoder_hidden_dim = 256
+rnn_decoder_embed_dim = 64
+rnn_decoder_rnn_type = "gru"
+rnn_decoder_n_layers = 2

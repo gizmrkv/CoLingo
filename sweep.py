@@ -1,10 +1,10 @@
 import json
 
 import toml
+import wandb
 import yaml
 
-import wandb
-from src.experiment import run_disc_seq_mlp_exp, run_disc_seq_rnn_exp
+from colingo.experiment import run_disc_seq_mlp_exp, run_disc_seq_rnn_exp
 
 
 def sweep():
