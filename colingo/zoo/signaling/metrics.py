@@ -1,14 +1,20 @@
 from statistics import mean
 from typing import Any, Iterable, Sequence
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 from numpy.typing import NDArray
 from torch import nn
+
+import wandb
 
 from ...analysis import language_similarity, topographic_similarity
 from ...core import Callback
 from ...logger import Logger
-from .game import GameResult
+from .agent import Agent
+from .game import Game, GameResult
 
 
 class Metrics(Logger):
@@ -154,3 +160,52 @@ class LanguageSimilarity(Callback):
 
         for logger in self._loggers:
             logger.log({f"{self._name}.lansim": mean_lansim})
+
+
+class AccuracyMatrix(Callback):
+    def __init__(
+        self, name: str, agents: dict[str, Agent], dataloader: Iterable[Any]
+    ) -> None:
+        self._name = name
+        self._agents = agents
+        self._dataloader = dataloader
+
+        self._games = [
+            Game(sender, list(agents.values())) for name, sender in agents.items()
+        ]
+
+    def on_end(self) -> None:
+        self.evaluate()
+
+    def evaluate(self) -> None:
+        heatmap = []
+        input = next(iter(self._dataloader))
+        for game in self._games:
+            result: GameResult = game(input)
+            heatmap.append(self.calc_acc_comps(result))
+
+        df = pd.DataFrame(
+            data=heatmap,
+            index=list(self._agents.keys()),
+            columns=list(self._agents.keys()),
+        )
+        plt.figure()
+        sns.heatmap(df)
+        wandb.log({f"{self._name}.accuracy_matrix": wandb.Image(plt)})
+
+    def calc_acc_comps(self, result: GameResult) -> list[float]:
+        acc_comps = []
+
+        for output_r in result.output_r:
+            mark = output_r == result.input
+            acc_comp = mark.all(dim=-1).float().mean().item()
+            # acc = mark.float().mean(dim=0)
+            # acc_part = acc.mean().item()
+            acc_comps.append(acc_comp)
+            # metrics |= {
+            #     f"{name_r}.acc_comp": acc_comp,
+            #     f"{name_r}.acc_part": acc_part,
+            # }
+            # metrics |= {f"{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
+
+        return acc_comps
