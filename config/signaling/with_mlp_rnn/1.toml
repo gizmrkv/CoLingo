@@ -1,5 +1,5 @@
 # exp config
-n_epochs = 1000
+n_epochs = 500
 batch_size = 10000
 seed = 42
 device = "cuda"

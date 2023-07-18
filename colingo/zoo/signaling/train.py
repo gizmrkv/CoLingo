@@ -25,7 +25,13 @@ from ...utils import (
 from .agent import Agent
 from .game import Game
 from .loss import Loss
-from .metrics import AccuracyMatrix, LanguageSimilarity, Metrics, TopographicSimilarity
+from .metrics import (
+    AccuracyMatrix,
+    LanguageSimilarity,
+    LanguageSimilarityMatrix,
+    Metrics,
+    TopographicSimilarity,
+)
 
 
 @dataclass
@@ -177,8 +183,27 @@ def train(
             )
         )
 
-    train_acc_mat = AccuracyMatrix("train", agents, train_dataloader)
-    test_acc_mat = AccuracyMatrix("test", agents, test_dataloader)
+    train_acc_mat = AccuracyMatrix(
+        cfg.object_length,
+        "train",
+        agents,
+        train_dataloader,
+        [wandb_logger, duplicate_checker],
+    )
+    test_acc_mat = AccuracyMatrix(
+        cfg.object_length,
+        "test",
+        agents,
+        test_dataloader,
+        [wandb_logger, duplicate_checker],
+    )
+
+    train_lansim_mat = LanguageSimilarityMatrix(
+        "train", agents, train_dataloader, [wandb_logger, duplicate_checker]
+    )
+    test_lansim_mat = LanguageSimilarityMatrix(
+        "test", agents, test_dataloader, [wandb_logger, duplicate_checker]
+    )
 
     # runner
     runner = Runner(
@@ -190,6 +215,8 @@ def train(
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),
             train_acc_mat,
             test_acc_mat,
+            train_lansim_mat,
+            test_lansim_mat,
             wandb_logger,
             duplicate_checker,
         ],

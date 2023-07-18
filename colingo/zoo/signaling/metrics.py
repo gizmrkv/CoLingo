@@ -99,19 +99,15 @@ class TopographicSimilarity(Callback):
             self.evaluate()
 
     def evaluate(self) -> None:
-        topsims = []
-        for input in self._dataloader:
-            latent = self._sender(object=input, command="input")
-            message, _ = self._sender(latent=latent, command="send")
-            topsim = topographic_similarity(
-                input.cpu().numpy(), message.cpu().numpy(), y_processor=drop_padding  # type: ignore
-            )
-            topsims.append(topsim)
-
-        mean_topsim = mean(topsims)
+        input = next(iter(self._dataloader))
+        latent = self._sender(object=input, command="input")
+        message, _ = self._sender(latent=latent, command="send")
+        topsim = topographic_similarity(
+            input.cpu().numpy(), message.cpu().numpy(), y_processor=drop_padding  # type: ignore
+        )
 
         for logger in self._loggers:
-            logger.log({f"{self._name}.topsim": mean_topsim})
+            logger.log({f"{self._name}.topsim": topsim})
 
 
 class LanguageSimilarity(Callback):
@@ -145,21 +141,17 @@ class LanguageSimilarity(Callback):
             self.evaluate()
 
     def evaluate(self) -> None:
-        lansims = []
-        for input in self._dataloader:
-            latent1 = self._sender1(object=input, command="input")
-            message1, _ = self._sender1(latent=latent1, command="send")
-            latent2 = self._sender2(object=input, command="input")
-            message2, _ = self._sender2(latent=latent2, command="send")
-            lansim = language_similarity(
-                message1.cpu().numpy(), message2.cpu().numpy(), processor=drop_padding
-            )
-            lansims.append(lansim)
-
-        mean_lansim = mean(lansims)
+        input = next(iter(self._dataloader))
+        latent1 = self._sender1(object=input, command="input")
+        message1, _ = self._sender1(latent=latent1, command="send")
+        latent2 = self._sender2(object=input, command="input")
+        message2, _ = self._sender2(latent=latent2, command="send")
+        lansim = language_similarity(
+            message1.cpu().numpy(), message2.cpu().numpy(), processor=drop_padding
+        )
 
         for logger in self._loggers:
-            logger.log({f"{self._name}.lansim": mean_lansim})
+            logger.log({f"{self._name}.lansim": lansim})
 
 
 class AccuracyMatrix(Callback):
@@ -169,15 +161,18 @@ class AccuracyMatrix(Callback):
         name: str,
         agents: dict[str, Agent],
         dataloader: Iterable[Any],
+        loggers: Iterable[Logger],
     ) -> None:
         self._length = length
         self._name = name
         self._agents = agents
         self._dataloader = dataloader
+        self._loggers = loggers
 
         self._games = [
             Game(sender, list(agents.values())) for name, sender in agents.items()
         ]
+        self._index = list(self._agents.keys())
 
     def on_end(self) -> None:
         self.evaluate()
@@ -196,23 +191,16 @@ class AccuracyMatrix(Callback):
             for i, a in enumerate(attr):
                 attr_heatmap[i].append(a)
 
-        index = list(self._agents.keys())
+        images = {}
 
-        comp_df = pd.DataFrame(data=comp_heatmap, index=index, columns=index)
-        plt.figure()
-        sns.heatmap(comp_df)
-        wandb.log({f"{self._name}.acc_comp": wandb.Image(plt)})
-
-        part_df = pd.DataFrame(data=part_heatmap, index=index, columns=index)
-        plt.figure()
-        sns.heatmap(part_df)
-        wandb.log({f"{self._name}.acc_part": wandb.Image(plt)})
+        images[f"{self._name}.acc_comp_mat"] = self.get_wandb_image(comp_heatmap)
+        images[f"{self._name}.acc_part_mat"] = self.get_wandb_image(part_heatmap)
 
         for i, attr in enumerate(attr_heatmap):
-            attr_df = pd.DataFrame(data=attr, index=index, columns=index)
-            plt.figure()
-            sns.heatmap(attr_df)
-            wandb.log({f"{self._name}.acc{i}": wandb.Image(plt)})
+            images[f"{self._name}.acc_attr{i}_mat"] = self.get_wandb_image(attr)
+
+        for logger in self._loggers:
+            logger.log(images)
 
     def calc_acc_comps(
         self, result: GameResult
@@ -232,3 +220,59 @@ class AccuracyMatrix(Callback):
                 acc_attrs[i].append(a.item())
 
         return acc_comps, acc_parts, acc_attrs
+
+    def get_wandb_image(self, data: list[list[float]]) -> wandb.Image:
+        df = pd.DataFrame(data=data, index=self._index, columns=self._index)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        sns.heatmap(df, vmin=0, vmax=1, annot=True, fmt=".2f", cmap="inferno")
+        ax.set_ylabel("Sender")
+        ax.set_xlabel("Receiver")
+        image = wandb.Image(fig)
+        plt.close()
+        return image
+
+
+class LanguageSimilarityMatrix(Callback):
+    def __init__(
+        self,
+        name: str,
+        agents: dict[str, Agent],
+        dataloader: Iterable[Any],
+        loggers: Iterable[Logger],
+    ) -> None:
+        self._name = name
+        self._agents = agents
+        self._dataloader = dataloader
+        self._loggers = loggers
+        self._index = list(self._agents.keys())
+
+    def on_end(self) -> None:
+        self.evaluate()
+
+    def evaluate(self) -> None:
+        input = next(iter(self._dataloader))
+        lansims = [[0.0] * len(self._agents) for _ in range(len(self._agents))]
+        for i in range(len(self._agents)):
+            for j in range(i, len(self._agents)):
+                sender1 = self._agents[self._index[i]]
+                sender2 = self._agents[self._index[j]]
+                latent1 = sender1(object=input, command="input")
+                message1, _ = sender1(latent=latent1, command="send")
+                latent2 = sender2(object=input, command="input")
+                message2, _ = sender2(latent=latent2, command="send")
+                lansim = language_similarity(
+                    message1.cpu().numpy(),
+                    message2.cpu().numpy(),
+                    processor=drop_padding,
+                )
+                lansims[i][j] = lansim
+                lansims[j][i] = lansim
+
+        df = pd.DataFrame(data=lansims, index=self._index, columns=self._index)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        sns.heatmap(df, vmin=0, vmax=1, annot=True, fmt=".2f", cmap="inferno")
+        image = wandb.Image(fig)
+        plt.close()
+
+        for logger in self._loggers:
+            logger.log({f"{self._name}.lansim_mat": image})
