@@ -3,18 +3,15 @@ import json
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from itertools import combinations, permutations, product
+from itertools import combinations, product
 from typing import Iterable, Literal
 
 import torch
-import torch.nn.functional as F
-from torch import nn, optim
-from torch.utils.data import DataLoader, TensorDataset
-from torchtyping import TensorType
+from torch import optim
+from torch.utils.data import DataLoader
 
-from ...baseline import BatchMeanBaseline
 from ...core import Runner
-from ...logger import DuplicateChecker, EarlyStopper, Logger, WandBLogger
+from ...logger import DuplicateChecker, EarlyStopper, WandBLogger
 from ...utils import (
     Evaluator,
     StepCounter,
@@ -26,9 +23,9 @@ from ...utils import (
     shuffle,
 )
 from .agent import Agent
-from .game import Game, GameResult
+from .game import Game
 from .loss import Loss
-from .metrics import Metrics
+from .metrics import LanguageSimilarity, Metrics, TopographicSimilarity
 
 
 @dataclass
@@ -56,7 +53,7 @@ class Config:
 
 
 def train(
-    agents: dict[str, Agent], adjacency: dict[str, Iterable[str]], cfg: Config
+    agents: dict[str, Agent], adjacency: dict[str, list[str]], cfg: Config
 ) -> None:
     # pre process
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -97,8 +94,7 @@ def train(
     )
     test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)  # type: ignore
 
-    wandb_logger = WandBLogger(cfg.wandb_project, name=log_dir)
-    duplicate_checker = DuplicateChecker()
+    # trainer
     loss = Loss(
         cfg.object_length,
         cfg.object_n_values,
@@ -120,6 +116,9 @@ def train(
         )
         trainers.append(trainer)
 
+    # evaluator
+    wandb_logger = WandBLogger(cfg.wandb_project, name=log_dir)
+    duplicate_checker = DuplicateChecker()
     names = list(agents.keys())
     train_evaluators = []
     test_evaluators = []
@@ -137,11 +136,54 @@ def train(
         train_evaluators.append(Evaluator(game, train_dataloader, [train_metrics]))
         test_evaluators.append(Evaluator(game, test_dataloader, [test_metrics]))
 
+    # language analysis
+    topsim_evaluators = []
+    for name_s in names:
+        topsim_evaluators.append(
+            TopographicSimilarity(
+                "train." + name_s,
+                agents[name_s],
+                train_dataloader,
+                [wandb_logger, duplicate_checker],
+            )
+        )
+        topsim_evaluators.append(
+            TopographicSimilarity(
+                "test." + name_s,
+                agents[name_s],
+                test_dataloader,
+                [wandb_logger, duplicate_checker],
+            )
+        )
+
+    lansim_evaluators = []
+    for name_s, name_r in combinations(agents, 2):
+        lansim_evaluators.append(
+            LanguageSimilarity(
+                f"train.{name_s}-{name_r}",
+                agents[name_s],
+                agents[name_r],
+                train_dataloader,
+                [wandb_logger, duplicate_checker],
+            )
+        )
+        lansim_evaluators.append(
+            LanguageSimilarity(
+                f"test.{name_s}-{name_r}",
+                agents[name_s],
+                agents[name_r],
+                test_dataloader,
+                [wandb_logger, duplicate_checker],
+            )
+        )
+
     # runner
     runner = Runner(
         [
             shuffle(trainers),
             interval(10, train_evaluators + test_evaluators),
+            interval(50, topsim_evaluators),
+            interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),
             wandb_logger,
             duplicate_checker,

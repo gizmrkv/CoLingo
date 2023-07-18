@@ -1,7 +1,8 @@
-from typing import Callable
+from typing import Callable, Hashable, Literal, Sequence
 
 import numpy as np
 import torch as th
+from numpy.typing import NDArray
 from rapidfuzz.distance import (
     OSA,
     DamerauLevenshtein,
@@ -32,28 +33,28 @@ str2distance = {
 
 
 def topographic_similarity(
-    x: np.ndarray,
-    y: np.ndarray,
+    x: NDArray[np.int32],
+    y: NDArray[np.int32],
     x_dist: str = "Hamming",
     y_dist: str = "Levenshtein",
-    corr: str = "spearman",
-    x_processor: Callable[[np.ndarray], np.ndarray] | None = None,
-    y_processor: Callable[[np.ndarray], np.ndarray] | None = None,
+    correlation: Literal["spearman", "kendall", "pearson"] = "spearman",
+    x_processor: Callable[[NDArray[np.int32]], Sequence[Hashable]] | None = None,
+    y_processor: Callable[[NDArray[np.int32]], Sequence[Hashable]] | None = None,
     normalized: bool = True,
     workers: int = 1,
 ) -> float:
-    x_dist = str2distance[x_dist]
-    y_dist = str2distance[y_dist]
+    x_dist_type = str2distance[x_dist]
+    y_dist_type = str2distance[y_dist]
 
     if normalized:
-        x_dist = x_dist.normalized_distance
-        y_dist = y_dist.normalized_distance
+        x_dist_scorer = x_dist_type.normalized_distance
+        y_dist_scorer = y_dist_type.normalized_distance
     else:
-        x_dist = x_dist.distance
-        y_dist = y_dist.distance
+        x_dist_scorer = x_dist_type.distance
+        y_dist_scorer = y_dist_type.distance
 
-    x_dmat = cdist(x, x, scorer=x_dist, processor=x_processor, workers=workers)
-    y_dmat = cdist(y, y, scorer=y_dist, processor=y_processor, workers=workers)
+    x_dmat = cdist(x, x, scorer=x_dist_scorer, processor=x_processor, workers=workers)
+    y_dmat = cdist(y, y, scorer=y_dist_scorer, processor=y_processor, workers=workers)
 
     x_pdist = x_dmat[np.triu_indices(n=x_dmat.shape[0], k=1)]
     y_pdist = y_dmat[np.triu_indices(n=y_dmat.shape[0], k=1)]
@@ -63,25 +64,25 @@ def topographic_similarity(
         "kendall": kendalltau,
         "pearson": pearsonr,
     }
-    corr = corrs[corr]
-    return corr(x_pdist, y_pdist).correlation
+    corr: float = corrs[correlation](x_pdist, y_pdist).correlation
+    return corr
 
 
 def language_similarity(
-    x: np.ndarray,
-    y: np.ndarray,
-    dist: str,
-    processor: Callable[[np.ndarray], np.ndarray] | None = None,
+    x: NDArray[np.int32],
+    y: NDArray[np.int32],
+    dist: str = "Levenshtein",
+    processor: Callable[[NDArray[np.int32]], NDArray[np.int32]] | None = None,
     normalized: bool = True,
 ) -> float:
-    dist = str2distance[dist]
+    dist_type = str2distance[dist]
     if normalized:
-        dist = dist.normalized_similarity
+        sim = dist_type.normalized_similarity
     else:
-        dist = dist.similarity
+        sim = dist_type.similarity
 
-    mean_dist = 0
+    mean_sim = 0
     for xx, yy in zip(x, y):
-        mean_dist += dist(xx, yy, processor=processor)
+        mean_sim += sim(xx, yy, processor=processor)
 
-    return mean_dist / len(x)
+    return mean_sim / len(x)

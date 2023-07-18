@@ -114,9 +114,15 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
         for i in range(cfg.n_agents)
     }
 
+    adj: dict[str, list[str]] = {name: [] for name in agents}
+    names = list(agents.keys())
+    for i in range(len(names) - 1):
+        adj[names[i]].append(names[i + 1])
+        adj[names[i + 1]].append(names[i])
+
     train(
         agents,
-        {"A0": ["A1"], "A1": ["A0"]},
+        adj,
         Config(
             n_epochs=cfg.n_epochs,
             batch_size=cfg.batch_size,
