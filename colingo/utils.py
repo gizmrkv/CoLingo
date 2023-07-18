@@ -66,14 +66,12 @@ class Trainer(Callback):
         optimizers: Iterable[optim.Optimizer],
         input: Iterable[Any],
         loss: Callable[[Any], TensorType[float]],
-        loggers: Iterable[Logger] | None = None,
         max_batches: int = 1,
     ):
         self._game = game
         self._optimizers = optimizers
         self._input = input
         self._loss = loss
-        self._loggers = loggers or []
         self._max_batches = max_batches
 
     def on_update(self, step: int) -> None:
@@ -81,17 +79,12 @@ class Trainer(Callback):
         for optimizer in self._optimizers:
             optimizer.zero_grad()
 
-        outputs: list[tuple[Any, float]] = []
         for input in islice(self._input, self._max_batches):
             output = self._game(input)
             loss = self._loss(output)
             loss.backward(retain_graph=True)
             for optimizer in self._optimizers:
                 optimizer.step()
-            outputs.append((output, loss.item()))
-
-        for logger in self._loggers:
-            logger.log(outputs)
 
 
 class Evaluator(Callback):
@@ -124,10 +117,10 @@ class Evaluator(Callback):
         self._game.eval()
 
         outputs = []
-        for input in self._input:
-            with torch.no_grad():
-                output = self._game(input=input)
-                outputs.append(output)
+        input = next(iter(self._input))
+        with torch.no_grad():
+            output = self._game(input=input)
+            outputs.append(output)
 
         for logger in self._loggers:
             logger.log(outputs)

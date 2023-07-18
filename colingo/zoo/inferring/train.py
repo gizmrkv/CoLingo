@@ -91,15 +91,17 @@ def train(agent: Agent, cfg: Config) -> None:
     # game
     game = Game(agent)
     loss = Loss(cfg.n_values, cfg.use_reinforce, cfg.baseline, cfg.entropy_weight)
-    trainer = Trainer(game, [optimizer], train_dataloader, loss, [train_metrics])
+    trainer = Trainer(game, [optimizer], train_dataloader, loss)
+    train_evaluator = Evaluator(game, train_dataloader, [train_metrics])
     test_evaluator = Evaluator(game, test_dataloader, [test_metrics])
 
     # run
     runner = Runner(
         [
             trainer,
+            train_evaluator,
             test_evaluator,
-            StepCounter([wandb_logger]),
+            StepCounter("total_steps", [wandb_logger]),
             wandb_logger,
             duplicate_checker,
         ],
