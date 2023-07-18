@@ -164,8 +164,13 @@ class LanguageSimilarity(Callback):
 
 class AccuracyMatrix(Callback):
     def __init__(
-        self, name: str, agents: dict[str, Agent], dataloader: Iterable[Any]
+        self,
+        length: int,
+        name: str,
+        agents: dict[str, Agent],
+        dataloader: Iterable[Any],
     ) -> None:
+        self._length = length
         self._name = name
         self._agents = agents
         self._dataloader = dataloader
@@ -178,34 +183,52 @@ class AccuracyMatrix(Callback):
         self.evaluate()
 
     def evaluate(self) -> None:
-        heatmap = []
+        comp_heatmap = []
+        part_heatmap = []
+        attr_heatmap: list[list[list[float]]] = [[] for i in range(self._length)]
+
         input = next(iter(self._dataloader))
         for game in self._games:
             result: GameResult = game(input)
-            heatmap.append(self.calc_acc_comps(result))
+            comp, part, attr = self.calc_acc_comps(result)
+            comp_heatmap.append(comp)
+            part_heatmap.append(part)
+            for i, a in enumerate(attr):
+                attr_heatmap[i].append(a)
 
-        df = pd.DataFrame(
-            data=heatmap,
-            index=list(self._agents.keys()),
-            columns=list(self._agents.keys()),
-        )
+        index = list(self._agents.keys())
+
+        comp_df = pd.DataFrame(data=comp_heatmap, index=index, columns=index)
         plt.figure()
-        sns.heatmap(df)
-        wandb.log({f"{self._name}.accuracy_matrix": wandb.Image(plt)})
+        sns.heatmap(comp_df)
+        wandb.log({f"{self._name}.acc_comp": wandb.Image(plt)})
 
-    def calc_acc_comps(self, result: GameResult) -> list[float]:
+        part_df = pd.DataFrame(data=part_heatmap, index=index, columns=index)
+        plt.figure()
+        sns.heatmap(part_df)
+        wandb.log({f"{self._name}.acc_part": wandb.Image(plt)})
+
+        for i, attr in enumerate(attr_heatmap):
+            attr_df = pd.DataFrame(data=attr, index=index, columns=index)
+            plt.figure()
+            sns.heatmap(attr_df)
+            wandb.log({f"{self._name}.acc{i}": wandb.Image(plt)})
+
+    def calc_acc_comps(
+        self, result: GameResult
+    ) -> tuple[list[float], list[float], list[list[float]]]:
         acc_comps = []
+        acc_parts = []
+        acc_attrs: list[list[float]] = [[] for i in range(self._length)]
 
         for output_r in result.output_r:
             mark = output_r == result.input
             acc_comp = mark.all(dim=-1).float().mean().item()
-            # acc = mark.float().mean(dim=0)
-            # acc_part = acc.mean().item()
+            acc = mark.float().mean(dim=0)
+            acc_part = acc.mean().item()
             acc_comps.append(acc_comp)
-            # metrics |= {
-            #     f"{name_r}.acc_comp": acc_comp,
-            #     f"{name_r}.acc_part": acc_part,
-            # }
-            # metrics |= {f"{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
+            acc_parts.append(acc_part)
+            for i, a in enumerate(list(acc)):
+                acc_attrs[i].append(a.item())
 
-        return acc_comps
+        return acc_comps, acc_parts, acc_attrs
