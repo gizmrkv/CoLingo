@@ -18,12 +18,14 @@ class Agent(nn.Module):
         object_decoder: nn.Module,
         message_encoder: nn.Module,
         message_decoder: nn.Module,
+        shared: nn.Module | None = None,
     ):
         super().__init__()
         self._object_encoder = object_encoder
         self._object_decoder = object_decoder
         self._message_encoder = message_encoder
         self._message_decoder = message_decoder
+        self._shared = shared
 
     def forward(
         self,
@@ -44,11 +46,15 @@ class Agent(nn.Module):
     ):
         match command:
             case "input":
-                return self._object_encoder(object)
+                latent = self._object_encoder(object)
+                latent = self._shared(latent) if self._shared else latent
+                return latent
             case "output":
                 return self._object_decoder(latent)
             case "receive":
-                return self._message_encoder(message)
+                latent = self._message_encoder(message)
+                latent = self._shared(latent) if self._shared else latent
+                return latent
             case "send":
                 return self._message_decoder(latent)
             case "echo":

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Literal, Mapping
 
 from ...module import (
+    ContMLP,
     DiscSeqMLPDecoder,
     DiscSeqMLPEncoder,
     DiscSeqRNNDecoder,
@@ -104,12 +105,14 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
         rnn_type=cfg.rnn_decoder_rnn_type,
         n_layers=cfg.rnn_decoder_n_layers,
     )
+    shared = ContMLP(cfg.latent_dim, cfg.latent_dim, cfg.latent_dim)
     agents = {
         f"A{i}": Agent(
             object_encoder=deepcopy(object_encoder),
             object_decoder=deepcopy(object_decoder),
             message_encoder=deepcopy(message_encoder),
             message_decoder=deepcopy(message_decoder),
+            shared=deepcopy(shared),
         )
         for i in range(cfg.n_agents)
     }
