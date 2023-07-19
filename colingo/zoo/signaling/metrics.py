@@ -51,16 +51,23 @@ class Metrics(Logger):
         if loss is not None:
             metrics["loss"] = loss
 
+        # acc
         for name_r, output_r in zip(self._receiver_names, result.output_r):
             mark = output_r == result.input
             acc_comp = mark.all(dim=-1).float().mean().item()
             acc = mark.float().mean(dim=0)
             acc_part = acc.mean().item()
             metrics |= {
-                f"{name_r}.acc_comp": acc_comp,
+                # f"{name_r}.acc_comp": acc_comp,
                 f"{name_r}.acc_part": acc_part,
             }
-            metrics |= {f"{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
+            # metrics |= {f"{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
+
+        # message
+        n_uniques = result.message_s.unique(dim=0).shape[0]
+        metrics["uniques"] = n_uniques / result.message_s.shape[0]
+        metrics["msg_ent"] = result.message_entropy_s.mean().item()
+        metrics["msg_len"] = result.message_length_s.float().mean().item()
 
         return metrics
 
