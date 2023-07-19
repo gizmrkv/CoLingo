@@ -104,6 +104,8 @@ def train(
     loss = Loss(
         cfg.object_length,
         cfg.object_n_values,
+        cfg.message_length,
+        cfg.message_n_values,
         cfg.use_reinforce,
         cfg.baseline,
         cfg.entropy_weight,
@@ -209,7 +211,8 @@ def train(
     runner = Runner(
         [
             shuffle(trainers),
-            interval(10, train_evaluators + test_evaluators),
+            interval(10, train_evaluators),
+            # interval(10, test_evaluators),
             interval(50, topsim_evaluators),
             interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),

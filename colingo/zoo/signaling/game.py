@@ -70,6 +70,11 @@ class GameResult:
         TensorType[BATCH, MESSAGE_LENGTH, MESSAGE_N_VALUES, float]
     ] | None = None
 
+    input_command: str = "input"
+    output_command: str = "output"
+    send_command: str = "send"
+    receive_command: str = "receive"
+
 
 class Game(nn.Module):
     def __init__(

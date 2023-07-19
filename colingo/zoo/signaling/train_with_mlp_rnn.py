@@ -114,7 +114,7 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
         for i in range(cfg.n_agents)
     }
 
-    adj: dict[str, list[str]] = {name: [] for name in agents}
+    adj: dict[str, list[str]] = {name: [name] for name in agents}
     names = list(agents.keys())
     for i in range(len(names) - 1):
         adj[names[i]].append(names[i + 1])
