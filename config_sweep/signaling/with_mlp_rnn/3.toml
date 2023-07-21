@@ -28,7 +28,7 @@ value = "hoge"
 value = false
 
 [parameters.lr]
-value = 0.0002
+value = 0.0005
 
 [parameters.object_length]
 value = 2
@@ -58,10 +58,27 @@ value = 0.1
 value = 2
 
 [parameters.synchronize_weight]
-values = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0]
+values = [
+    0.0,
+    0.02,
+    0.04,
+    0.06,
+    0.08,
+    0.10,
+    0.12,
+    0.14,
+    0.16,
+    0.18,
+    0.20,
+    0.22,
+    0.24,
+    0.26,
+    0.28,
+    0.30,
+]
 
 [parameters.ruminate_weight]
-values = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0]
+values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
 
 [parameters.mlp_encoder_hidden_dim]
 value = 256
