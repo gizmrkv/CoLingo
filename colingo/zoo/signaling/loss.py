@@ -50,6 +50,7 @@ class Loss(nn.Module):
         use_reinforce: bool,
         baseline: Literal["batch_mean"] = "batch_mean",
         entropy_weight: float = 0.0,
+        ruminate_weight: float = 0.0,
         synchronize_weight: float = 0.0,
     ):
         super().__init__()
@@ -60,6 +61,7 @@ class Loss(nn.Module):
         self._message_n_values = message_n_values
         self._use_reinforce = use_reinforce
         self._entropy_weight = entropy_weight
+        self._ruminate_weight = ruminate_weight
         self._synchronize_weight = synchronize_weight
         baselines = {"batch_mean": BatchMeanBaseline}
         self._baseline = baselines[baseline]()
@@ -92,7 +94,7 @@ class Loss(nn.Module):
         loss = object_loss(
             logits, result.input, self._object_length, self._object_n_values
         )
-        total_loss += loss
+        total_loss += loss * self._ruminate_weight
 
         for receiver, output in zip(result.receivers, result.output_r):
             ltt = receiver(object=output, command=result.input_command)

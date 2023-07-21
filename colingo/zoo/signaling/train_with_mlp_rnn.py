@@ -64,6 +64,7 @@ class ConfigWithMLPRNN:
     use_reinforce: bool = False
     baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
+    ruminate_weight: float = 0.0
     synchronize_weight: float = 0.0
 
 
@@ -144,6 +145,7 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             use_reinforce=cfg.use_reinforce,
             baseline=cfg.baseline,
             entropy_weight=cfg.entropy_weight,
+            ruminate_weight=cfg.ruminate_weight,
             synchronize_weight=cfg.synchronize_weight,
         ),
     )
