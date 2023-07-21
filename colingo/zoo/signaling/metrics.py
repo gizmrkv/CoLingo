@@ -1,6 +1,10 @@
 from statistics import mean
 from typing import Any, Iterable, Sequence
 
+import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -38,9 +42,7 @@ class Metrics(Logger):
             else:
                 metrics.append(self.calc_metrics(result))
         mean_metrics = {k: mean(m[k] for m in metrics) for k in metrics[0]}
-        mean_metrics = {
-            f"{self._name}.{self._sender_name}->{k}": v for k, v in mean_metrics.items()
-        }
+        mean_metrics = {f"{self._name}.{k}": v for k, v in mean_metrics.items()}
         for logger in self._loggers:
             logger.log(mean_metrics)
 
@@ -58,16 +60,18 @@ class Metrics(Logger):
             acc = mark.float().mean(dim=0)
             acc_part = acc.mean().item()
             metrics |= {
-                # f"{name_r}.acc_comp": acc_comp,
-                f"{name_r}.acc_part": acc_part,
+                f"{self._sender_name}->{name_r}.acc_comp": acc_comp,
+                f"{self._sender_name}->{name_r}.acc_part": acc_part,
             }
-            # metrics |= {f"{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
+            # metrics |= {f"{self._sender_name}->{name_r}.acc{i}": a.item() for i, a in enumerate(list(acc))}
 
         # message
-        n_uniques = result.message_s.unique(dim=0).shape[0]
-        metrics["uniques"] = n_uniques / result.message_s.shape[0]
-        metrics["msg_ent"] = result.message_entropy_s.mean().item()
-        metrics["msg_len"] = result.message_length_s.float().mean().item()
+        n_unique = result.message_s.unique(dim=0).shape[0]
+        metrics[f"{self._sender_name}.unique"] = n_unique / result.message_s.shape[0]
+        metrics[f"{self._sender_name}.msg_ent"] = result.message_entropy_s.mean().item()
+        metrics[f"{self._sender_name}.msg_len"] = (
+            result.message_length_s.float().mean().item()
+        )
 
         return metrics
 
