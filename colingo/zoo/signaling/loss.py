@@ -50,6 +50,7 @@ class Loss(nn.Module):
         use_reinforce: bool,
         baseline: Literal["batch_mean"] = "batch_mean",
         entropy_weight: float = 0.0,
+        synchronize_weight: float = 0.0,
     ):
         super().__init__()
 
@@ -59,6 +60,7 @@ class Loss(nn.Module):
         self._message_n_values = message_n_values
         self._use_reinforce = use_reinforce
         self._entropy_weight = entropy_weight
+        self._synchronize_weight = synchronize_weight
         baselines = {"batch_mean": BatchMeanBaseline}
         self._baseline = baselines[baseline]()
         self._reinforce_loss = ReinforceLoss(
@@ -85,12 +87,12 @@ class Loss(nn.Module):
 
         total_loss = output_loss_r_mean + message_loss_s
 
-        # ltt = result.sender(message=result.message_s, command=result.receive_command)
-        # _, logits = result.sender(latent=ltt, command=result.output_command)
-        # loss = object_loss(
-        #     logits, result.input, self._object_length, self._object_n_values
-        # )
-        # total_loss += loss
+        ltt = result.sender(message=result.message_s, command=result.receive_command)
+        _, logits = result.sender(latent=ltt, command=result.output_command)
+        loss = object_loss(
+            logits, result.input, self._object_length, self._object_n_values
+        )
+        total_loss += loss
 
         for receiver, output in zip(result.receivers, result.output_r):
             ltt = receiver(object=output, command=result.input_command)
@@ -98,6 +100,6 @@ class Loss(nn.Module):
             loss = object_loss(
                 logits, result.message_s, self._message_length, self._message_n_values
             )
-            total_loss += loss * 0.01
+            total_loss += loss * self._synchronize_weight
 
         return total_loss.sum()

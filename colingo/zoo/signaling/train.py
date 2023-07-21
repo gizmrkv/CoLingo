@@ -39,7 +39,6 @@ class Config:
     # exp config
     n_epochs: int
     batch_size: int
-    seed: int
     device: str
     zoo_name: str
     wandb_project: str
@@ -53,9 +52,13 @@ class Config:
     message_n_values: int
 
     # optional config
+    seed: int | None = None
+
     use_reinforce: bool = False
     baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
+
+    synchronize_weight: float = 0.0
 
 
 def train(
@@ -75,7 +78,8 @@ def train(
     with open(f"{log_dir}/config.json", "w") as f:
         json.dump(asdict(cfg), f, indent=4)
 
-    fix_seed(cfg.seed)
+    if cfg.seed is not None:
+        fix_seed(cfg.seed)
 
     for agent in agents.values():
         agent.to(cfg.device)
@@ -109,6 +113,7 @@ def train(
         cfg.use_reinforce,
         cfg.baseline,
         cfg.entropy_weight,
+        cfg.synchronize_weight,
     )
 
     trainers = []
@@ -212,7 +217,7 @@ def train(
         [
             shuffle(trainers),
             interval(10, train_evaluators),
-            # interval(10, test_evaluators),
+            interval(10, test_evaluators),
             interval(50, topsim_evaluators),
             interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),

@@ -1,5 +1,5 @@
 # exp config
-n_epochs = 5000
+n_epochs = 10000
 batch_size = 10000
 seed = 42
 device = "cuda"
@@ -8,7 +8,7 @@ wandb_project = "hoge"
 use_tqdm = true
 
 # common config
-lr = 1e-3
+lr = 0.0002
 object_length = 2
 object_n_values = 50
 message_length = 10
@@ -16,23 +16,24 @@ message_n_values = 50
 latent_dim = 256
 use_reinforce = false
 baseline = "batch_mean"
-entropy_weight = 0.01
-n_agents = 3
+entropy_weight = 0.1
+n_agents = 2
+synchronize_weight = 0.0
 
 # mlp encoder config
 mlp_encoder_hidden_dim = 256
 mlp_encoder_embed_dim = 64
-mlp_encoder_activation = "relu"
-mlp_encoder_use_layer_norm = true
-mlp_encoder_use_residual = true
-mlp_encoder_n_blocks = 1
+mlp_encoder_activation = "gelu"
+mlp_encoder_use_layer_norm = false
+mlp_encoder_use_residual = false
+mlp_encoder_n_blocks = 0
 
 # mlp decoder config
 mlp_decoder_hidden_dim = 256
-mlp_decoder_activation = "relu"
-mlp_decoder_use_layer_norm = true
-mlp_decoder_use_residual = true
-mlp_decoder_n_blocks = 1
+mlp_decoder_activation = "gelu"
+mlp_decoder_use_layer_norm = false
+mlp_decoder_use_residual = false
+mlp_decoder_n_blocks = 0
 
 
 # rnn encoder config

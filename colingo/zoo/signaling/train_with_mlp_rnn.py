@@ -18,7 +18,6 @@ class ConfigWithMLPRNN:
     # exp config
     n_epochs: int
     batch_size: int
-    seed: int
     device: str
     zoo_name: str
     wandb_project: str
@@ -61,9 +60,11 @@ class ConfigWithMLPRNN:
     rnn_decoder_n_layers: int
 
     # optional config
+    seed: int | None = None
     use_reinforce: bool = False
     baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
+    synchronize_weight: float = 0.0
 
 
 def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
@@ -117,7 +118,8 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
         for i in range(cfg.n_agents)
     }
 
-    adj: dict[str, list[str]] = {name: [name] for name in agents}
+    # adj: dict[str, list[str]] = {name: [name] for name in agents}
+    adj: dict[str, list[str]] = {name: [] for name in agents}
     names = list(agents.keys())
     for i in range(len(names) - 1):
         adj[names[i]].append(names[i + 1])
@@ -142,5 +144,6 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             use_reinforce=cfg.use_reinforce,
             baseline=cfg.baseline,
             entropy_weight=cfg.entropy_weight,
+            synchronize_weight=cfg.synchronize_weight,
         ),
     )
