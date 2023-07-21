@@ -96,17 +96,14 @@ class DiscSeqRNNDecoder(nn.Module):
     ]:
         h = torch.stack([i2h(x) for i2h in self.input2hidden])
         if isinstance(self.rnn, nn.LSTM):
-            c = (h, torch.zeros_like(h))
+            h = (h, torch.zeros_like(h))  # type: ignore
 
         if input is None:
             outputs: list[torch.Tensor] = []
             logitss = []
             i = self.sos_embed.repeat(x.shape[0], 1, 1)
             for _ in range(self.length):
-                if isinstance(self.rnn, nn.LSTM):
-                    y, (h, c) = self.rnn(i, (h, c))
-                else:
-                    y, h = self.rnn(i, h)
+                y, h = self.rnn(i, h)
                 logit = self.hidden2output(y)
 
                 if self.training:
