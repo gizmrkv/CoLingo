@@ -116,14 +116,12 @@ class Evaluator(Callback):
     def evaluate(self) -> None:
         self._game.eval()
 
-        outputs = []
         input = next(iter(self._input))
         with torch.no_grad():
             output = self._game(input=input)
-            outputs.append(output)
 
         for logger in self._loggers:
-            logger.log(outputs)
+            logger.log(output)
 
 
 class StepCounter(Callback):
