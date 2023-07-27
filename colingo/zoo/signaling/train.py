@@ -138,17 +138,22 @@ def train(
     names = list(agents.keys())
     train_evaluators = []
     test_evaluators = []
+    metrics = []
     for i, name_s in enumerate(names):
         names_r = names[:i] + names[i + 1 :]
         sender = agents[name_s]
         receivers = [agents[name_r] for name_r in names_r]
         game = Game(sender, receivers)
         train_metrics = GameMetrics(
-            "train", name_s, 5, [wandb_logger, duplicate_checker]
+            "train", name_s, 50, [wandb_logger, duplicate_checker]
         )
-        test_metrics = GameMetrics("test", name_s, 5, [wandb_logger, duplicate_checker])
+        test_metrics = GameMetrics(
+            "test", name_s, 50, [wandb_logger, duplicate_checker]
+        )
         train_evaluators.append(Evaluator(game, train_dataloader, [train_metrics]))
         test_evaluators.append(Evaluator(game, test_dataloader, [test_metrics]))
+        metrics.append(train_metrics)
+        metrics.append(test_metrics)
 
     # language analysis
     lansim_evaluators = []
@@ -202,6 +207,7 @@ def train(
             interval(10, test_evaluators),
             interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),
+            *metrics,
             train_acc_mat,
             test_acc_mat,
             train_lansim_mat,
