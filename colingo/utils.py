@@ -93,7 +93,7 @@ class Evaluator(Callback):
         game: nn.Module,
         input: Iterable[Any],
         loggers: Iterable[Logger] | None = None,
-        run_on_begin: bool = True,
+        run_on_begin: bool = False,
         run_on_end: bool = True,
     ):
         self._game = game
