@@ -27,6 +27,7 @@ from .game import Game
 from .loss import Loss
 from .metrics import (
     AccuracyMatrix,
+    GameMetrics,
     LanguageSimilarity,
     LanguageSimilarityMatrix,
     Metrics,
@@ -142,35 +143,14 @@ def train(
         sender = agents[name_s]
         receivers = [agents[name_r] for name_r in names_r]
         game = Game(sender, receivers)
-        train_metrics = Metrics(
-            "train", name_s, names_r, [wandb_logger, duplicate_checker]
+        train_metrics = GameMetrics(
+            "train", name_s, 5, [wandb_logger, duplicate_checker]
         )
-        test_metrics = Metrics(
-            "test", name_s, names_r, [wandb_logger, duplicate_checker]
-        )
+        test_metrics = GameMetrics("test", name_s, 5, [wandb_logger, duplicate_checker])
         train_evaluators.append(Evaluator(game, train_dataloader, [train_metrics]))
         test_evaluators.append(Evaluator(game, test_dataloader, [test_metrics]))
 
     # language analysis
-    topsim_evaluators = []
-    for name_s in names:
-        topsim_evaluators.append(
-            TopographicSimilarity(
-                "train." + name_s,
-                agents[name_s],
-                train_dataloader,
-                [wandb_logger, duplicate_checker],
-            )
-        )
-        topsim_evaluators.append(
-            TopographicSimilarity(
-                "test." + name_s,
-                agents[name_s],
-                test_dataloader,
-                [wandb_logger, duplicate_checker],
-            )
-        )
-
     lansim_evaluators = []
     for name_s, name_r in combinations(agents, 2):
         lansim_evaluators.append(
@@ -220,7 +200,6 @@ def train(
             shuffle(trainers),
             interval(10, train_evaluators),
             interval(10, test_evaluators),
-            interval(50, topsim_evaluators),
             interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),
             train_acc_mat,

@@ -11,6 +11,7 @@ import pandas as pd
 import seaborn as sns
 from numpy.typing import NDArray
 from torch import nn
+from torchtyping import TensorType
 
 import wandb
 
@@ -74,11 +75,6 @@ class Metrics(Logger):
         )
 
         return metrics
-
-
-def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
-    i = np.argwhere(x == 0)
-    return x if len(i) == 0 else x[: i[0, 0]]
 
 
 class TopographicSimilarity(Callback):
@@ -287,3 +283,72 @@ class LanguageSimilarityMatrix(Callback):
 
         for logger in self._loggers:
             logger.log({f"{self._name}.lansim_mat": image})
+
+
+class GameMetrics(Logger):
+    def __init__(
+        self,
+        name: str,
+        sender_name: str,
+        topsim_interval: int,
+        loggers: Iterable[Logger],
+    ) -> None:
+        self._name = name
+        self._sender_name = sender_name
+        self._topsim_interval = topsim_interval
+        self._loggers = loggers
+        self._step = 0
+
+    def log(self, result: GameResult) -> None:
+        metrics = {
+            "length_mean": result.message_length_s.float().mean().item(),
+            "entropy_mean": result.message_entropy_s.mean().item(),
+        }
+
+        acc_comps = [acc_comp(result.input, output_r) for output_r in result.output_r]
+        acc_parts = [acc_part(result.input, output_r) for output_r in result.output_r]
+        metrics |= {
+            "acc_comp_mean": mean(acc_comps),
+            "acc_part_mean": mean(acc_parts),
+        }
+
+        n_uniques = result.message_s.unique(dim=0).shape[0]
+        metrics["unique"] = n_uniques / result.message_s.shape[0]
+
+        if self._step % self._topsim_interval == 0:
+            metrics["topsim"] = topographic_similarity(
+                result.input.cpu().numpy(), result.message_s.cpu().numpy(), y_processor=drop_padding  # type: ignore
+            )
+
+        metrics = {
+            f"{self._name}.{self._sender_name}.{k}": v for k, v in metrics.items()
+        }
+
+        for logger in self._loggers:
+            logger.log(metrics)
+
+    def on_update(self, step: int) -> None:
+        self._step = step
+
+
+BATCH = "batch"
+LENGTH = "length"
+
+
+def acc_comp(
+    input: TensorType[BATCH, LENGTH, int],
+    output: TensorType[BATCH, LENGTH, int],
+) -> float:
+    return float((output == input).all(dim=-1).float().mean().item())
+
+
+def acc_part(
+    input: TensorType[BATCH, LENGTH, int],
+    output: TensorType[BATCH, LENGTH, int],
+) -> float:
+    return float((output == input).float().mean().item())
+
+
+def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
+    i = np.argwhere(x == 0)
+    return x if len(i) == 0 else x[: i[0, 0]]
