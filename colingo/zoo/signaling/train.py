@@ -25,14 +25,7 @@ from ...utils import (
 from .agent import Agent
 from .game import Game
 from .loss import Loss
-from .metrics import (
-    AccuracyMatrix,
-    GameMetrics,
-    LanguageSimilarity,
-    LanguageSimilarityMatrix,
-    Metrics,
-    TopographicSimilarity,
-)
+from .metrics import GameMetricsLogger, LanguageSimilarityMetrics
 
 
 @dataclass
@@ -139,15 +132,14 @@ def train(
     train_evaluators = []
     test_evaluators = []
     metrics = []
-    for i, name_s in enumerate(names):
-        names_r = names[:i] + names[i + 1 :]
+    for name_s in names:
         sender = agents[name_s]
-        receivers = [agents[name_r] for name_r in names_r]
+        receivers = [agents[name] for name in names]
         game = Game(sender, receivers)
-        train_metrics = GameMetrics(
+        train_metrics = GameMetricsLogger(
             "train", name_s, 50, [wandb_logger, duplicate_checker]
         )
-        test_metrics = GameMetrics(
+        test_metrics = GameMetricsLogger(
             "test", name_s, 50, [wandb_logger, duplicate_checker]
         )
         train_evaluators.append(Evaluator(game, train_dataloader, [train_metrics]))
@@ -155,48 +147,31 @@ def train(
         metrics.append(train_metrics)
         metrics.append(test_metrics)
 
-    # language analysis
-    lansim_evaluators = []
-    for name_s, name_r in combinations(agents, 2):
-        lansim_evaluators.append(
-            LanguageSimilarity(
-                f"train.{name_s}-{name_r}",
-                agents[name_s],
-                agents[name_r],
-                train_dataloader,
-                [wandb_logger, duplicate_checker],
-            )
-        )
-        lansim_evaluators.append(
-            LanguageSimilarity(
-                f"test.{name_s}-{name_r}",
-                agents[name_s],
-                agents[name_r],
-                test_dataloader,
-                [wandb_logger, duplicate_checker],
-            )
-        )
+    # train_acc_mat = AccuracyMatrix(
+    #     cfg.object_length,
+    #     "train",
+    #     agents,
+    #     train_dataloader,
+    #     [wandb_logger, duplicate_checker],
+    # )
+    # test_acc_mat = AccuracyMatrix(
+    #     cfg.object_length,
+    #     "test",
+    #     agents,
+    #     test_dataloader,
+    #     [wandb_logger, duplicate_checker],
+    # )
 
-    train_acc_mat = AccuracyMatrix(
-        cfg.object_length,
+    train_lansim_mat = LanguageSimilarityMetrics(
+        log_dir,
         "train",
         agents,
         train_dataloader,
+        50,
         [wandb_logger, duplicate_checker],
     )
-    test_acc_mat = AccuracyMatrix(
-        cfg.object_length,
-        "test",
-        agents,
-        test_dataloader,
-        [wandb_logger, duplicate_checker],
-    )
-
-    train_lansim_mat = LanguageSimilarityMatrix(
-        "train", agents, train_dataloader, [wandb_logger, duplicate_checker]
-    )
-    test_lansim_mat = LanguageSimilarityMatrix(
-        "test", agents, test_dataloader, [wandb_logger, duplicate_checker]
+    test_lansim_mat = LanguageSimilarityMetrics(
+        log_dir, "test", agents, test_dataloader, 50, [wandb_logger, duplicate_checker]
     )
 
     # runner
@@ -205,13 +180,9 @@ def train(
             shuffle(trainers),
             interval(10, train_evaluators),
             interval(10, test_evaluators),
-            interval(50, lansim_evaluators),
             StepCounter("total_steps", [wandb_logger, duplicate_checker]),
             *metrics,
-            train_acc_mat,
-            test_acc_mat,
-            train_lansim_mat,
-            test_lansim_mat,
+            interval(10, [train_lansim_mat, test_lansim_mat]),
             wandb_logger,
             duplicate_checker,
         ],
