@@ -3,17 +3,16 @@ import json
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from itertools import combinations, product
-from typing import Iterable, Literal
+from itertools import product
+from typing import Literal
 
 import torch
 from torch import optim
 from torch.utils.data import DataLoader
 
 from ...core import Runner
-from ...logger import DuplicateChecker, EarlyStopper, WandBLogger
+from ...logger import DuplicateChecker, HeatmapLogger, WandBLogger
 from ...utils import (
-    Evaluator,
     StepCounter,
     Trainer,
     fix_seed,
@@ -25,7 +24,7 @@ from ...utils import (
 from .agent import Agent
 from .game import Game
 from .loss import Loss
-from .metrics import GameMetricsLogger, LanguageSimilarityMetrics
+from .metrics import GameMetrics, LanguageSimilarityMetrics
 
 
 @dataclass
@@ -126,65 +125,76 @@ def train(
         trainers.append(trainer)
 
     # evaluator
-    wandb_logger = WandBLogger(cfg.wandb_project, name=log_dir)
-    duplicate_checker = DuplicateChecker()
-    names = list(agents.keys())
-    train_evaluators = []
-    test_evaluators = []
-    metrics = []
-    for name_s in names:
-        sender = agents[name_s]
-        receivers = [agents[name] for name in names]
-        game = Game(sender, receivers)
-        train_metrics = GameMetricsLogger(
-            "train", name_s, 50, [wandb_logger, duplicate_checker]
+    loggers = [WandBLogger(cfg.wandb_project, name=log_dir), DuplicateChecker()]
+    heatmap_option = {
+        "vmin": 0,
+        "vmax": 1,
+        "cmap": "viridis",
+        "annot": True,
+        "fmt": ".2f",
+        "cbar": True,
+        "square": True,
+    }
+    heatmap_loggers = []
+    game_metrics = []
+    lansim_metrics = []
+    for name, data in [("train", train_dataloader), ("test", test_dataloader)]:
+        acc_comp_heatmap_logger = HeatmapLogger(
+            log_dir,
+            f"{name}.acc_comp",
+            1,
+            loggers,
+            heatmap_option=heatmap_option,
         )
-        test_metrics = GameMetricsLogger(
-            "test", name_s, 50, [wandb_logger, duplicate_checker]
+        acc_part_heatmap_logger = HeatmapLogger(
+            log_dir,
+            f"{name}.acc_part",
+            1,
+            loggers,
+            heatmap_option=heatmap_option,
         )
-        train_evaluators.append(Evaluator(game, train_dataloader, [train_metrics]))
-        test_evaluators.append(Evaluator(game, test_dataloader, [test_metrics]))
-        metrics.append(train_metrics)
-        metrics.append(test_metrics)
+        game_metrics.append(
+            GameMetrics(
+                name,
+                agents,
+                data,
+                100,
+                loggers,
+                [acc_comp_heatmap_logger],
+                [acc_part_heatmap_logger],
+            )
+        )
 
-    # train_acc_mat = AccuracyMatrix(
-    #     cfg.object_length,
-    #     "train",
-    #     agents,
-    #     train_dataloader,
-    #     [wandb_logger, duplicate_checker],
-    # )
-    # test_acc_mat = AccuracyMatrix(
-    #     cfg.object_length,
-    #     "test",
-    #     agents,
-    #     test_dataloader,
-    #     [wandb_logger, duplicate_checker],
-    # )
+        lansim_heatmap_logger = HeatmapLogger(
+            log_dir,
+            f"{name}.lansim",
+            1,
+            loggers,
+            heatmap_option=heatmap_option,
+        )
+        lansim_metrics.append(
+            LanguageSimilarityMetrics(
+                name,
+                agents,
+                data,
+                loggers,
+                [lansim_heatmap_logger],
+            )
+        )
 
-    train_lansim_mat = LanguageSimilarityMetrics(
-        log_dir,
-        "train",
-        agents,
-        train_dataloader,
-        50,
-        [wandb_logger, duplicate_checker],
-    )
-    test_lansim_mat = LanguageSimilarityMetrics(
-        log_dir, "test", agents, test_dataloader, 50, [wandb_logger, duplicate_checker]
-    )
+        heatmap_loggers.append(acc_comp_heatmap_logger)
+        heatmap_loggers.append(acc_part_heatmap_logger)
+        heatmap_loggers.append(lansim_heatmap_logger)
 
     # runner
     runner = Runner(
         [
             shuffle(trainers),
-            interval(10, train_evaluators),
-            interval(10, test_evaluators),
-            StepCounter("total_steps", [wandb_logger, duplicate_checker]),
-            *metrics,
-            interval(10, [train_lansim_mat, test_lansim_mat]),
-            wandb_logger,
-            duplicate_checker,
+            *heatmap_loggers,
+            interval(10, game_metrics),
+            interval(100, lansim_metrics),
+            StepCounter("total_steps", loggers),
+            *loggers,
         ],
         use_tqdm=cfg.use_tqdm,
     )

@@ -1,23 +1,10 @@
-import os
-from glob import glob
-from statistics import mean
-from typing import Any, Iterable, Sequence
+from statistics import fmean
+from typing import Any, Iterable
 
-import matplotlib
-from moviepy.editor import ImageSequenceClip
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from matplotlib.animation import FuncAnimation
 from numpy.typing import NDArray
-from torch import nn
 from torchtyping import TensorType
-
-import wandb
 
 from ...analysis import language_similarity, topographic_similarity
 from ...core import Callback
@@ -26,174 +13,119 @@ from .agent import Agent
 from .game import Game, GameResult
 
 
-class OldAccuracyMatrix(Callback):
+class GameMetrics(Callback):
     def __init__(
         self,
-        length: int,
         name: str,
         agents: dict[str, Agent],
-        dataloader: Iterable[Any],
-        loggers: Iterable[Logger],
+        input: Iterable[Any],
+        topsim_interval: int,
+        metrics_loggers: Iterable[Logger],
+        acc_comp_heatmap_loggers: Iterable[Logger],
+        acc_part_heatmap_loggers: Iterable[Logger],
     ) -> None:
-        self._length = length
         self._name = name
         self._agents = agents
-        self._dataloader = dataloader
-        self._loggers = loggers
-
-        self._games = [
-            Game(sender, list(agents.values())) for name, sender in agents.items()
-        ]
-        self._index = list(self._agents.keys())
-
-    def on_end(self) -> None:
-        self.evaluate()
-
-    def evaluate(self) -> None:
-        comp_heatmap = []
-        part_heatmap = []
-        attr_heatmap: list[list[list[float]]] = [[] for i in range(self._length)]
-
-        input = next(iter(self._dataloader))
-        for game in self._games:
-            result: GameResult = game(input)
-            comp, part, attr = self.calc_acc_comps(result)
-            comp_heatmap.append(comp)
-            part_heatmap.append(part)
-            for i, a in enumerate(attr):
-                attr_heatmap[i].append(a)
-
-        images = {}
-
-        images[f"{self._name}.acc_comp_mat"] = self.get_wandb_image(comp_heatmap)
-        images[f"{self._name}.acc_part_mat"] = self.get_wandb_image(part_heatmap)
-
-        for i, attr in enumerate(attr_heatmap):
-            images[f"{self._name}.acc_attr{i}_mat"] = self.get_wandb_image(attr)
-
-        for logger in self._loggers:
-            logger.log(images)
-
-    def calc_acc_comps(
-        self, result: GameResult
-    ) -> tuple[list[float], list[float], list[list[float]]]:
-        acc_comps = []
-        acc_parts = []
-        acc_attrs: list[list[float]] = [[] for i in range(self._length)]
-
-        for output_r in result.output_r:
-            mark = output_r == result.input
-            acc_comp = mark.all(dim=-1).float().mean().item()
-            acc = mark.float().mean(dim=0)
-            acc_part = acc.mean().item()
-            acc_comps.append(acc_comp)
-            acc_parts.append(acc_part)
-            for i, a in enumerate(list(acc)):
-                acc_attrs[i].append(a.item())
-
-        return acc_comps, acc_parts, acc_attrs
-
-    def get_wandb_image(self, data: list[list[float]]) -> wandb.Image:
-        df = pd.DataFrame(data=data, index=self._index, columns=self._index)
-        fig, ax = plt.subplots(figsize=(10, 10))
-        sns.heatmap(df, vmin=0, vmax=1, annot=True, fmt=".2f", cmap="inferno")
-        ax.set_ylabel("Sender")
-        ax.set_xlabel("Receiver")
-        image = wandb.Image(fig)
-        plt.close()
-        return image
-
-
-class GameMetricsLogger(Logger):
-    def __init__(
-        self,
-        name: str,
-        sender_name: str,
-        topsim_interval: int,
-        loggers: Iterable[Logger],
-    ) -> None:
-        self._name = name
-        self._sender_name = sender_name
+        self._input = input
         self._topsim_interval = topsim_interval
-        self._loggers = loggers
-        self._step = 0
+        self._metrics_loggers = metrics_loggers
+        self._acc_comp_heatmap_loggers = acc_comp_heatmap_loggers
+        self._acc_part_heatmap_loggers = acc_part_heatmap_loggers
 
-    def log(self, result: GameResult) -> None:
-        # Calculate the average length and entropy of the message
-        metrics = {
-            "length_mean": result.message_length_s.float().mean().item(),
-            "entropy_mean": result.message_entropy_s.mean().item(),
-        }
-
-        # Calculate the accuracy of the complete answer and the partial answer
-        acc_comps = [acc_comp(result.input, output_r) for output_r in result.output_r]
-        acc_parts = [acc_part(result.input, output_r) for output_r in result.output_r]
-        metrics |= {"acc_comp_mean": mean(acc_comps), "acc_part_mean": mean(acc_parts)}
-
-        # Calculate the proportion of unique messages
-        n_uniques = result.message_s.unique(dim=0).shape[0]
-        metrics["unique"] = n_uniques / result.message_s.shape[0]
-
-        if self._step % self._topsim_interval == 0:
-            # Calculate the topographic similarity
-            metrics["topsim"] = topographic_similarity(
-                result.input.cpu().numpy(), result.message_s.cpu().numpy(), y_processor=drop_padding  # type: ignore
-            )
-
-        metrics = {
-            f"{self._name}.{self._sender_name}.{k}": v for k, v in metrics.items()
-        }
-
-        for logger in self._loggers:
-            logger.log(metrics)
+        self._agents_values = list(self._agents.values())
+        self._agents_keys = list(self._agents.keys())
+        self._games = [
+            Game(sender, self._agents_values) for sender in self._agents_values
+        ]
 
     def on_update(self, step: int) -> None:
-        self._step = step
+        # Execute the game for all agents and get the results
+        input = next(iter(self._input))
+        results: list[GameResult] = [game(input) for game in self._games]
 
+        # Create a heatmap of the accuracy rate for all agent pairs
+        acc_comp_matrix = [
+            [acc_comp(result.input, output_r) for output_r in result.output_r]
+            for result in results
+        ]
+        acc_part_matrix = [
+            [acc_part(result.input, output_r) for output_r in result.output_r]
+            for result in results
+        ]
 
-BATCH = "batch"
-LENGTH = "length"
+        # Calculate the metrics
+        acc_comp_means = [fmean(acc_comp_matrix[i]) for i in range(len(self._agents))]
+        acc_part_means = [fmean(acc_part_matrix[i]) for i in range(len(self._agents))]
+        uniques = [
+            result.message_s.unique(dim=0).shape[0] / result.message_s.shape[0]
+            for result in results
+        ]
+        length = [result.message_length_s.float().mean().item() for result in results]
+        entropy = [result.message_entropy_s.mean().item() for result in results]
 
+        metrics = {
+            "acc_comp.mean": fmean(acc_comp_means),
+            "acc_part.mean": fmean(acc_part_means),
+            "unique": fmean(uniques),
+            "length": fmean(length),
+            "entropy": fmean(entropy),
+        }
 
-def acc_comp(
-    input: TensorType[BATCH, LENGTH, int],
-    output: TensorType[BATCH, LENGTH, int],
-) -> float:
-    return float((output == input).all(dim=-1).float().mean().item())
+        for i, name in enumerate(self._agents_keys):
+            metrics[f"{name}.acc_comp.mean"] = acc_comp_means[i]
+            metrics[f"{name}.acc_part.mean"] = acc_part_means[i]
+            metrics[f"{name}.unique"] = uniques[i]
+            metrics[f"{name}.length"] = length[i]
+            metrics[f"{name}.entropy"] = entropy[i]
 
+        if step % self._topsim_interval == 0:
+            # Calculate the topographic similarity
+            topsims = [
+                topographic_similarity(
+                    result.input.cpu().numpy(),
+                    result.message_s.cpu().numpy(),
+                    y_processor=drop_padding,  # type: ignore
+                )
+                for result in results
+            ]
+            metrics["topsim_mean"] = fmean(topsims)
+            for i, name in enumerate(self._agents_keys):
+                metrics[f"{name}.topsim"] = topsims[i]
 
-def acc_part(
-    input: TensorType[BATCH, LENGTH, int],
-    output: TensorType[BATCH, LENGTH, int],
-) -> float:
-    return float((output == input).float().mean().item())
+        metrics = {f"{self._name}.{k}": v for k, v in metrics.items()}
 
+        for logger in self._metrics_loggers:
+            logger.log(metrics)
 
-def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
-    i = np.argwhere(x == 0)
-    return x if len(i) == 0 else x[: i[0, 0]]
+        # Create heatmaps
+        for matrix, loggers in [
+            (acc_comp_matrix, self._acc_comp_heatmap_loggers),
+            (acc_part_matrix, self._acc_part_heatmap_loggers),
+        ]:
+            df = pd.DataFrame(
+                matrix, columns=self._agents_keys, index=self._agents_keys
+            )
+            for logger in loggers:
+                logger.log(df)
 
 
 class LanguageSimilarityMetrics(Callback):
     def __init__(
         self,
-        path: str,
         name: str,
         agents: dict[str, Agent],
         input: Iterable[Any],
-        frame_interval: int,
-        loggers: Iterable[Logger],
+        metrics_loggers: Iterable[Logger],
+        heatmap_loggers: Iterable[Logger],
     ) -> None:
-        self._path = path
         self._name = name
         self._agents = agents
         self._input = input
-        self._interval = frame_interval
-        self._loggers = loggers
-        self._step = 0
-        self._count = 0
+        self._metrics_loggers = metrics_loggers
+        self._heatmap_loggers = heatmap_loggers
 
-        os.makedirs(f"{self._path}/lansim_frames", exist_ok=True)
+    def on_update(self, step: int) -> None:
+        self.calc()
 
     def calc(self) -> None:
         # Calculate the messages that each agent outputs for a single input
@@ -229,38 +161,35 @@ class LanguageSimilarityMetrics(Callback):
             for name, lansim_mean in zip(self._agents, lansim_means)
         }
 
-        if self._step % self._interval == 0:
-            # Save a heatmap of the language similarity
-            df = pd.DataFrame(data=lansims, index=self._agents, columns=self._agents)
-            sns.heatmap(
-                df,
-                vmin=0.0,
-                vmax=1.0,
-                annot=True,
-                fmt=".2f",
-                cmap="viridis",
-                square=True,
-                cbar=True,
-            )
-            plt.title(f"lansim step: {self._step}")
-            plt.savefig(f"{self._path}/lansim_frames/{self._count:0>6}.png")
-            plt.clf()
-            self._count += 1
-
         metrics = {f"{self._name}.{k}": v for k, v in metrics.items()}
 
-        for logger in self._loggers:
+        for logger in self._metrics_loggers:
             logger.log(metrics)
 
-    def on_update(self, step: int) -> None:
-        self._step = step
-        self.calc()
+        # Save a heatmap of the language similarity
+        df = pd.DataFrame(data=lansims, index=self._agents, columns=self._agents)
+        for logger in self._heatmap_loggers:
+            logger.log(df)
 
-    def on_end(self) -> None:
-        # Save a video of the language similarity heatmap
-        frames = sorted(glob(f"{self._path}/lansim_frames/*.png"))
-        name = f"{self._path}/{self._name}_lansim.mp4"
-        clip = ImageSequenceClip(frames, fps=10)
-        clip.write_videofile(name)
-        for logger in self._loggers:
-            logger.log({f"{self._name}.lansim_heatmap": wandb.Video(name)})
+
+BATCH = "batch"
+LENGTH = "length"
+
+
+def acc_comp(
+    input: TensorType[BATCH, LENGTH, int],
+    output: TensorType[BATCH, LENGTH, int],
+) -> float:
+    return float((output == input).all(dim=-1).float().mean().item())
+
+
+def acc_part(
+    input: TensorType[BATCH, LENGTH, int],
+    output: TensorType[BATCH, LENGTH, int],
+) -> float:
+    return float((output == input).float().mean().item())
+
+
+def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
+    i = np.argwhere(x == 0)
+    return x if len(i) == 0 else x[: i[0, 0]]
