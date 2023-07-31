@@ -70,6 +70,18 @@ class GameResult:
         TensorType[BATCH, MESSAGE_LENGTH, MESSAGE_N_VALUES, float]
     ] | None = None
 
+    latent_auto_encoding_s: Any | None = None
+    output_auto_encoding_s: TensorType[BATCH, OBJECT_LENGTH, int] | None = None
+    output_logits_auto_encoding_s: TensorType[
+        BATCH, OBJECT_LENGTH, OBJECT_N_VALUES, float
+    ] | None = None
+
+    latent_auto_encoding_r: list[Any] | None = None
+    message_auto_encoding_r: list[TensorType[BATCH, MESSAGE_LENGTH, int]] | None = None
+    message_logits_auto_encoding_r: tuple[
+        TensorType[BATCH, MESSAGE_LENGTH, MESSAGE_N_VALUES, float]
+    ] | None = None
+
     input_command: str = "input"
     output_command: str = "output"
     send_command: str = "send"
@@ -83,6 +95,8 @@ class Game(nn.Module):
         receivers: Sequence[nn.Module],
         run_sender_output: bool = False,
         run_receiver_send: bool = False,
+        run_sender_auto_encoding: bool = False,
+        run_receiver_auto_encoding: bool = False,
         input_command: str = "input",
         output_command: str = "output",
         send_command: str = "send",
@@ -93,6 +107,9 @@ class Game(nn.Module):
         self._receivers = nn.ModuleList(receivers)
         self._run_sender_output = run_sender_output
         self._run_receiver_send = run_receiver_send
+        self._run_sender_auto_encoding = run_sender_auto_encoding
+        self._run_receiver_auto_encoding = run_receiver_auto_encoding
+
         self._input_command = input_command
         self._output_command = output_command
         self._send_command = send_command
@@ -128,6 +145,10 @@ class Game(nn.Module):
             latent_r=ltts_r,
             output_r=output_r,
             output_logits_r=output_logits_r,
+            input_command=self._input_command,
+            output_command=self._output_command,
+            send_command=self._send_command,
+            receive_command=self._receive_command,
         )
 
         if self._run_sender_output:
@@ -140,6 +161,31 @@ class Game(nn.Module):
                 *[
                     receiver(latent=ltt_r, command=self._send_command)
                     for receiver, ltt_r in zip(self._receivers, ltts_r)
+                ]
+            )
+
+        if self._run_sender_auto_encoding:
+            result.latent_auto_encoding_s = self._sender(
+                message=msg_s, command=self._receive_command
+            )
+            (
+                result.output_auto_encoding_s,
+                result.output_logits_auto_encoding_s,
+            ) = self._sender(
+                latent=result.latent_auto_encoding_s, command=self._output_command
+            )
+
+        if self._run_receiver_auto_encoding:
+            result.latent_auto_encoding_r = [
+                receiver(object=output_r, command=self._input_command)
+                for receiver in self._receivers
+            ]
+            result.message_auto_encoding_r, result.message_logits_auto_encoding_r = zip(
+                *[
+                    receiver(latent=ltt_r, command=self._send_command)
+                    for receiver, ltt_r in zip(
+                        self._receivers, result.latent_auto_encoding_r
+                    )
                 ]
             )
 

@@ -10,6 +10,15 @@ from ...module import (
     DiscSeqRNNEncoder,
 )
 from .agent import Agent
+from .loss import (
+    Loss,
+    ReceiverAutoEncodingCrossEntropyLoss,
+    ReceiverMessageCrossEntropyLoss,
+    ReceiverObjectCrossEntropyLoss,
+    SenderAutoEncodingCrossEntropyLoss,
+    SenderMessageReinforceLoss,
+    SenderObjectCrossEntropyLoss,
+)
 from .train import Config, train
 
 
@@ -64,8 +73,9 @@ class ConfigWithMLPRNN:
     use_reinforce: bool = False
     baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
-    ruminate_weight: float = 0.0
-    synchronize_weight: float = 0.0
+    length_weight: float = 0.0
+    sender_loss_weight: float = 1.0
+    receiver_loss_weight: float = 1.0
 
 
 def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
@@ -129,6 +139,7 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
     train(
         agents,
         adj,
+        {},
         Config(
             n_epochs=cfg.n_epochs,
             batch_size=cfg.batch_size,
@@ -145,7 +156,8 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             use_reinforce=cfg.use_reinforce,
             baseline=cfg.baseline,
             entropy_weight=cfg.entropy_weight,
-            ruminate_weight=cfg.ruminate_weight,
-            synchronize_weight=cfg.synchronize_weight,
+            length_weight=cfg.length_weight,
+            sender_loss_weight=cfg.sender_loss_weight,
+            receiver_loss_weight=cfg.receiver_loss_weight,
         ),
     )

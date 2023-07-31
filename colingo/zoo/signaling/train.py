@@ -10,8 +10,10 @@ import torch
 from torch import optim
 from torch.utils.data import DataLoader
 
+from ...baseline import BatchMeanBaseline
 from ...core import Runner
 from ...logger import DuplicateChecker, HeatmapLogger, WandBLogger
+from ...loss import ReinforceLoss
 from ...utils import (
     StepCounter,
     Trainer,
@@ -23,7 +25,7 @@ from ...utils import (
 )
 from .agent import Agent
 from .game import Game
-from .loss import Loss
+from .loss import Loss, ReceiverObjectCrossEntropyLoss, SenderMessageReinforceLoss
 from .metrics import GameMetrics, LanguageSimilarityMetrics
 
 
@@ -50,13 +52,16 @@ class Config:
     use_reinforce: bool = False
     baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
-
-    ruminate_weight: float = 0.0
-    synchronize_weight: float = 0.0
+    length_weight: float = 0.0
+    sender_loss_weight: float = 1.0
+    receiver_loss_weight: float = 1.0
 
 
 def train(
-    agents: dict[str, Agent], adjacency: dict[str, list[str]], cfg: Config
+    agents: dict[str, Agent],
+    adjacency: dict[str, list[str]],
+    losses: dict[str, Loss],
+    cfg: Config,
 ) -> None:
     # pre process
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -99,16 +104,25 @@ def train(
     test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)  # type: ignore
 
     # trainer
+    baselines = {"batch_mean": BatchMeanBaseline}
+    reinforce_loss = ReinforceLoss(
+        cfg.entropy_weight,
+        cfg.length_weight,
+        baselines[cfg.baseline](),
+        baselines[cfg.baseline](),
+    )
+    sender_loss = SenderMessageReinforceLoss(reinforce_loss, cfg.sender_loss_weight)
+    receiver_loss = ReceiverObjectCrossEntropyLoss(
+        cfg.object_length, cfg.object_n_values, cfg.receiver_loss_weight
+    )
     loss = Loss(
         cfg.object_length,
         cfg.object_n_values,
         cfg.message_length,
         cfg.message_n_values,
-        cfg.use_reinforce,
-        cfg.baseline,
-        cfg.entropy_weight,
-        cfg.ruminate_weight,
-        cfg.synchronize_weight,
+        sender_loss,
+        receiver_loss,
+        losses.values(),
     )
 
     trainers = []
