@@ -23,9 +23,8 @@ def sequence_cross_entropy_loss(
     n_values: int,
 ) -> TensorType[BATCH, float]:
     input = input.view(-1, n_values)
-    target = target.view(-1)
-    loss = F.cross_entropy(input, target, reduction="none")
-    return loss.view(-1, length)
+    loss = F.cross_entropy(input, target.view(-1), reduction="none")
+    return loss.view(-1, length).sum(dim=-1)
 
 
 def object_reinforce_loss(
@@ -54,7 +53,8 @@ class ReceiverObjectCrossEntropyLoss(nn.Module):
             )
             for logits in result.output_logits_r
         ]
-        loss_sum = torch.stack(loss, dim=-1).sum(dim=-1)
+        loss_sum = torch.stack(loss, dim=-1)
+        loss_sum = loss_sum.sum(dim=-1)
         return self._weight * loss_sum
 
 
@@ -165,7 +165,7 @@ class Loss(nn.Module):
 
     def forward(self, result: GameResult) -> TensorType[float]:
         loss_r = self._receiver_loss(result)
-        loss_s = self._sender_loss(result, loss_r)
+        loss_s = self._sender_loss(result, -loss_r)
         total_loss = loss_r + loss_s
 
         for loss in self._additional_losses:

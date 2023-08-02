@@ -1,41 +1,21 @@
-# exp config
-n_epochs = 8000
-batch_size = 10000
-seed = 42
-device = "cuda"
-zoo_name = "signaling_with_mlp_rnn"
-wandb_project = "hoge"
-use_tqdm = true
-
 # common config
-lr = 0.0002
-object_length = 2
-object_n_values = 50
-message_length = 10
-message_n_values = 50
-latent_dim = 256
-use_reinforce = false
-baseline = "batch_mean"
-entropy_weight = 0.1
-n_agents = 4
-synchronize_weight = 0.2
-ruminate_weight = 0.0
+latent_dim = 512
+n_agents = 2
 
 # mlp encoder config
 mlp_encoder_hidden_dim = 256
 mlp_encoder_embed_dim = 64
-mlp_encoder_activation = "gelu"
+mlp_encoder_activation = "relu"
 mlp_encoder_use_layer_norm = false
 mlp_encoder_use_residual = false
 mlp_encoder_n_blocks = 0
 
 # mlp decoder config
 mlp_decoder_hidden_dim = 128
-mlp_decoder_activation = "gelu"
+mlp_decoder_activation = "relu"
 mlp_decoder_use_layer_norm = false
 mlp_decoder_use_residual = false
 mlp_decoder_n_blocks = 0
-
 
 # rnn encoder config
 rnn_encoder_hidden_dim = 128
@@ -48,3 +28,45 @@ rnn_decoder_hidden_dim = 256
 rnn_decoder_embed_dim = 64
 rnn_decoder_rnn_type = "gru"
 rnn_decoder_n_layers = 2
+
+# exp config
+n_epochs = 1000
+batch_size = 100000
+device = "cuda"
+zoo_name = "signaling_with_mlp_rnn"
+wandb_project = "hoge"
+use_tqdm = true
+
+# common config
+lr = 0.0002
+object_length = 2
+object_n_values = 50
+message_length = 10
+message_n_values = 10
+
+# optional config
+seed = 42
+
+run_sender_output = true
+run_receiver_send = true
+run_sender_auto_encoding = false
+run_receiver_auto_encoding = false
+
+receiver_loss_weight = 1.0
+
+sender_loss_weight = 1.0
+baseline = "batch_mean"
+length_baseline = "batch_mean"
+entropy_weight = 0.0
+length_weight = 0.0
+
+# raece_loss_weight = 1.0
+rmce_loss_weight = 1.0
+# saece_loss_weight = 1.0
+soce_loss_weight = 1.0
+
+eval_interval = 10
+acc_heatmap_interval = 5
+topsim_interval = 5
+lansim_interval = 50
+lansim_heatmap_interval = 1

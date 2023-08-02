@@ -7,6 +7,7 @@ from itertools import product
 from typing import Literal
 
 import torch
+import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader
 
@@ -16,6 +17,7 @@ from ...logger import DuplicateChecker, HeatmapLogger, WandBLogger
 from ...loss import ReinforceLoss
 from ...utils import (
     StepCounter,
+    TimeWatcher,
     Trainer,
     fix_seed,
     init_weights,
@@ -25,7 +27,15 @@ from ...utils import (
 )
 from .agent import Agent
 from .game import Game
-from .loss import Loss, ReceiverObjectCrossEntropyLoss, SenderMessageReinforceLoss
+from .loss import (
+    Loss,
+    ReceiverAutoEncodingCrossEntropyLoss,
+    ReceiverMessageCrossEntropyLoss,
+    ReceiverObjectCrossEntropyLoss,
+    SenderAutoEncodingCrossEntropyLoss,
+    SenderMessageReinforceLoss,
+    SenderObjectCrossEntropyLoss,
+)
 from .metrics import GameMetrics, LanguageSimilarityMetrics
 
 
@@ -49,18 +59,34 @@ class Config:
     # optional config
     seed: int | None = None
 
-    use_reinforce: bool = False
+    run_sender_output: bool = False
+    run_receiver_send: bool = False
+    run_sender_auto_encoding: bool = False
+    run_receiver_auto_encoding: bool = False
+
+    receiver_loss_weight: float = 1.0
+
+    sender_loss_weight: float = 1.0
     baseline: Literal["batch_mean"] = "batch_mean"
+    length_baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
     length_weight: float = 0.0
-    sender_loss_weight: float = 1.0
-    receiver_loss_weight: float = 1.0
+
+    raece_loss_weight: float | None = None
+    rmce_loss_weight: float | None = None
+    saece_loss_weight: float | None = None
+    soce_loss_weight: float | None = None
+
+    eval_interval: int = 10
+    acc_heatmap_interval: int = 5
+    topsim_interval: int = 5
+    lansim_interval: int = 50
+    lansim_heatmap_interval: int = 1
 
 
 def train(
     agents: dict[str, Agent],
     adjacency: dict[str, list[str]],
-    losses: dict[str, Loss],
     cfg: Config,
 ) -> None:
     # pre process
@@ -101,15 +127,54 @@ def train(
     train_dataloader = DataLoader(
         train_dataset, batch_size=cfg.batch_size, shuffle=True  # type: ignore
     )
-    test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)  # type: ignore
+    test_dataloader = DataLoader(test_dataset, batch_size=test_dataset.shape[0])  # type: ignore
 
     # trainer
+    train_losses: list[nn.Module] = []
+    eval_losses: dict[str, nn.Module] = {}
+    if cfg.raece_loss_weight is not None:
+        train_losses.append(
+            ReceiverAutoEncodingCrossEntropyLoss(
+                cfg.message_length, cfg.message_n_values, cfg.raece_loss_weight
+            )
+        )
+        eval_losses["raece"] = ReceiverAutoEncodingCrossEntropyLoss(
+            cfg.message_length, cfg.message_n_values
+        )
+    if cfg.rmce_loss_weight is not None:
+        train_losses.append(
+            ReceiverMessageCrossEntropyLoss(
+                cfg.message_length, cfg.message_n_values, cfg.rmce_loss_weight
+            )
+        )
+        eval_losses["rmce"] = ReceiverMessageCrossEntropyLoss(
+            cfg.message_length, cfg.message_n_values
+        )
+    if cfg.saece_loss_weight is not None:
+        train_losses.append(
+            SenderAutoEncodingCrossEntropyLoss(
+                cfg.object_length, cfg.object_n_values, cfg.saece_loss_weight
+            )
+        )
+        eval_losses["saece"] = SenderAutoEncodingCrossEntropyLoss(
+            cfg.object_length, cfg.object_n_values
+        )
+    if cfg.soce_loss_weight is not None:
+        train_losses.append(
+            SenderObjectCrossEntropyLoss(
+                cfg.object_length, cfg.object_n_values, cfg.soce_loss_weight
+            )
+        )
+        eval_losses["soce"] = SenderObjectCrossEntropyLoss(
+            cfg.object_length, cfg.object_n_values
+        )
+
     baselines = {"batch_mean": BatchMeanBaseline}
     reinforce_loss = ReinforceLoss(
         cfg.entropy_weight,
         cfg.length_weight,
         baselines[cfg.baseline](),
-        baselines[cfg.baseline](),
+        baselines[cfg.length_baseline](),
     )
     sender_loss = SenderMessageReinforceLoss(reinforce_loss, cfg.sender_loss_weight)
     receiver_loss = ReceiverObjectCrossEntropyLoss(
@@ -122,14 +187,21 @@ def train(
         cfg.message_n_values,
         sender_loss,
         receiver_loss,
-        losses.values(),
+        train_losses,
     )
 
     trainers = []
     for name_s, names_r in adjacency.items():
         sender = agents[name_s]
         receivers = [agents[name_r] for name_r in names_r]
-        game = Game(sender, receivers)
+        game = Game(
+            sender,
+            receivers,
+            cfg.run_sender_output,
+            cfg.run_receiver_send,
+            cfg.run_sender_auto_encoding,
+            cfg.run_receiver_auto_encoding,
+        )
         trainer = Trainer(
             game,
             [optimizers[name_s], *[optimizers[name_r] for name_r in names_r]],
@@ -156,14 +228,12 @@ def train(
         acc_comp_heatmap_logger = HeatmapLogger(
             log_dir,
             f"{name}.acc_comp",
-            1,
             loggers,
             heatmap_option=heatmap_option,
         )
         acc_part_heatmap_logger = HeatmapLogger(
             log_dir,
             f"{name}.acc_part",
-            1,
             loggers,
             heatmap_option=heatmap_option,
         )
@@ -172,17 +242,24 @@ def train(
                 name,
                 agents,
                 data,
-                100,
+                eval_losses,
+                cfg.topsim_interval,
+                cfg.acc_heatmap_interval,
                 loggers,
                 [acc_comp_heatmap_logger],
                 [acc_part_heatmap_logger],
+                {
+                    "run_sender_output": cfg.run_sender_output,
+                    "run_receiver_send": cfg.run_receiver_send,
+                    "run_sender_auto_encoding": cfg.run_sender_auto_encoding,
+                    "run_receiver_auto_encoding": cfg.run_receiver_auto_encoding,
+                },
             )
         )
 
         lansim_heatmap_logger = HeatmapLogger(
             log_dir,
             f"{name}.lansim",
-            1,
             loggers,
             heatmap_option=heatmap_option,
         )
@@ -191,6 +268,7 @@ def train(
                 name,
                 agents,
                 data,
+                cfg.lansim_heatmap_interval,
                 loggers,
                 [lansim_heatmap_logger],
             )
@@ -201,15 +279,14 @@ def train(
         heatmap_loggers.append(lansim_heatmap_logger)
 
     # runner
-    runner = Runner(
-        [
-            shuffle(trainers),
-            *heatmap_loggers,
-            interval(10, game_metrics),
-            interval(100, lansim_metrics),
-            StepCounter("total_steps", loggers),
-            *loggers,
-        ],
-        use_tqdm=cfg.use_tqdm,
-    )
+    callbacks = [
+        shuffle(trainers),
+        *heatmap_loggers,
+        interval(cfg.eval_interval, game_metrics),
+        interval(cfg.lansim_interval, lansim_metrics),
+        StepCounter("total_steps", loggers),
+        *loggers,
+    ]
+    # callbacks = [TimeWatcher(callbacks)]
+    runner = Runner(callbacks, use_tqdm=cfg.use_tqdm)
     runner.run(cfg.n_epochs)

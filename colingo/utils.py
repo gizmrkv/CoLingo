@@ -1,4 +1,5 @@
 import random
+import time
 from itertools import islice
 from typing import Any, Callable, Iterable, Sequence
 
@@ -181,3 +182,14 @@ class IntervalCallback(Callback):
 
 def interval(interval: int, callbacks: Sequence[Callback]) -> IntervalCallback:
     return IntervalCallback(interval, callbacks)
+
+
+class TimeWatcher(Callback):
+    def __init__(self, callbacks: Iterable[Callback]) -> None:
+        self._callbacks = callbacks
+
+    def on_update(self, step: int) -> None:
+        for i, callback in enumerate(self._callbacks):
+            start_time = time.time()
+            callback.on_update(step)
+            print(f"{i} time: {time.time() - start_time:.2f}s")

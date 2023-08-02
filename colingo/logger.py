@@ -3,6 +3,7 @@ import shutil
 from glob import glob
 from typing import Any, Callable, Iterable
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -12,6 +13,8 @@ from numpy.typing import NDArray
 import wandb
 
 from .core import Callback
+
+matplotlib.use("Agg")
 
 
 class Logger(Callback):
@@ -79,7 +82,6 @@ class HeatmapLogger(Logger):
         self,
         save_dir: str,
         name: str,
-        interval: int,
         wandb_loggers: Iterable[Logger],
         write_video: bool = True,
         delete_frames: bool = True,
@@ -87,7 +89,6 @@ class HeatmapLogger(Logger):
     ) -> None:
         self._save_dir = save_dir
         self._name = name
-        self._interval = interval
         self._wandb_loggers = wandb_loggers
         self._write_video = write_video
         self._delete_frames = delete_frames
@@ -98,12 +99,11 @@ class HeatmapLogger(Logger):
         os.makedirs(self._frames_dir, exist_ok=True)
 
     def log(self, data: NDArray[np.float32]) -> None:
-        if self._step % self._interval == 0:
-            # Save a heatmap frame
-            sns.heatmap(data, **self._heatmap_option)
-            plt.title(f"{self._name} step: {self._step}")
-            plt.savefig(f"{self._frames_dir}/{self._step:0>8}.png")
-            plt.clf()
+        # Save a heatmap frame
+        sns.heatmap(data, **self._heatmap_option)
+        plt.title(f"{self._name} step: {self._step}")
+        plt.savefig(f"{self._frames_dir}/{self._step:0>8}.png")
+        plt.clf()
 
     def on_update(self, step: int) -> None:
         self._step = step

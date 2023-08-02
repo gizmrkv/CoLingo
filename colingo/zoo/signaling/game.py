@@ -117,9 +117,9 @@ class Game(nn.Module):
 
     def forward(self, input: TensorType[BATCH, OBJECT_LENGTH, int]) -> GameResult:
         ltt_s = self._sender(object=input, command=self._input_command)
-        msg_s, msg_logits_s = self._sender(latent=ltt_s, command=self._send_command)
+        pre_msg_s, msg_logits_s = self._sender(latent=ltt_s, command=self._send_command)
         msg_s, msg_log_prob_s, msg_entropy_s, msg_length_s = pad_message(
-            msg_s, msg_logits_s
+            pre_msg_s, msg_logits_s
         )
 
         ltts_r = [

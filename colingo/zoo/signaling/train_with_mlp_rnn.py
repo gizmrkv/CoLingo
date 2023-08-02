@@ -2,6 +2,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
+import torch.nn as nn
+
 from ...module import (
     ContMLP,
     DiscSeqMLPDecoder,
@@ -10,34 +12,12 @@ from ...module import (
     DiscSeqRNNEncoder,
 )
 from .agent import Agent
-from .loss import (
-    Loss,
-    ReceiverAutoEncodingCrossEntropyLoss,
-    ReceiverMessageCrossEntropyLoss,
-    ReceiverObjectCrossEntropyLoss,
-    SenderAutoEncodingCrossEntropyLoss,
-    SenderMessageReinforceLoss,
-    SenderObjectCrossEntropyLoss,
-)
 from .train import Config, train
 
 
 @dataclass
 class ConfigWithMLPRNN:
-    # exp config
-    n_epochs: int
-    batch_size: int
-    device: str
-    zoo_name: str
-    wandb_project: str
-    use_tqdm: bool
-
     # common config
-    lr: float
-    object_length: int
-    object_n_values: int
-    message_length: int
-    message_n_values: int
     latent_dim: int
     n_agents: int
 
@@ -68,14 +48,47 @@ class ConfigWithMLPRNN:
     rnn_decoder_rnn_type: Literal["rnn", "lstm", "gru"]
     rnn_decoder_n_layers: int
 
+    # exp config
+    n_epochs: int
+    batch_size: int
+    device: str
+    zoo_name: str
+    wandb_project: str
+    use_tqdm: bool
+
+    # common config
+    lr: float
+    object_length: int
+    object_n_values: int
+    message_length: int
+    message_n_values: int
+
     # optional config
     seed: int | None = None
-    use_reinforce: bool = False
+
+    run_sender_output: bool = False
+    run_receiver_send: bool = False
+    run_sender_auto_encoding: bool = False
+    run_receiver_auto_encoding: bool = False
+
+    receiver_loss_weight: float = 1.0
+
+    sender_loss_weight: float = 1.0
     baseline: Literal["batch_mean"] = "batch_mean"
+    length_baseline: Literal["batch_mean"] = "batch_mean"
     entropy_weight: float = 0.0
     length_weight: float = 0.0
-    sender_loss_weight: float = 1.0
-    receiver_loss_weight: float = 1.0
+
+    raece_loss_weight: float | None = None
+    rmce_loss_weight: float | None = None
+    saece_loss_weight: float | None = None
+    soce_loss_weight: float | None = None
+
+    eval_interval: int = 10
+    acc_heatmap_interval: int = 5
+    topsim_interval: int = 5
+    lansim_interval: int = 50
+    lansim_heatmap_interval: int = 1
 
 
 def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
@@ -134,16 +147,17 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
     names = list(agents.keys())
     for i in range(len(names) - 1):
         adj[names[i]].append(names[i + 1])
-        adj[names[i + 1]].append(names[i])
+        # adj[names[i + 1]].append(names[i])
+
+    adj = {k: v for k, v in adj.items() if len(v) > 0}
 
     train(
         agents,
         adj,
-        {},
         Config(
+            # exp config
             n_epochs=cfg.n_epochs,
             batch_size=cfg.batch_size,
-            seed=cfg.seed,
             device=cfg.device,
             zoo_name=cfg.zoo_name,
             wandb_project=cfg.wandb_project,
@@ -153,11 +167,25 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             object_n_values=cfg.object_n_values,
             message_length=cfg.message_length,
             message_n_values=cfg.message_n_values,
-            use_reinforce=cfg.use_reinforce,
+            seed=cfg.seed,
+            run_sender_output=cfg.run_sender_output,
+            run_receiver_send=cfg.run_receiver_send,
+            run_sender_auto_encoding=cfg.run_sender_auto_encoding,
+            run_receiver_auto_encoding=cfg.run_receiver_auto_encoding,
+            receiver_loss_weight=cfg.receiver_loss_weight,
+            sender_loss_weight=cfg.sender_loss_weight,
             baseline=cfg.baseline,
+            length_baseline=cfg.length_baseline,
             entropy_weight=cfg.entropy_weight,
             length_weight=cfg.length_weight,
-            sender_loss_weight=cfg.sender_loss_weight,
-            receiver_loss_weight=cfg.receiver_loss_weight,
+            raece_loss_weight=cfg.raece_loss_weight,
+            rmce_loss_weight=cfg.rmce_loss_weight,
+            saece_loss_weight=cfg.saece_loss_weight,
+            soce_loss_weight=cfg.soce_loss_weight,
+            eval_interval=cfg.eval_interval,
+            acc_heatmap_interval=cfg.acc_heatmap_interval,
+            topsim_interval=cfg.topsim_interval,
+            lansim_interval=cfg.lansim_interval,
+            lansim_heatmap_interval=cfg.lansim_heatmap_interval,
         ),
     )

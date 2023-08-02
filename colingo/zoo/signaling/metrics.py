@@ -3,6 +3,8 @@ from typing import Any, Iterable
 
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn as nn
 from numpy.typing import NDArray
 from torchtyping import TensorType
 
@@ -19,31 +21,45 @@ class GameMetrics(Callback):
         name: str,
         agents: dict[str, Agent],
         input: Iterable[Any],
+        losses: dict[str, nn.Module],
         topsim_interval: int,
+        heatmap_interval: int,
         metrics_loggers: Iterable[Logger],
         acc_comp_heatmap_loggers: Iterable[Logger],
         acc_part_heatmap_loggers: Iterable[Logger],
+        game_option: dict[str, Any] | None = None,
     ) -> None:
         self._name = name
         self._agents = agents
         self._input = input
+        self._losses = losses
         self._topsim_interval = topsim_interval
+        self._heatmap_interval = heatmap_interval
         self._metrics_loggers = metrics_loggers
         self._acc_comp_heatmap_loggers = acc_comp_heatmap_loggers
         self._acc_part_heatmap_loggers = acc_part_heatmap_loggers
+        self._game_option = game_option or {}
 
         self._agents_values = list(self._agents.values())
         self._agents_keys = list(self._agents.keys())
         self._games = [
-            Game(sender, self._agents_values) for sender in self._agents_values
+            Game(sender, self._agents_values, **self._game_option)
+            for sender in self._agents_values
         ]
 
+        self._count = 0
+
     def on_update(self, step: int) -> None:
+        # Switch to eval mode
+        for agent in self._agents_values:
+            agent.eval()
+
         # Execute the game for all agents and get the results
         input = next(iter(self._input))
-        results: list[GameResult] = [game(input) for game in self._games]
+        with torch.no_grad():
+            results: list[GameResult] = [game(input) for game in self._games]
 
-        # Create a heatmap of the accuracy rate for all agent pairs
+        # Calculate the accuracy heatmap for each receiver of the sender
         acc_comp_matrix = [
             [acc_comp(result.input, output_r) for output_r in result.output_r]
             for result in results
@@ -54,31 +70,52 @@ class GameMetrics(Callback):
         ]
 
         # Calculate the metrics
-        acc_comp_means = [fmean(acc_comp_matrix[i]) for i in range(len(self._agents))]
-        acc_part_means = [fmean(acc_part_matrix[i]) for i in range(len(self._agents))]
+        acc_comp_mean = [fmean(mat) for mat in acc_comp_matrix]
+        acc_comp_max = [max(mat) for mat in acc_comp_matrix]
+        acc_comp_min = [min(mat) for mat in acc_comp_matrix]
+        acc_part_mean = [fmean(mat) for mat in acc_part_matrix]
+        acc_part_max = [max(mat) for mat in acc_part_matrix]
+        acc_part_min = [min(mat) for mat in acc_part_matrix]
+
         uniques = [
             result.message_s.unique(dim=0).shape[0] / result.message_s.shape[0]
             for result in results
         ]
         length = [result.message_length_s.float().mean().item() for result in results]
         entropy = [result.message_entropy_s.mean().item() for result in results]
-
-        metrics = {
-            "acc_comp.mean": fmean(acc_comp_means),
-            "acc_part.mean": fmean(acc_part_means),
-            "unique": fmean(uniques),
-            "length": fmean(length),
-            "entropy": fmean(entropy),
+        losses = {
+            k: [loss(result).mean() for result in results]
+            for k, loss in self._losses.items()
         }
 
-        for i, name in enumerate(self._agents_keys):
-            metrics[f"{name}.acc_comp.mean"] = acc_comp_means[i]
-            metrics[f"{name}.acc_part.mean"] = acc_part_means[i]
-            metrics[f"{name}.unique"] = uniques[i]
-            metrics[f"{name}.length"] = length[i]
-            metrics[f"{name}.entropy"] = entropy[i]
+        metrics = {
+            "acc_comp.mean.mean": fmean(acc_comp_mean),
+            "acc_comp.max.max": max(acc_comp_mean),
+            "acc_comp.min.min": min(acc_comp_mean),
+            "acc_part.mean.mean": fmean(acc_part_mean),
+            "acc_part.max.max": max(acc_part_mean),
+            "acc_part.min.min": min(acc_part_mean),
+            "unique.mean": fmean(uniques),
+            "length.mean": fmean(length),
+            "entropy.mean": fmean(entropy),
+        }
+        metrics |= {f"{k}_loss.mean": fmean(v) for k, v in losses.items()}
 
-        if step % self._topsim_interval == 0:
+        for i, name in enumerate(self._agents_keys):
+            metrics |= {
+                f"acc_comp.mean.{name}": acc_comp_mean[i],
+                f"acc_comp.max.{name}": acc_comp_max[i],
+                f"acc_comp.min.{name}": acc_comp_min[i],
+                f"acc_part.mean.{name}": acc_part_mean[i],
+                f"acc_part.max.{name}": acc_part_max[i],
+                f"acc_part.min.{name}": acc_part_min[i],
+                f"unique.{name}": uniques[i],
+                f"length.{name}": length[i],
+                f"entropy.{name}": entropy[i],
+            }
+            metrics |= {f"{k}_loss.{name}": v[i] for k, v in losses.items()}
+
+        if self._count % self._topsim_interval == 0:
             # Calculate the topographic similarity
             topsims = [
                 topographic_similarity(
@@ -88,25 +125,28 @@ class GameMetrics(Callback):
                 )
                 for result in results
             ]
-            metrics["topsim_mean"] = fmean(topsims)
+            metrics["topsim.mean"] = fmean(topsims)
             for i, name in enumerate(self._agents_keys):
-                metrics[f"{name}.topsim"] = topsims[i]
+                metrics[f"topsim.{name}"] = topsims[i]
 
         metrics = {f"{self._name}.{k}": v for k, v in metrics.items()}
 
         for logger in self._metrics_loggers:
             logger.log(metrics)
 
-        # Create heatmaps
-        for matrix, loggers in [
-            (acc_comp_matrix, self._acc_comp_heatmap_loggers),
-            (acc_part_matrix, self._acc_part_heatmap_loggers),
-        ]:
-            df = pd.DataFrame(
-                matrix, columns=self._agents_keys, index=self._agents_keys
-            )
-            for logger in loggers:
-                logger.log(df)
+        if self._count % self._heatmap_interval == 0:
+            # Create heatmaps
+            for matrix, loggers in [
+                (acc_comp_matrix, self._acc_comp_heatmap_loggers),
+                (acc_part_matrix, self._acc_part_heatmap_loggers),
+            ]:
+                df = pd.DataFrame(
+                    matrix, columns=self._agents_keys, index=self._agents_keys
+                )
+                for logger in loggers:
+                    logger.log(df)
+
+        self._count += 1
 
 
 class LanguageSimilarityMetrics(Callback):
@@ -115,26 +155,36 @@ class LanguageSimilarityMetrics(Callback):
         name: str,
         agents: dict[str, Agent],
         input: Iterable[Any],
+        heatmap_interval: int,
         metrics_loggers: Iterable[Logger],
         heatmap_loggers: Iterable[Logger],
     ) -> None:
         self._name = name
         self._agents = agents
         self._input = input
+        self._heatmap_interval = heatmap_interval
         self._metrics_loggers = metrics_loggers
         self._heatmap_loggers = heatmap_loggers
 
+        self._count = 0
+
     def on_update(self, step: int) -> None:
         self.calc()
+        self._count += 1
 
     def calc(self) -> None:
+        # Switch to eval mode
+        for agent in self._agents.values():
+            agent.eval()
+
         # Calculate the messages that each agent outputs for a single input
         input = next(iter(self._input))
         messages = []
-        for agent in self._agents.values():
-            latent = agent(object=input, command="input")
-            message, _ = agent(latent=latent, command="send")
-            messages.append(message.cpu().numpy())
+        with torch.no_grad():
+            for agent in self._agents.values():
+                latent = agent(object=input, command="input")
+                message, _ = agent(latent=latent, command="send")
+                messages.append(message.cpu().numpy())
 
         # Calculate the language similarity between each pair of agents
         lansims = np.zeros((len(self._agents), len(self._agents)))
@@ -152,12 +202,12 @@ class LanguageSimilarityMetrics(Callback):
         lansim_means = lansims.mean(axis=1)
         lansim_mean = lansim_means.mean()
         metrics = {
-            "lansim_mean": lansim_mean,
+            "lansim.mean": lansim_mean,
         }
 
         # Log the language similarity for each agent
         metrics |= {
-            f"{name}.lansim_mean": lansim_mean
+            f"lansim.mean.{name}": lansim_mean
             for name, lansim_mean in zip(self._agents, lansim_means)
         }
 
@@ -167,9 +217,10 @@ class LanguageSimilarityMetrics(Callback):
             logger.log(metrics)
 
         # Save a heatmap of the language similarity
-        df = pd.DataFrame(data=lansims, index=self._agents, columns=self._agents)
-        for logger in self._heatmap_loggers:
-            logger.log(df)
+        if self._count % self._heatmap_interval == 0:
+            df = pd.DataFrame(data=lansims, index=self._agents, columns=self._agents)
+            for logger in self._heatmap_loggers:
+                logger.log(df)
 
 
 BATCH = "batch"
