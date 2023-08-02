@@ -177,8 +177,8 @@ class Game(nn.Module):
 
         if self._run_receiver_auto_encoding:
             result.latent_auto_encoding_r = [
-                receiver(object=output_r, command=self._input_command)
-                for receiver in self._receivers
+                receiver(object=output, command=self._input_command)
+                for receiver, output in zip(self._receivers, output_r)
             ]
             result.message_auto_encoding_r, result.message_logits_auto_encoding_r = zip(
                 *[
