@@ -18,12 +18,12 @@ if __name__ == "__main__":
             raise ValueError(f"Unknown file extension: {config_path}")
 
     sweep_cfg = {
-        "method": "random",
-        "name": "single1",
-        "project": "CoLingo",
+        "method": "grid|random|bayes",
+        "name": "######",
+        "project": "######",
         "metric": {
-            "name": "valid.A1 -> A2.acc_comp",
-            "goal": "maximize",
+            "name": "######",
+            "goal": "maximize|minimize",
         },
         "parameters": {key: {"value": value} for key, value in config.items()},
     }
