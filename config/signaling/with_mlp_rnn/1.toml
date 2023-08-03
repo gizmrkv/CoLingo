@@ -40,9 +40,9 @@ use_tqdm = true
 # common config
 lr = 0.0002
 object_length = 2
-object_n_values = 20
-message_length = 3
-message_n_values = 20
+object_n_values = 50
+message_length = 10
+message_n_values = 50
 
 # optional config
 seed = 42

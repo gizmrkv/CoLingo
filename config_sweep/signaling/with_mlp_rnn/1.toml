@@ -1,16 +1,79 @@
-method = "bayes"
-name = "two-agents-hypera-search"
+method = "grid"
+name = "sender-loss-weight-sweep"
 project = "CoLingo"
 
 [metric]
-name = "train.A0->A1.acc_part"
-goal = "maximize"
+name = "loss"
+goal = "minimize"
+
+[parameters.latent_dim]
+value = 512
+
+[parameters.n_agents]
+value = 2
+
+[parameters.mlp_encoder_hidden_dim]
+value = 256
+
+[parameters.mlp_encoder_embed_dim]
+value = 64
+
+[parameters.mlp_encoder_activation]
+value = "relu"
+
+[parameters.mlp_encoder_use_layer_norm]
+value = false
+
+[parameters.mlp_encoder_use_residual]
+value = false
+
+[parameters.mlp_encoder_n_blocks]
+value = 0
+
+[parameters.mlp_decoder_hidden_dim]
+value = 128
+
+[parameters.mlp_decoder_activation]
+value = "relu"
+
+[parameters.mlp_decoder_use_layer_norm]
+value = false
+
+[parameters.mlp_decoder_use_residual]
+value = false
+
+[parameters.mlp_decoder_n_blocks]
+value = 0
+
+[parameters.rnn_encoder_hidden_dim]
+value = 128
+
+[parameters.rnn_encoder_embed_dim]
+value = 64
+
+[parameters.rnn_encoder_rnn_type]
+values = ["rnn", "lstm", "gru"]
+
+[parameters.rnn_encoder_n_layers]
+value = 2
+
+[parameters.rnn_decoder_hidden_dim]
+value = 256
+
+[parameters.rnn_decoder_embed_dim]
+value = 64
+
+[parameters.rnn_decoder_rnn_type]
+values = ["rnn", "lstm", "gru"]
+
+[parameters.rnn_decoder_n_layers]
+value = 2
 
 [parameters.n_epochs]
-value = 1000
+value = 2000
 
 [parameters.batch_size]
-value = 10000
+value = 100000
 
 [parameters.device]
 value = "cuda"
@@ -25,8 +88,7 @@ value = "CoLingo"
 value = false
 
 [parameters.lr]
-min = 0.0001
-max = 0.001
+value = 0.0002
 
 [parameters.object_length]
 value = 2
@@ -40,79 +102,68 @@ value = 10
 [parameters.message_n_values]
 value = 50
 
-[parameters.latent_dim]
-min = 32
-max = 256
+[parameters.seed]
+values = [1, 2, 3, 4, 5]
 
-[parameters.use_reinforce]
+[parameters.run_sender_output]
 value = false
 
+[parameters.run_receiver_send]
+value = false
+
+[parameters.run_sender_auto_encoding]
+value = false
+
+[parameters.run_receiver_auto_encoding]
+value = false
+
+[parameters.receiver_loss_weight]
+value = 1.0
+
+[parameters.sender_loss_weight]
+values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
 [parameters.baseline]
+value = "batch_mean"
+
+[parameters.length_baseline]
 value = "batch_mean"
 
 [parameters.entropy_weight]
 value = 0.0
 
-[parameters.n_agents]
-value = 2
+[parameters.length_weight]
+value = 0.0
 
-[parameters.mlp_encoder_hidden_dim]
-min = 32
-max = 256
+# [parameters.raece_loss_weight]
+# value = 1.0
 
-[parameters.mlp_encoder_embed_dim]
-value = 64
+# [parameters.rmce_loss_weight]
+# value= = 1.0
 
-[parameters.mlp_encoder_activation]
-value = "gelu"
+# [parameters.saece_loss_weight]
+# value =  1.0
 
-[parameters.mlp_encoder_use_layer_norm]
-value = false
+# [parameters.soce_loss_weight]
+# value = 1.0
 
-[parameters.mlp_encoder_use_residual]
-value = false
+# [parameters.saecel_loss_weight]
+# value = 1.0
 
-[parameters.mlp_encoder_n_blocks]
+[parameters.eval_interval]
+value = 40
+
+[parameters.acc_heatmap_interval]
+value = 5
+
+[parameters.topsim_interval]
+value = 5
+
+[parameters.lansim_interval]
+value = 200
+
+[parameters.lansim_heatmap_interval]
 value = 1
 
-[parameters.mlp_decoder_hidden_dim]
-min = 32
-max = 256
-
-[parameters.mlp_decoder_activation]
-value = "gelu"
-
-[parameters.mlp_decoder_use_layer_norm]
-value = false
-
-[parameters.mlp_decoder_use_residual]
-value = false
-
-[parameters.mlp_decoder_n_blocks]
-value = 1
-
-[parameters.rnn_encoder_hidden_dim]
-min = 32
-max = 256
-
-[parameters.rnn_encoder_embed_dim]
-value = 64
-
-[parameters.rnn_encoder_rnn_type]
-values = ["rnn", "lstm", "gru"]
-
-[parameters.rnn_encoder_n_layers]
-values = [1, 2, 3]
-
-[parameters.rnn_decoder_hidden_dim]
-min = 32
-max = 256
-
-[parameters.rnn_decoder_embed_dim]
-value = 64
-
-[parameters.rnn_decoder_rnn_type]
-values = ["rnn", "lstm", "gru"]
-
-[parameters.rnn_decoder_n_layers]
-values = [1, 2, 3]
+[parameters.language_save_interval]
+value = 400
