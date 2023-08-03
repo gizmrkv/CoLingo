@@ -1,3 +1,4 @@
+import os
 from statistics import fmean
 from typing import Any, Iterable
 
@@ -223,8 +224,45 @@ class LanguageSimilarityMetrics(Callback):
                 logger.log(df)
 
 
+class LanguageSaver(Callback):
+    def __init__(
+        self,
+        save_dir: str,
+        agents: dict[str, Agent],
+        input: Iterable[Any],
+        input_command: str = "input",
+        send_command: str = "send",
+    ) -> None:
+        self._save_dir = os.path.join(save_dir, "languages")
+        self._agents = agents
+        self._input = input
+        self._input_command = input_command
+        self._send_command = send_command
+
+        os.makedirs(self._save_dir, exist_ok=True)
+        for agent in agents:
+            os.makedirs(os.path.join(self._save_dir, agent), exist_ok=True)
+
+    def on_update(self, step: int) -> None:
+        for agent in self._agents.values():
+            agent.eval()
+        input = next(iter(self._input))
+        for name, agent in self._agents.items():
+            with torch.no_grad():
+                latent = agent(object=input, command=self._input_command)
+                message, _ = agent(latent=latent, command=self._send_command)
+            lang = lang_to_str(input, message)
+            with open(os.path.join(self._save_dir, name, str(step) + ".txt"), "w") as f:
+                f.write(lang)
+
+            # if name == "A0":
+            #     print(lang)
+
+
 BATCH = "batch"
 LENGTH = "length"
+OBJECT_LENGTH = "object_length"
+MESSAGE_LENGTH = "message_length"
 
 
 def acc_comp(
@@ -244,3 +282,14 @@ def acc_part(
 def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
     i = np.argwhere(x == 0)
     return x if len(i) == 0 else x[: i[0, 0]]
+
+
+def lang_to_str(
+    object: TensorType[BATCH, OBJECT_LENGTH, int],
+    message: TensorType[BATCH, MESSAGE_LENGTH, int],
+) -> str:
+    lines = [
+        str(tuple(i.tolist())) + " -> " + str(m.tolist()) + "\n"
+        for i, m in zip(object, message)
+    ]
+    return "".join(lines)

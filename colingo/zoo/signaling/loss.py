@@ -125,6 +125,24 @@ class SenderAutoEncodingCrossEntropyLoss(nn.Module):
         return self._weight * loss
 
 
+class SenderAutoEncodingLeaveCrossEntropyLoss(nn.Module):
+    def __init__(self, length: int, n_values: int, weight: float = 1.0):
+        super().__init__()
+        self._length = length
+        self._n_values = n_values
+        self._weight = weight
+
+    def forward(self, result: GameResult) -> TensorType[float]:
+        mask = (result.output_auto_encoding_s != result.input).any(dim=-1).float()
+        loss = -mask * sequence_cross_entropy_loss(
+            result.message_logits_s,
+            result.message_s,
+            self._length,
+            self._n_values,
+        )
+        return self._weight * loss
+
+
 class ReceiverAutoEncodingCrossEntropyLoss(nn.Module):
     def __init__(self, length: int, n_values: int, weight: float = 1.0):
         super().__init__()

@@ -83,12 +83,14 @@ class ConfigWithMLPRNN:
     rmce_loss_weight: float | None = None
     saece_loss_weight: float | None = None
     soce_loss_weight: float | None = None
+    saecel_loss_weight: float | None = None
 
     eval_interval: int = 10
     acc_heatmap_interval: int = 5
     topsim_interval: int = 5
     lansim_interval: int = 50
     lansim_heatmap_interval: int = 1
+    language_save_interval: int = 50
 
 
 def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
@@ -147,7 +149,7 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
     names = list(agents.keys())
     for i in range(len(names) - 1):
         adj[names[i]].append(names[i + 1])
-        # adj[names[i + 1]].append(names[i])
+        adj[names[i + 1]].append(names[i])
 
     adj = {k: v for k, v in adj.items() if len(v) > 0}
 
@@ -182,10 +184,12 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             rmce_loss_weight=cfg.rmce_loss_weight,
             saece_loss_weight=cfg.saece_loss_weight,
             soce_loss_weight=cfg.soce_loss_weight,
+            saecel_loss_weight=cfg.saecel_loss_weight,
             eval_interval=cfg.eval_interval,
             acc_heatmap_interval=cfg.acc_heatmap_interval,
             topsim_interval=cfg.topsim_interval,
             lansim_interval=cfg.lansim_interval,
             lansim_heatmap_interval=cfg.lansim_heatmap_interval,
+            language_save_interval=cfg.language_save_interval,
         ),
     )

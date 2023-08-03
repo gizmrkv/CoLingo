@@ -33,10 +33,11 @@ from .loss import (
     ReceiverMessageCrossEntropyLoss,
     ReceiverObjectCrossEntropyLoss,
     SenderAutoEncodingCrossEntropyLoss,
+    SenderAutoEncodingLeaveCrossEntropyLoss,
     SenderMessageReinforceLoss,
     SenderObjectCrossEntropyLoss,
 )
-from .metrics import GameMetrics, LanguageSimilarityMetrics
+from .metrics import GameMetrics, LanguageSaver, LanguageSimilarityMetrics
 
 
 @dataclass
@@ -76,12 +77,14 @@ class Config:
     rmce_loss_weight: float | None = None
     saece_loss_weight: float | None = None
     soce_loss_weight: float | None = None
+    saecel_loss_weight: float | None = None
 
     eval_interval: int = 10
     acc_heatmap_interval: int = 5
     topsim_interval: int = 5
     lansim_interval: int = 50
     lansim_heatmap_interval: int = 1
+    language_save_interval: int = 50
 
 
 def train(
@@ -124,6 +127,7 @@ def train(
         .to(cfg.device)
     )
     train_dataset, test_dataset = random_split(dataset, [0.8, 0.2])
+    dataloader = DataLoader(dataset, batch_size=dataset.shape[0])  # type: ignore
     train_dataloader = DataLoader(
         train_dataset, batch_size=cfg.batch_size, shuffle=True  # type: ignore
     )
@@ -167,6 +171,15 @@ def train(
         )
         eval_losses["soce"] = SenderObjectCrossEntropyLoss(
             cfg.object_length, cfg.object_n_values
+        )
+    if cfg.saecel_loss_weight is not None:
+        train_losses.append(
+            SenderAutoEncodingLeaveCrossEntropyLoss(
+                cfg.message_length, cfg.message_n_values, cfg.saecel_loss_weight
+            )
+        )
+        eval_losses["saecel"] = SenderAutoEncodingLeaveCrossEntropyLoss(
+            cfg.message_length, cfg.message_n_values
         )
 
     baselines = {"batch_mean": BatchMeanBaseline}
@@ -285,6 +298,9 @@ def train(
         interval(cfg.eval_interval, game_metrics),
         interval(cfg.lansim_interval, lansim_metrics),
         StepCounter("total_steps", loggers),
+        interval(
+            cfg.language_save_interval, [LanguageSaver(log_dir, agents, dataloader)]
+        ),
         *loggers,
     ]
     # callbacks = [TimeWatcher(callbacks)]
