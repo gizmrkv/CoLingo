@@ -1,9 +1,9 @@
 method = "grid"
-name = "sender-loss-weight-sweep"
+name = "base"
 project = "CoLingo"
 
 [metric]
-name = "loss"
+name = "test.signaling_loss.mean"
 goal = "minimize"
 
 [parameters.latent_dim]
@@ -12,47 +12,35 @@ value = 512
 [parameters.n_agents]
 value = 2
 
-[parameters.mlp_encoder_hidden_dim]
-value = 256
-
 [parameters.mlp_encoder_embed_dim]
 value = 64
+
+[parameters.mlp_encoder_hidden_dim]
+value = 256
 
 [parameters.mlp_encoder_activation]
 value = "relu"
 
-[parameters.mlp_encoder_use_layer_norm]
-value = false
-
-[parameters.mlp_encoder_use_residual]
-value = false
-
-[parameters.mlp_encoder_n_blocks]
-value = 0
+[parameters.mlp_encoder_n_layers]
+value = 2
 
 [parameters.mlp_decoder_hidden_dim]
-value = 128
+value = 256
+
+[parameters.mlp_decoder_n_layers]
+value = 2
 
 [parameters.mlp_decoder_activation]
 value = "relu"
 
-[parameters.mlp_decoder_use_layer_norm]
-value = false
-
-[parameters.mlp_decoder_use_residual]
-value = false
-
-[parameters.mlp_decoder_n_blocks]
-value = 0
-
 [parameters.rnn_encoder_hidden_dim]
-value = 128
+value = 256
 
 [parameters.rnn_encoder_embed_dim]
 value = 64
 
 [parameters.rnn_encoder_rnn_type]
-values = ["rnn", "lstm", "gru"]
+value = "gru"
 
 [parameters.rnn_encoder_n_layers]
 value = 2
@@ -64,13 +52,13 @@ value = 256
 value = 64
 
 [parameters.rnn_decoder_rnn_type]
-values = ["rnn", "lstm", "gru"]
+value = "gru"
 
 [parameters.rnn_decoder_n_layers]
 value = 2
 
 [parameters.n_epochs]
-value = 2000
+value = 500
 
 [parameters.batch_size]
 value = 100000
@@ -85,7 +73,7 @@ value = "signaling_with_mlp_rnn"
 value = "CoLingo"
 
 [parameters.use_tqdm]
-value = false
+value = true
 
 [parameters.lr]
 value = 0.0002
@@ -121,7 +109,7 @@ value = false
 value = 1.0
 
 [parameters.sender_loss_weight]
-values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+value = 1.0
 
 [parameters.baseline]
 value = "batch_mean"
@@ -151,7 +139,7 @@ value = 0.0
 # value = 1.0
 
 [parameters.eval_interval]
-value = 40
+value = 20
 
 [parameters.acc_heatmap_interval]
 value = 5
