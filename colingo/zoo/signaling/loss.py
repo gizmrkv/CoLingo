@@ -104,8 +104,8 @@ class ReceiverMessageCrossEntropyLoss(nn.Module):
             )
             for logits in result.message_logits_r  # type: ignore
         ]
-        loss_mean = torch.stack(loss, dim=-1).sum(dim=-1)
-        return self._weight * loss_mean
+        loss_sum = torch.stack(loss, dim=-1).sum(dim=-1)
+        return self._weight * loss_sum
 
 
 class SenderAutoEncodingCrossEntropyLoss(nn.Module):
@@ -157,8 +157,8 @@ class ReceiverAutoEncodingCrossEntropyLoss(nn.Module):
             )
             for logits in result.message_logits_auto_encoding_r  # type: ignore
         ]
-        loss_mean = torch.stack(loss, dim=-1).sum(dim=-1)
-        return self._weight * loss_mean
+        loss_sum = torch.stack(loss, dim=-1).sum(dim=-1)
+        return self._weight * loss_sum
 
 
 class Loss(nn.Module):
@@ -189,4 +189,4 @@ class Loss(nn.Module):
         for loss in self._additional_losses:
             total_loss += loss(result)
 
-        return total_loss.sum()
+        return total_loss.mean()

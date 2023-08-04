@@ -1,16 +1,10 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Literal, Mapping
+from typing import Literal
 
 import torch.nn as nn
 
-from ...module import (
-    ContMLP,
-    DiscSeqMLPDecoder,
-    DiscSeqMLPEncoder,
-    DiscSeqRNNDecoder,
-    DiscSeqRNNEncoder,
-)
+from ...module import MLPDecoder, MLPEncoder, RNNDecoder, RNNEncoder
 from .agent import Agent
 from .train import Config, train
 
@@ -22,30 +16,26 @@ class ConfigWithMLPRNN:
     n_agents: int
 
     # mlp encoder config
-    mlp_encoder_hidden_dim: int
     mlp_encoder_embed_dim: int
+    mlp_encoder_hidden_dim: int
+    mlp_encoder_n_layers: int
     mlp_encoder_activation: str
-    mlp_encoder_use_layer_norm: bool
-    mlp_encoder_use_residual: bool
-    mlp_encoder_n_blocks: int
 
     # mlp decoder config
     mlp_decoder_hidden_dim: int
+    mlp_decoder_n_layers: int
     mlp_decoder_activation: str
-    mlp_decoder_use_layer_norm: bool
-    mlp_decoder_use_residual: bool
-    mlp_decoder_n_blocks: int
 
     # encoder config
     rnn_encoder_hidden_dim: int
     rnn_encoder_embed_dim: int
-    rnn_encoder_rnn_type: Literal["rnn", "lstm", "gru"]
+    rnn_encoder_rnn_type: str
     rnn_encoder_n_layers: int
 
     # decoder config
     rnn_decoder_hidden_dim: int
     rnn_decoder_embed_dim: int
-    rnn_decoder_rnn_type: Literal["rnn", "lstm", "gru"]
+    rnn_decoder_rnn_type: str
     rnn_decoder_n_layers: int
 
     # exp config
@@ -74,8 +64,8 @@ class ConfigWithMLPRNN:
     receiver_loss_weight: float = 1.0
 
     sender_loss_weight: float = 1.0
-    baseline: Literal["batch_mean"] = "batch_mean"
-    length_baseline: Literal["batch_mean"] = "batch_mean"
+    baseline: str = "batch_mean"
+    length_baseline: str = "batch_mean"
     entropy_weight: float = 0.0
     length_weight: float = 0.0
 
@@ -94,28 +84,24 @@ class ConfigWithMLPRNN:
 
 
 def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
-    object_encoder = DiscSeqMLPEncoder(
+    object_encoder = MLPEncoder(
         length=cfg.object_length,
         n_values=cfg.object_n_values,
         output_dim=cfg.latent_dim,
-        hidden_dim=cfg.mlp_encoder_hidden_dim,
         embed_dim=cfg.mlp_encoder_embed_dim,
+        hidden_dim=cfg.mlp_encoder_hidden_dim,
+        n_layers=cfg.mlp_encoder_n_layers,
         activation=cfg.mlp_encoder_activation,
-        use_layer_norm=cfg.mlp_encoder_use_layer_norm,
-        use_residual=cfg.mlp_encoder_use_residual,
-        n_blocks=cfg.mlp_encoder_n_blocks,
     )
-    object_decoder = DiscSeqMLPDecoder(
+    object_decoder = MLPDecoder(
         length=cfg.object_length,
         n_values=cfg.object_n_values,
         input_dim=cfg.latent_dim,
         hidden_dim=cfg.mlp_decoder_hidden_dim,
+        n_layers=cfg.mlp_decoder_n_layers,
         activation=cfg.mlp_decoder_activation,
-        use_layer_norm=cfg.mlp_decoder_use_layer_norm,
-        use_residual=cfg.mlp_decoder_use_residual,
-        n_blocks=cfg.mlp_decoder_n_blocks,
     )
-    message_encoder = DiscSeqRNNEncoder(
+    message_encoder = RNNEncoder(
         n_values=cfg.message_n_values,
         output_dim=cfg.latent_dim,
         hidden_dim=cfg.rnn_encoder_hidden_dim,
@@ -123,16 +109,16 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
         rnn_type=cfg.rnn_encoder_rnn_type,
         n_layers=cfg.rnn_encoder_n_layers,
     )
-    message_decoder = DiscSeqRNNDecoder(
+    message_decoder = RNNDecoder(
+        input_dim=cfg.latent_dim,
         length=cfg.message_length,
         n_values=cfg.message_n_values,
-        input_dim=cfg.latent_dim,
         hidden_dim=cfg.rnn_decoder_hidden_dim,
         embed_dim=cfg.rnn_decoder_embed_dim,
         rnn_type=cfg.rnn_decoder_rnn_type,
         n_layers=cfg.rnn_decoder_n_layers,
     )
-    shared = ContMLP(cfg.latent_dim, cfg.latent_dim, cfg.latent_dim)
+    shared = nn.LayerNorm(cfg.latent_dim)
     agents = {
         f"A{i}": Agent(
             object_encoder=deepcopy(object_encoder),

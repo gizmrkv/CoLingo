@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from ...module import DiscSeqRNNDecoder, DiscSeqRNNEncoder
+from ...module import RNNDecoder, RNNEncoder
 from .agent import Agent
 from .train import Config, train
 
@@ -42,7 +42,7 @@ class ConfigWithRNN:
 
 
 def train_with_rnn(cfg: ConfigWithRNN) -> None:
-    encoder = DiscSeqRNNEncoder(
+    encoder = RNNEncoder(
         n_values=cfg.n_values,
         output_dim=cfg.latent_dim,
         hidden_dim=cfg.encoder_hidden_dim,
@@ -50,7 +50,7 @@ def train_with_rnn(cfg: ConfigWithRNN) -> None:
         rnn_type=cfg.encoder_rnn_type,
         n_layers=cfg.encoder_n_layers,
     )
-    decoder = DiscSeqRNNDecoder(
+    decoder = RNNDecoder(
         length=cfg.length,
         n_values=cfg.n_values,
         input_dim=cfg.latent_dim,

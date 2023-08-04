@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from ...module import DiscSeqMLPDecoder, DiscSeqMLPEncoder
+from ...module import MLPDecoder, MLPEncoder
 from .agent import Agent
 from .train import Config, train
 
@@ -45,7 +45,7 @@ class ConfigWithMLP:
 
 
 def train_with_mlp(cfg: ConfigWithMLP) -> None:
-    encoder = DiscSeqMLPEncoder(
+    encoder = MLPEncoder(
         length=cfg.length,
         n_values=cfg.n_values,
         output_dim=cfg.latent_dim,
@@ -56,7 +56,7 @@ def train_with_mlp(cfg: ConfigWithMLP) -> None:
         use_residual=cfg.encoder_use_residual,
         n_blocks=cfg.encoder_n_blocks,
     )
-    decoder = DiscSeqMLPDecoder(
+    decoder = MLPDecoder(
         length=cfg.length,
         n_values=cfg.n_values,
         input_dim=cfg.latent_dim,

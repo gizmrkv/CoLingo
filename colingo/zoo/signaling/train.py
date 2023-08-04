@@ -68,8 +68,8 @@ class Config:
     receiver_loss_weight: float = 1.0
 
     sender_loss_weight: float = 1.0
-    baseline: Literal["batch_mean"] = "batch_mean"
-    length_baseline: Literal["batch_mean"] = "batch_mean"
+    baseline: str = "batch_mean"
+    length_baseline: str = "batch_mean"
     entropy_weight: float = 0.0
     length_weight: float = 0.0
 
@@ -202,6 +202,7 @@ def train(
         receiver_loss,
         train_losses,
     )
+    eval_losses["signaling"] = loss
 
     trainers = []
     for name_s, names_r in adjacency.items():

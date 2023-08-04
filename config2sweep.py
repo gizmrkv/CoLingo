@@ -1,11 +1,12 @@
 import json
+import os
 
 import toml
 import yaml
 
 if __name__ == "__main__":
     # config_path = sys.argv[1]
-    config_path = "config/single1.toml"
+    config_path = "config/signaling/with_mlp_rnn/1.toml"
 
     with open(config_path, "r") as f:
         if config_path.endswith(".json"):
@@ -28,5 +29,6 @@ if __name__ == "__main__":
         "parameters": {key: {"value": value} for key, value in config.items()},
     }
 
-    with open("config_sweep/single1.toml", "w") as f:
+    os.makedirs("config_sweep/signaling/with_mlp_rnn/")
+    with open("config_sweep/signaling/with_mlp_rnn/1.toml", "w") as f:
         toml.dump(sweep_cfg, f)
