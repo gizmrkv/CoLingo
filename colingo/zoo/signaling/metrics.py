@@ -91,11 +91,11 @@ class GameMetrics(Callback):
 
         metrics = {
             "acc_comp.mean.mean": fmean(acc_comp_mean),
-            "acc_comp.max.max": max(acc_comp_mean),
-            "acc_comp.min.min": min(acc_comp_mean),
+            "acc_comp.max.max": max(acc_comp_max),
+            "acc_comp.min.min": min(acc_comp_min),
             "acc_part.mean.mean": fmean(acc_part_mean),
-            "acc_part.max.max": max(acc_part_mean),
-            "acc_part.min.min": min(acc_part_mean),
+            "acc_part.max.max": max(acc_part_max),
+            "acc_part.min.min": min(acc_part_min),
             "unique.mean": fmean(uniques),
             "length.mean": fmean(length),
             "entropy.mean": fmean(entropy),
