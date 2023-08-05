@@ -1,43 +1,43 @@
-method = "grid"
-name = "base"
+method = "grid|random|bayes"
+name = "######"
 project = "CoLingo"
 
 [metric]
-name = "test.signaling_loss.mean"
-goal = "minimize"
+name = "test.acc_part.max.max"
+goal = "maximize"
 
 [parameters.latent_dim]
-value = 512
+value = 150
 
 [parameters.n_agents]
 value = 2
 
 [parameters.mlp_encoder_embed_dim]
-value = 64
+value = 8
 
 [parameters.mlp_encoder_hidden_dim]
-value = 256
+value = 150
 
 [parameters.mlp_encoder_activation]
-value = "relu"
+value = "gelu"
 
 [parameters.mlp_encoder_n_layers]
 value = 2
 
 [parameters.mlp_decoder_hidden_dim]
-value = 256
+value = 150
 
 [parameters.mlp_decoder_n_layers]
 value = 2
 
 [parameters.mlp_decoder_activation]
-value = "relu"
+value = "gelu"
 
 [parameters.rnn_encoder_hidden_dim]
-value = 256
+value = 150
 
 [parameters.rnn_encoder_embed_dim]
-value = 64
+value = 8
 
 [parameters.rnn_encoder_rnn_type]
 value = "gru"
@@ -46,10 +46,10 @@ value = "gru"
 value = 2
 
 [parameters.rnn_decoder_hidden_dim]
-value = 256
+value = 150
 
 [parameters.rnn_decoder_embed_dim]
-value = 64
+value = 8
 
 [parameters.rnn_decoder_rnn_type]
 value = "gru"
@@ -58,7 +58,7 @@ value = "gru"
 value = 2
 
 [parameters.n_epochs]
-value = 500
+value = 1000
 
 [parameters.batch_size]
 value = 100000
@@ -76,22 +76,22 @@ value = "CoLingo"
 value = true
 
 [parameters.lr]
-value = 0.0002
+value = 0.001
 
 [parameters.object_length]
 value = 2
 
 [parameters.object_n_values]
-value = 50
+value = 40
 
 [parameters.message_length]
-value = 10
+value = 8
 
 [parameters.message_n_values]
-value = 50
+value = 40
 
-[parameters.seed]
-values = [1, 2, 3, 4, 5]
+# [parameters.seed]
+# values = [1, 2, 3, 4, 5]
 
 [parameters.run_sender_output]
 value = false
@@ -118,7 +118,7 @@ value = "batch_mean"
 value = "batch_mean"
 
 [parameters.entropy_weight]
-value = 0.0
+value = 0.01
 
 [parameters.length_weight]
 value = 0.0
