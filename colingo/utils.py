@@ -63,26 +63,28 @@ def random_split(dataset: torch.Tensor, propotions: list[float]) -> list[torch.T
 class Trainer(Callback):
     def __init__(
         self,
-        game: nn.Module,
+        games: Iterable[nn.Module],
         optimizers: Iterable[optim.Optimizer],
         input: Iterable[Any],
         loss: Callable[[Any], TensorType[float]],
         max_batches: int = 1,
     ):
-        self._game = game
+        self._games = games
         self._optimizers = optimizers
         self._input = input
         self._loss = loss
         self._max_batches = max_batches
 
     def on_update(self, step: int) -> None:
-        self._game.train()
+        for game in self._games:
+            game.train()
+
         for optimizer in self._optimizers:
             optimizer.zero_grad()
 
         for input in islice(self._input, self._max_batches):
-            output = self._game(input)
-            loss = self._loss(output)
+            outputs = [game(input) for game in self._games]
+            loss = sum([self._loss(output) for output in outputs])
             loss.backward(retain_graph=True)
             for optimizer in self._optimizers:
                 optimizer.step()

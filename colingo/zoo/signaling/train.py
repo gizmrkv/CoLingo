@@ -202,27 +202,25 @@ def train(
         receiver_loss,
         train_losses,
     )
+    eval_losses["roce"] = receiver_loss
     eval_losses["signaling"] = loss
 
-    trainers = []
+    games = []
     for name_s, names_r in adjacency.items():
         sender = agents[name_s]
         receivers = [agents[name_r] for name_r in names_r]
-        game = Game(
-            sender,
-            receivers,
-            cfg.run_sender_output,
-            cfg.run_receiver_send,
-            cfg.run_sender_auto_encoding,
-            cfg.run_receiver_auto_encoding,
+        games.append(
+            Game(
+                sender,
+                receivers,
+                cfg.run_sender_output,
+                cfg.run_receiver_send,
+                cfg.run_sender_auto_encoding,
+                cfg.run_receiver_auto_encoding,
+            )
         )
-        trainer = Trainer(
-            game,
-            [optimizers[name_s], *[optimizers[name_r] for name_r in names_r]],
-            train_dataloader,
-            loss,
-        )
-        trainers.append(trainer)
+
+    trainer = Trainer(games, optimizers.values(), train_dataloader, loss)
 
     # evaluator
     loggers = [WandBLogger(cfg.wandb_project, name=log_dir), DuplicateChecker()]
@@ -294,7 +292,7 @@ def train(
 
     # runner
     callbacks = [
-        shuffle(trainers),
+        trainer,
         *heatmap_loggers,
         interval(cfg.eval_interval, game_metrics),
         interval(cfg.lansim_interval, lansim_metrics),
