@@ -26,7 +26,7 @@ rnn_decoder_rnn_type = "gru"
 rnn_decoder_n_layers = 2
 
 # exp config
-n_epochs = 1000
+n_epochs = 2000
 batch_size = 100000
 device = "cuda"
 zoo_name = "signaling_with_mlp_rnn"
@@ -46,25 +46,24 @@ seed = 42
 run_sender_output = false
 run_receiver_send = false
 run_sender_auto_encoding = false
-run_receiver_auto_encoding = false
+run_receiver_auto_encoding = true
 
-receiver_loss_weight = 1.0
-
-sender_loss_weight = 1.0
 baseline = "batch_mean"
 length_baseline = "batch_mean"
 entropy_weight = 0.01
 length_weight = 0.0
 
-# raece_loss_weight = 0.2
+roce_loss_weight = 1.0
+raece_loss_weight = 1.0
 # rmce_loss_weight = 1.0
+smrf_loss_weight = 1.0
 # saece_loss_weight = 1.0
 # soce_loss_weight = 1.0
-# saecel_loss_weight = 3.0
+# saecel_loss_weight = 1.0
 
 eval_interval = 20
 acc_heatmap_interval = 5
 topsim_interval = 5
-lansim_interval = 200
+lansim_interval = 100
 lansim_heatmap_interval = 1
 language_save_interval = 400

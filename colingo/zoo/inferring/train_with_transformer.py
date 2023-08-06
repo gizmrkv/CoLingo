@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from ...module import MLPDecoder, MLPEncoder
+from ...module import TransformerDecoder, TransformerEncoder
 from .agent import Agent
 from .train import Config, train
 
 
 @dataclass
-class ConfigWithMLP:
+class ConfigWithTransformer:
     # exp config
     n_epochs: int
     batch_size: int
@@ -25,14 +25,21 @@ class ConfigWithMLP:
 
     # encoder config
     encoder_embed_dim: int
-    encoder_hidden_dim: int
-    encoder_n_layers: int
+    encoder_n_heads: int
+    encoder_ff_dim: int
+    encoder_dropout: float
     encoder_activation: str
+    encoder_layer_norm_eps: float
+    encoder_n_layers: int
 
     # decoder config
-    decoder_hidden_dim: int
-    decoder_n_layers: int
+    decoder_embed_dim: int
+    decoder_n_heads: int
+    decoder_ff_dim: int
+    decoder_dropout: float
     decoder_activation: str
+    decoder_layer_norm_eps: float
+    decoder_n_layers: int
 
     # optional config
     use_reinforce: bool = False
@@ -40,23 +47,31 @@ class ConfigWithMLP:
     entropy_weight: float = 0.0
 
 
-def train_with_mlp(cfg: ConfigWithMLP) -> None:
-    encoder = MLPEncoder(
-        length=cfg.length,
+def train_with_transformer(cfg: ConfigWithTransformer) -> None:
+    encoder = TransformerEncoder(
         n_values=cfg.n_values,
         output_dim=cfg.latent_dim,
         embed_dim=cfg.encoder_embed_dim,
-        hidden_dim=cfg.encoder_hidden_dim,
-        n_layers=cfg.encoder_n_layers,
+        n_heads=cfg.encoder_n_heads,
+        ff_dim=cfg.encoder_ff_dim,
+        dropout=cfg.encoder_dropout,
         activation=cfg.encoder_activation,
+        layer_norm_eps=cfg.encoder_layer_norm_eps,
+        batch_first=True,
+        n_layers=cfg.encoder_n_layers,
     )
-    decoder = MLPDecoder(
+    decoder = TransformerDecoder(
+        input_dim=cfg.latent_dim,
         length=cfg.length,
         n_values=cfg.n_values,
-        input_dim=cfg.latent_dim,
-        hidden_dim=cfg.decoder_hidden_dim,
-        n_layers=cfg.decoder_n_layers,
+        embed_dim=cfg.decoder_embed_dim,
+        n_heads=cfg.decoder_n_heads,
+        ff_dim=cfg.decoder_ff_dim,
+        dropout=cfg.decoder_dropout,
         activation=cfg.decoder_activation,
+        layer_norm_eps=cfg.decoder_layer_norm_eps,
+        batch_first=True,
+        n_layers=cfg.decoder_n_layers,
     )
     agent = Agent(encoder, decoder)
     train(

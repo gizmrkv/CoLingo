@@ -6,8 +6,10 @@ import yaml
 from colingo.zoo.inferring import (
     ConfigWithMLP,
     ConfigWithRNN,
+    ConfigWithTransformer,
     train_with_mlp,
     train_with_rnn,
+    train_with_transformer,
 )
 from colingo.zoo.signaling import ConfigWithMLPRNN, train_with_mlp_rnn
 
@@ -15,6 +17,7 @@ if __name__ == "__main__":
     path = "config/inferring/with_rnn/1.toml"
     path = "config/inferring/with_mlp/1.toml"
     path = "config/signaling/with_mlp_rnn/1.toml"
+    path = "config/inferring/with_transformer/1.toml"
 
     # config_path = sys.argv[1]
 
@@ -32,5 +35,7 @@ if __name__ == "__main__":
         train_with_mlp(ConfigWithMLP(**config))
     elif "inferring/with_rnn" in path:
         train_with_rnn(ConfigWithRNN(**config))
+    elif "inferring/with_transformer" in path:
+        train_with_transformer(ConfigWithTransformer(**config))
     elif "signaling/with_mlp_rnn" in path:
         train_with_mlp_rnn(ConfigWithMLPRNN(**config))

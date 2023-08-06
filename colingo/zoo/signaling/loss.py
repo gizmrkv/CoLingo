@@ -59,14 +59,16 @@ class ReceiverObjectCrossEntropyLoss(nn.Module):
 
 
 class SenderMessageReinforceLoss(nn.Module):
-    def __init__(self, reinforce_loss: ReinforceLoss, weight: float = 1.0):
+    def __init__(
+        self, reward_loss: nn.Module, reinforce_loss: ReinforceLoss, weight: float = 1.0
+    ):
         super().__init__()
+        self._reward_loss = reward_loss
         self._reinforce_loss = reinforce_loss
         self._weight = weight
 
-    def forward(
-        self, result: GameResult, reward: TensorType[BATCH, float]
-    ) -> TensorType[float]:
+    def forward(self, result: GameResult) -> TensorType[float]:
+        reward = -self._reward_loss(result)
         loss = self._reinforce_loss(
             reward.detach(),
             result.message_log_prob_s,
@@ -151,11 +153,15 @@ class ReceiverAutoEncodingCrossEntropyLoss(nn.Module):
         self._weight = weight
 
     def forward(self, result: GameResult) -> TensorType[float]:
+        masks = [
+            (output == result.input).all(dim=-1).float() for output in result.output_r
+        ]
         loss = [
-            sequence_cross_entropy_loss(
+            mask
+            * sequence_cross_entropy_loss(
                 logits, result.message_s, self._length, self._n_values
             )
-            for logits in result.message_logits_auto_encoding_r  # type: ignore
+            for logits, mask in zip(result.message_logits_auto_encoding_r, masks)  # type: ignore
         ]
         loss_sum = torch.stack(loss, dim=-1).sum(dim=-1)
         return self._weight * loss_sum
@@ -168,25 +174,14 @@ class Loss(nn.Module):
         object_n_values: int,
         message_length: int,
         message_n_values: int,
-        sender_loss: nn.Module,
-        receiver_loss: nn.Module,
-        additional_losses: Iterable[nn.Module] | None = None,
+        losses: Iterable[nn.Module],
     ):
         super().__init__()
         self._object_length = object_length
         self._object_n_values = object_n_values
         self._message_length = message_length
         self._message_n_values = message_n_values
-        self._sender_loss = sender_loss
-        self._receiver_loss = receiver_loss
-        self._additional_losses = nn.ModuleList(additional_losses or [])
+        self._losses = nn.ModuleList(losses)
 
     def forward(self, result: GameResult) -> TensorType[float]:
-        loss_r = self._receiver_loss(result)
-        loss_s = self._sender_loss(result, -loss_r)
-        total_loss = loss_r + loss_s
-
-        for loss in self._additional_losses:
-            total_loss += loss(result)
-
-        return total_loss.mean()
+        return sum(loss(result) for loss in self._losses).mean()

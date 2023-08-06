@@ -1,10 +1,13 @@
 from .mlp import MLP, MLPDecoder, MLPEncoder
 from .rnn import RNNDecoder, RNNEncoder
+from .transformer import TransformerDecoder, TransformerEncoder
 
 __all__ = [
-    "ContMLP",
+    "MLP",
     "MLPDecoder",
     "MLPEncoder",
     "RNNDecoder",
     "RNNEncoder",
+    "TransformerDecoder",
+    "TransformerEncoder",
 ]

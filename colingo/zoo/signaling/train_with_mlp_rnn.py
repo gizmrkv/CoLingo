@@ -69,8 +69,10 @@ class ConfigWithMLPRNN:
     entropy_weight: float = 0.0
     length_weight: float = 0.0
 
+    roce_loss_weight: float | None = None
     raece_loss_weight: float | None = None
     rmce_loss_weight: float | None = None
+    smrf_loss_weight: float | None = None
     saece_loss_weight: float | None = None
     soce_loss_weight: float | None = None
     saecel_loss_weight: float | None = None
@@ -160,14 +162,14 @@ def train_with_mlp_rnn(cfg: ConfigWithMLPRNN) -> None:
             run_receiver_send=cfg.run_receiver_send,
             run_sender_auto_encoding=cfg.run_sender_auto_encoding,
             run_receiver_auto_encoding=cfg.run_receiver_auto_encoding,
-            receiver_loss_weight=cfg.receiver_loss_weight,
-            sender_loss_weight=cfg.sender_loss_weight,
             baseline=cfg.baseline,
             length_baseline=cfg.length_baseline,
             entropy_weight=cfg.entropy_weight,
             length_weight=cfg.length_weight,
+            roce_loss_weight=cfg.roce_loss_weight,
             raece_loss_weight=cfg.raece_loss_weight,
             rmce_loss_weight=cfg.rmce_loss_weight,
+            smrf_loss_weight=cfg.smrf_loss_weight,
             saece_loss_weight=cfg.saece_loss_weight,
             soce_loss_weight=cfg.soce_loss_weight,
             saecel_loss_weight=cfg.saecel_loss_weight,

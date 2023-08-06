@@ -1,4 +1,4 @@
-method = "random"
+method = "grid"
 name = "receiver_auto_encoding_weight_sweep"
 project = "CoLingo"
 
@@ -90,8 +90,8 @@ value = 8
 [parameters.message_n_values]
 value = 40
 
-# [parameters.seed]
-# values = [1, 2, 3, 4, 5]
+[parameters.seed]
+values = [1, 2, 3, 4, 5]
 
 [parameters.run_sender_output]
 value = false
@@ -105,12 +105,6 @@ value = false
 [parameters.run_receiver_auto_encoding]
 value = true
 
-[parameters.receiver_loss_weight]
-value = 1.0
-
-[parameters.sender_loss_weight]
-value = 1.0
-
 [parameters.baseline]
 value = "batch_mean"
 
@@ -123,12 +117,17 @@ value = 0.01
 [parameters.length_weight]
 value = 0.0
 
+[parameters.roce_loss_weight]
+value = 1.0
+
 [parameters.raece_loss_weight]
-min = 0.0
-max = 1.0
+values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 # [parameters.rmce_loss_weight]
 # value= = 1.0
+
+[parameters.smrf_loss_weight]
+value = 1.0
 
 # [parameters.saece_loss_weight]
 # value =  1.0
@@ -155,4 +154,4 @@ value = 200
 value = 1
 
 [parameters.language_save_interval]
-value = 400
+value = 100

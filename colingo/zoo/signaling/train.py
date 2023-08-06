@@ -4,7 +4,6 @@ import os
 import uuid
 from dataclasses import asdict, dataclass
 from itertools import product
-from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -65,16 +64,15 @@ class Config:
     run_sender_auto_encoding: bool = False
     run_receiver_auto_encoding: bool = False
 
-    receiver_loss_weight: float = 1.0
-
-    sender_loss_weight: float = 1.0
     baseline: str = "batch_mean"
     length_baseline: str = "batch_mean"
     entropy_weight: float = 0.0
     length_weight: float = 0.0
 
+    roce_loss_weight: float | None = None
     raece_loss_weight: float | None = None
     rmce_loss_weight: float | None = None
+    smrf_loss_weight: float | None = None
     saece_loss_weight: float | None = None
     soce_loss_weight: float | None = None
     saecel_loss_weight: float | None = None
@@ -136,6 +134,16 @@ def train(
     # trainer
     train_losses: list[nn.Module] = []
     eval_losses: dict[str, nn.Module] = {}
+    baselines = {"batch_mean": BatchMeanBaseline}
+    if cfg.roce_loss_weight is not None:
+        train_losses.append(
+            ReceiverObjectCrossEntropyLoss(
+                cfg.object_length, cfg.object_n_values, cfg.roce_loss_weight
+            )
+        )
+        eval_losses["roce"] = ReceiverObjectCrossEntropyLoss(
+            cfg.object_length, cfg.object_n_values
+        )
     if cfg.raece_loss_weight is not None:
         train_losses.append(
             ReceiverAutoEncodingCrossEntropyLoss(
@@ -154,6 +162,22 @@ def train(
         eval_losses["rmce"] = ReceiverMessageCrossEntropyLoss(
             cfg.message_length, cfg.message_n_values
         )
+    if cfg.smrf_loss_weight is not None:
+        receiver_loss = ReceiverObjectCrossEntropyLoss(
+            cfg.object_length, cfg.object_n_values
+        )
+        reinforce_loss = ReinforceLoss(
+            cfg.entropy_weight,
+            cfg.length_weight,
+            baselines[cfg.baseline](),
+            baselines[cfg.length_baseline](),
+        )
+        train_losses.append(
+            SenderMessageReinforceLoss(
+                receiver_loss, reinforce_loss, cfg.smrf_loss_weight
+            )
+        )
+        eval_losses["smrf"] = SenderMessageReinforceLoss(receiver_loss, reinforce_loss)
     if cfg.saece_loss_weight is not None:
         train_losses.append(
             SenderAutoEncodingCrossEntropyLoss(
@@ -182,28 +206,13 @@ def train(
             cfg.message_length, cfg.message_n_values
         )
 
-    baselines = {"batch_mean": BatchMeanBaseline}
-    reinforce_loss = ReinforceLoss(
-        cfg.entropy_weight,
-        cfg.length_weight,
-        baselines[cfg.baseline](),
-        baselines[cfg.length_baseline](),
-    )
-    sender_loss = SenderMessageReinforceLoss(reinforce_loss, cfg.sender_loss_weight)
-    receiver_loss = ReceiverObjectCrossEntropyLoss(
-        cfg.object_length, cfg.object_n_values, cfg.receiver_loss_weight
-    )
     loss = Loss(
         cfg.object_length,
         cfg.object_n_values,
         cfg.message_length,
         cfg.message_n_values,
-        sender_loss,
-        receiver_loss,
         train_losses,
     )
-    eval_losses["roce"] = receiver_loss
-    eval_losses["signaling"] = loss
 
     games = []
     for name_s, names_r in adjacency.items():
@@ -239,13 +248,13 @@ def train(
     for name, data in [("train", train_dataloader), ("test", test_dataloader)]:
         acc_comp_heatmap_logger = HeatmapLogger(
             log_dir,
-            f"{name}.acc_comp",
+            f"{name}.acc_comp.heatmap",
             loggers,
             heatmap_option=heatmap_option,
         )
         acc_part_heatmap_logger = HeatmapLogger(
             log_dir,
-            f"{name}.acc_part",
+            f"{name}.acc_part.heatmap",
             loggers,
             heatmap_option=heatmap_option,
         )
