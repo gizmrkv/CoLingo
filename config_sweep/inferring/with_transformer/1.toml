@@ -1,0 +1,91 @@
+method = "grid|random|bayes"
+name = "######"
+project = "######"
+
+[metric]
+name = "######"
+goal = "maximize|minimize"
+
+[parameters.n_epochs]
+value = 500
+
+[parameters.batch_size]
+value = 1000000
+
+[parameters.seed]
+value = 42
+
+[parameters.device]
+value = "cuda"
+
+[parameters.zoo_name]
+value = "inferring_with_transformer"
+
+[parameters.wandb_project]
+value = "hoge"
+
+[parameters.use_tqdm]
+value = true
+
+[parameters.lr]
+value = 0.001
+
+[parameters.length]
+value = 2
+
+[parameters.n_values]
+value = 50
+
+[parameters.latent_dim]
+value = 256
+
+[parameters.use_reinforce]
+value = false
+
+[parameters.baseline]
+value = "batch_mean"
+
+[parameters.entropy_weight]
+value = 0.01
+
+[parameters.encoder_embed_dim]
+value = 64
+
+[parameters.encoder_n_heads]
+value = 4
+
+[parameters.encoder_ff_dim]
+value = 128
+
+[parameters.encoder_dropout]
+value = 0.1
+
+[parameters.encoder_activation]
+value = "relu"
+
+[parameters.encoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.encoder_n_layers]
+value = 2
+
+[parameters.decoder_embed_dim]
+value = 64
+
+[parameters.decoder_n_heads]
+value = 4
+
+[parameters.decoder_ff_dim]
+value = 128
+
+[parameters.decoder_dropout]
+value = 0.1
+
+[parameters.decoder_activation]
+value = "relu"
+
+[parameters.decoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.decoder_n_layers]
+value = 2
