@@ -1,0 +1,30 @@
+n_epochs = 1000
+batch_size = 100000
+device = "cuda"
+seed = 42
+wandb_project = "int-sequence-reconstruction"
+use_tqdm = true
+
+lr = 0.001
+length = 2
+n_values = 50
+
+metrics_interval = 5
+
+latent_dim = 64
+encoder_embed_dim = 32
+encoder_n_heads = 1
+encoder_ff_dim = 128
+encoder_dropout = 0.0
+encoder_activation = "gelu"
+encoder_layer_norm_eps = 1e-5
+encoder_norm_first = false
+encoder_n_layers = 1
+decoder_embed_dim = 32
+decoder_n_heads = 1
+decoder_ff_dim = 128
+decoder_dropout = 0.0
+decoder_activation = "gelu"
+decoder_layer_norm_eps = 1e-5
+decoder_norm_first = false
+decoder_n_layers = 1

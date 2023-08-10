@@ -1,22 +1,19 @@
-from typing import Callable
-
 from torch import nn
 from torchtyping import TensorType
 
 
 class ReinforceLoss(nn.Module):
+    BATCH = "batch"
+    LENGTH = "length"
+
     def __init__(
         self,
-        max_len: int,
         entropy_weight: float = 0.0,
         length_weight: float = 0.0,
-        baseline: Callable[[TensorType[..., float]], TensorType[..., float]]
-        | None = None,
-        length_baseline: Callable[[TensorType[..., float]], TensorType[..., float]]
-        | None = None,
-    ) -> None:
+        baseline: nn.Module | None = None,
+        length_baseline: nn.Module | None = None,
+    ):
         super().__init__()
-        self.max_len = max_len
         self.entropy_weight = entropy_weight
         self.length_weight = length_weight
         self.baseline = baseline
@@ -24,11 +21,11 @@ class ReinforceLoss(nn.Module):
 
     def forward(
         self,
-        reward: TensorType[..., float],
-        log_prob: TensorType[..., "max_len", float],
-        entropy: TensorType[..., "max_len", float] | None = None,
-        length: TensorType[..., int] | None = None,
-    ) -> TensorType[..., float]:
+        reward: TensorType[BATCH, float],
+        log_prob: TensorType[BATCH, LENGTH, float],
+        entropy: TensorType[BATCH, LENGTH, float] | None = None,
+        length: TensorType[BATCH, int] | None = None,
+    ) -> TensorType[BATCH, float]:
         reward = reward.detach()
         log_prob = log_prob.sum(dim=-1)
 
@@ -41,7 +38,7 @@ class ReinforceLoss(nn.Module):
             loss -= ent_loss
 
         if length is not None:
-            len_loss = self.length_weight * length.float() / self.max_len
+            len_loss = self.length_weight * length.float()
             if self.length_baseline is not None:
                 len_loss -= self.length_baseline(len_loss)
             loss += len_loss * log_prob

@@ -58,7 +58,7 @@ value = "gru"
 value = 2
 
 [parameters.n_epochs]
-value = 1000
+value = 1001
 
 [parameters.batch_size]
 value = 100000

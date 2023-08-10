@@ -1,0 +1,22 @@
+n_epochs = 1001
+batch_size = 100000
+device = "cuda"
+seed = 42
+wandb_project = "int-sequence-reconstruction"
+use_tqdm = true
+
+lr = 0.001
+length = 2
+n_values = 50
+
+metrics_interval = 5
+
+latent_dim = 200
+encoder_embed_dim = 8
+encoder_hidden_dim = 200
+encoder_rnn_type = "gru"
+encoder_n_layers = 2
+decoder_embed_dim = 8
+decoder_hidden_dim = 200
+decoder_rnn_type = "gru"
+decoder_n_layers = 2

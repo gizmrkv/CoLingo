@@ -1,103 +1,10 @@
 import torch
-from torch import nn
+import torch.nn as nn
 from torch.distributions import Categorical
-from torch.nn import functional as F
 from torchtyping import TensorType
 
 
-class MLPEncoder(nn.Module):
-    BATCH = "batch"
-    LENGTH = "length"
-    OUTPUT_DIM = "output_dim"
-
-    def __init__(
-        self,
-        length: int,
-        n_values: int,
-        output_dim: int,
-        embed_dim: int,
-        hidden_dim: int,
-        n_layers: int = 1,
-        activation: str = "relu",
-    ):
-        super().__init__()
-        self._length = length
-        self._n_values = n_values
-        self._output_dim = output_dim
-        self._embed_dim = embed_dim
-        self._hidden_dim = hidden_dim
-        self._n_layers = n_layers
-        self._activation = activation
-
-        self._embed = nn.Embedding(n_values, embed_dim)
-
-        self._mlp = MLP(
-            input_dim=length * embed_dim,
-            output_dim=output_dim,
-            hidden_dim=hidden_dim,
-            n_layers=n_layers,
-            activation=activation,
-        )
-
-    def forward(
-        self, x: TensorType[BATCH, LENGTH, int]
-    ) -> TensorType[BATCH, OUTPUT_DIM, float]:
-        x = torch.cat([self._embed(x[:, i]) for i in range(self._length)], dim=1)
-        return self._mlp(x)
-
-
-class MLPDecoder(nn.Module):
-    BATCH = "batch"
-    INPUT_DIM = "input_dim"
-    LENGTH = "length"
-    N_VALUES = "n_values"
-
-    def __init__(
-        self,
-        input_dim: int,
-        length: int,
-        n_values: int,
-        hidden_dim: int,
-        n_layers: int = 1,
-        activation: str = "relu",
-    ):
-        super().__init__()
-        self._input_dim = input_dim
-        self._length = length
-        self._n_values = n_values
-        self._hidden_dim = hidden_dim
-        self._n_layers = n_layers
-        self._activation = activation
-
-        self._mlp = MLP(
-            input_dim=input_dim,
-            output_dim=length * n_values,
-            hidden_dim=hidden_dim,
-            n_layers=n_layers,
-            activation=activation,
-        )
-
-    def forward(
-        self, x: TensorType[BATCH, INPUT_DIM, float]
-    ) -> tuple[
-        TensorType[BATCH, LENGTH, int], TensorType[BATCH, LENGTH, N_VALUES, float]
-    ]:
-        x = self._mlp(x)
-        logits = x.view(-1, self._length, self._n_values)
-
-        if self.training:
-            distr = Categorical(logits=logits)
-            x = distr.sample()
-            return x, logits
-        else:
-            return logits.argmax(dim=-1), logits
-
-
 class MLP(nn.Module):
-    BATCH = "batch"
-    INPUT_DIM = "input_dim"
-    OUTPUT_DIM = "output_dim"
-
     def __init__(
         self,
         input_dim: int,
@@ -107,10 +14,10 @@ class MLP(nn.Module):
         activation: str = "relu",
     ) -> None:
         super().__init__()
-        self._input_dim = input_dim
-        self._output_dim = output_dim
-        self._hidden_dim = hidden_dim
-        self._n_layers = n_layers
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
         activations = {
             "relu": nn.ReLU,
             "elu": nn.ELU,
@@ -129,12 +36,82 @@ class MLP(nn.Module):
                 nn.Linear(hidden_dim, output_dim),
             ]
 
-        self._layers = nn.ModuleList(layers)
+        self.layers = nn.ModuleList(layers)
 
     def forward(
-        self, x: TensorType[BATCH, INPUT_DIM, float]
-    ) -> TensorType[BATCH, OUTPUT_DIM, float]:
-        for layer in self._layers[:-1]:
+        self, x: TensorType[..., "input_dim", float]
+    ) -> TensorType[..., "output_dim", float]:
+        for layer in self.layers[:-1]:
             x = self.activation(layer(x))
-        x = self._layers[-1](x)
+        x = self.layers[-1](x)
         return x
+
+
+class IntSequenceMLPEncoder(nn.Module):
+    def __init__(
+        self,
+        length: int,
+        n_values: int,
+        output_dim: int,
+        embed_dim: int,
+        hidden_dim: int,
+        n_layers: int,
+        activation: str = "relu",
+    ) -> None:
+        super().__init__()
+        self.length = length
+        self.n_values = n_values
+        self.output_dim = output_dim
+        self.embed_dim = embed_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.activation = activation
+
+        self.embed = nn.Embedding(n_values, embed_dim)
+        self.mlp = MLP(length * embed_dim, output_dim, hidden_dim, n_layers, activation)
+
+    def forward(
+        self, input: TensorType[..., "length", int]
+    ) -> TensorType[..., "output_dim", float]:
+        embed = torch.cat([self.embed(input[:, i]) for i in range(self.length)], dim=1)
+        output = self.mlp(embed)
+        return output
+
+
+class IntSequenceMLPDecoder(nn.Module):
+    def __init__(
+        self,
+        input_dim: int,
+        length: int,
+        n_values: int,
+        hidden_dim: int,
+        n_layers: int = 1,
+        activation: str = "relu",
+    ):
+        super().__init__()
+        self.input_dim = input_dim
+        self.length = length
+        self.n_values = n_values
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.activation = activation
+
+        self.mlp = MLP(
+            input_dim=input_dim,
+            output_dim=length * n_values,
+            hidden_dim=hidden_dim,
+            n_layers=n_layers,
+            activation=activation,
+        )
+
+    def forward(
+        self, latent: TensorType[..., "input_dim", float]
+    ) -> TensorType[..., "length", "n_values", float]:
+        logits = self.mlp(latent)
+        logits = logits.view(-1, self.length, self.n_values)
+
+        if self.training:
+            distr = Categorical(logits=logits)
+            return distr.sample(), logits
+        else:
+            return logits.argmax(dim=-1), logits

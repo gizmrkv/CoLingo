@@ -1,0 +1,179 @@
+method = "grid"
+name = "receiver_auto_encoding_and_length_weight_sweep2"
+project = "CoLingo"
+
+[metric]
+name = "test.acc_part.max.max"
+goal = "maximize"
+
+[parameters.latent_dim]
+value = 150
+
+[parameters.n_agents]
+value = 2
+
+[parameters.mlp_encoder_embed_dim]
+value = 8
+
+[parameters.mlp_encoder_hidden_dim]
+value = 150
+
+[parameters.mlp_encoder_activation]
+value = "gelu"
+
+[parameters.mlp_encoder_n_layers]
+value = 2
+
+[parameters.mlp_decoder_hidden_dim]
+value = 150
+
+[parameters.mlp_decoder_n_layers]
+value = 2
+
+[parameters.mlp_decoder_activation]
+value = "gelu"
+
+[parameters.rnn_encoder_hidden_dim]
+value = 150
+
+[parameters.rnn_encoder_embed_dim]
+value = 8
+
+[parameters.rnn_encoder_rnn_type]
+value = "gru"
+
+[parameters.rnn_encoder_n_layers]
+value = 2
+
+[parameters.rnn_decoder_hidden_dim]
+value = 150
+
+[parameters.rnn_decoder_embed_dim]
+value = 8
+
+[parameters.rnn_decoder_rnn_type]
+value = "gru"
+
+[parameters.rnn_decoder_n_layers]
+value = 2
+
+[parameters.n_epochs]
+value = 1000
+
+[parameters.batch_size]
+value = 100000
+
+[parameters.device]
+value = "cuda"
+
+[parameters.zoo_name]
+value = "signaling_with_mlp_rnn"
+
+[parameters.wandb_project]
+value = "CoLingo"
+
+[parameters.use_tqdm]
+value = true
+
+[parameters.lr]
+value = 0.001
+
+[parameters.object_length]
+value = 2
+
+[parameters.object_n_values]
+value = 40
+
+[parameters.message_length]
+value = 8
+
+[parameters.message_n_values]
+value = 40
+
+[parameters.seed]
+values = [1, 2, 3, 4, 5]
+
+[parameters.run_sender_output]
+value = false
+
+[parameters.run_receiver_send]
+value = false
+
+[parameters.run_sender_auto_encoding]
+value = false
+
+[parameters.run_receiver_auto_encoding]
+value = true
+
+[parameters.baseline]
+value = "batch_mean"
+
+[parameters.length_baseline]
+value = "batch_mean"
+
+[parameters.entropy_weight]
+value = 0.01
+
+[parameters.length_weight]
+values = [
+    0.00,
+    0.01,
+    0.02,
+    0.03,
+    0.04,
+    0.05,
+    0.06,
+    0.07,
+    0.08,
+    0.09,
+    0.10,
+    0.11,
+    0.12,
+    0.13,
+    0.14,
+    0.15,
+    0.16,
+    0.17,
+    0.18,
+    0.19,
+    0.20,
+]
+
+[parameters.roce_loss_weight]
+value = 1.0
+
+[parameters.raece_loss_weight]
+values = [0.0, 1.0]
+
+# [parameters.rmce_loss_weight]
+# value= = 1.0
+
+[parameters.smrf_loss_weight]
+value = 1.0
+
+# [parameters.saece_loss_weight]
+# value =  1.0
+
+# [parameters.soce_loss_weight]
+# value = 1.0
+
+# [parameters.saecel_loss_weight]
+# value = 1.0
+
+[parameters.eval_interval]
+value = 20
+
+[parameters.acc_heatmap_interval]
+value = 5
+
+[parameters.topsim_interval]
+value = 5
+
+[parameters.lansim_interval]
+value = 200
+
+[parameters.lansim_heatmap_interval]
+value = 1
+
+[parameters.language_save_interval]
+value = 100

@@ -1,23 +1,15 @@
 import random
 import time
-from itertools import islice
-from typing import Any, Callable, Iterable, Sequence
+from typing import Callable, Iterable
 
 import numpy as np
 import torch
-from torch import nn, optim
-from torchtyping import TensorType
+import torch.nn as nn
 
-from .core import Callback
-from .logger import Logger
+from .core import IStopper, RunnerCallback
 
 
 def fix_seed(seed: int) -> None:
-    import random
-
-    import numpy as np
-    import torch
-
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -45,11 +37,11 @@ def init_weights(m: nn.Module) -> None:
         nn.init.constant_(m.bias, 0)
 
 
-def random_split(dataset: torch.Tensor, propotions: list[float]) -> list[torch.Tensor]:
+def random_split(dataset: torch.Tensor, proportions: list[float]) -> list[torch.Tensor]:
     indices = np.random.permutation(len(dataset))
 
-    propotions_sum = sum(propotions)
-    split_sizes = [int(r / propotions_sum * len(dataset)) for r in propotions]
+    proportions_sum = sum(proportions)
+    split_sizes = [int(r / proportions_sum * len(dataset)) for r in proportions]
     split_sizes_argmax = split_sizes.index(max(split_sizes))
     split_sizes[split_sizes_argmax] += len(dataset) - sum(split_sizes)
 
@@ -60,138 +52,95 @@ def random_split(dataset: torch.Tensor, propotions: list[float]) -> list[torch.T
     return split_dataset
 
 
-class Trainer(Callback):
-    def __init__(
-        self,
-        games: Iterable[nn.Module],
-        optimizers: Iterable[optim.Optimizer],
-        input: Iterable[Any],
-        loss: Callable[[Any], TensorType[float]],
-        max_batches: int = 1,
-    ):
-        self._games = games
-        self._optimizers = optimizers
-        self._input = input
-        self._loss = loss
-        self._max_batches = max_batches
+class EarlyStopper(RunnerCallback, IStopper):
+    def __init__(self, pred: Callable[[dict[str, float]], bool]) -> None:
+        self.pred = pred
+        self.metrics: dict[str, float] = {}
+
+        self._stop = False
+
+    def __call__(self, metrics: dict[str, float]) -> None:
+        self.metrics.update(metrics)
+
+    def stop(self, step: int) -> bool:
+        return self._stop
 
     def on_update(self, step: int) -> None:
-        for game in self._games:
-            game.train()
-
-        for optimizer in self._optimizers:
-            optimizer.zero_grad()
-
-        for input in islice(self._input, self._max_batches):
-            outputs = [game(input) for game in self._games]
-            loss = sum([self._loss(output) for output in outputs])
-            loss.backward(retain_graph=True)
-            for optimizer in self._optimizers:
-                optimizer.step()
-
-
-class Evaluator(Callback):
-    def __init__(
-        self,
-        game: nn.Module,
-        input: Iterable[Any],
-        loggers: Iterable[Logger] | None = None,
-        run_on_begin: bool = False,
-        run_on_end: bool = True,
-    ):
-        self._game = game
-        self._input = input
-        self._loggers = loggers or []
-        self._run_on_begin = run_on_begin
-        self._run_on_end = run_on_end
+        self._stop = self.pred(self.metrics)
+        self.metrics.clear()
 
     def on_begin(self) -> None:
-        if self._run_on_begin:
-            self.evaluate()
-
-    def on_update(self, step: int) -> None:
-        self.evaluate()
+        self.metrics.clear()
 
     def on_end(self) -> None:
-        if self._run_on_end:
-            self.evaluate()
-
-    def evaluate(self) -> None:
-        self._game.eval()
-
-        input = next(iter(self._input))
-        with torch.no_grad():
-            output = self._game(input=input)
-
-        for logger in self._loggers:
-            logger.log(output)
+        self.metrics.clear()
 
 
-class StepCounter(Callback):
-    def __init__(self, name: str, loggers: Iterable[Logger]) -> None:
+class DuplicateChecker(RunnerCallback):
+    def __init__(self) -> None:
+        self.seen: set[str] = set()
+
+    def __call__(self, keys: Iterable[str]) -> None:
+        for k in keys:
+            if k in self.seen:
+                raise ValueError(f"Duplicate key: {k}")
+            self.seen.add(k)
+
+    def on_begin(self) -> None:
+        self.seen.clear()
+
+    def on_update(self, step: int) -> None:
+        self.seen.clear()
+
+    def on_end(self) -> None:
+        self.seen.clear()
+
+
+class StepCounter(RunnerCallback):
+    def __init__(
+        self,
+        name: str,
+        callbacks: Iterable[Callable[[dict[str, float]], None]],
+    ) -> None:
         super().__init__()
-        self._loggers = loggers
-        self._name = name
-        self._step = 0
+        self.name = name
+        self.callbacks = callbacks
 
     def on_update(self, step: int) -> None:
-        self._step = step
-        for logger in self._loggers:
-            logger.log({self._name: self._step})
+        for callback in self.callbacks:
+            callback({self.name: step})
 
 
-class ShuffleCallback(Callback):
-    def __init__(self, callbacks: Sequence[Callback]) -> None:
-        self._callbacks = callbacks
-        self._indices = list(range(len(self._callbacks)))
-
-    def on_begin(self) -> None:
-        for callback in self._callbacks:
-            callback.on_begin()
+class Timer(RunnerCallback):
+    def __init__(self, callbacks: Iterable[RunnerCallback]) -> None:
+        super().__init__()
+        self.callbacks = callbacks
 
     def on_update(self, step: int) -> None:
-        random.shuffle(self._indices)
-        for i in self._indices:
-            self._callbacks[i].on_update(step)
-
-    def on_end(self) -> None:
-        for callback in self._callbacks:
-            callback.on_end()
-
-
-def shuffle(callbacks: Sequence[Callback]) -> ShuffleCallback:
-    return ShuffleCallback(callbacks)
-
-
-class IntervalCallback(Callback):
-    def __init__(self, interval: int, callbacks: Sequence[Callback]) -> None:
-        self._callbacks = callbacks
-        self._interval = interval
-
-    def on_begin(self) -> None:
-        for callback in self._callbacks:
-            callback.on_begin()
-
-    def on_update(self, step: int) -> None:
-        if step % self._interval == 0:
-            for callback in self._callbacks:
-                callback.on_update(step)
-
-    def on_end(self) -> None:
-        for callback in self._callbacks:
-            callback.on_end()
-
-
-def interval(interval: int, callbacks: Sequence[Callback]) -> IntervalCallback:
-    return IntervalCallback(interval, callbacks)
-
-
-class TimeWatcher(Callback):
-    def __init__(self, callbacks: Iterable[Callback]) -> None:
-        self._callbacks = callbacks
-
-    def on_update(self, step: int) -> None:
-        for i, callback in enumerate(self._callbacks):
-            start_time = time.time()
+        for i, callback in enumerate(self.callbacks):
+            torch.cuda.synchronize()
+            start = time.time()
             callback.on_update(step)
-            print(f"{i} time: {time.time() - start_time:.2f}s")
+            torch.cuda.synchronize()
+            end = time.time()
+            print(f"{i}st time: {end - start:.3f} sec")
+
+
+class Interval(RunnerCallback):
+    def __init__(self, interval: int, callbacks: Iterable[RunnerCallback]) -> None:
+        super().__init__()
+        self.interval = interval
+        self.callbacks = callbacks
+
+    def on_begin(self) -> None:
+        for callback in self.callbacks:
+            callback.on_begin()
+
+    def on_end(self) -> None:
+        for callback in self.callbacks:
+            callback.on_end()
+
+    def on_update(self, step: int) -> None:
+        if step % self.interval == 0:
+            for callback in self.callbacks:
+                callback.on_update(step)

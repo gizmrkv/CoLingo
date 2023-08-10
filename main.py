@@ -3,23 +3,23 @@ import json
 import toml
 import yaml
 
-from colingo.zoo.inferring import (
-    ConfigWithMLP,
-    ConfigWithRNN,
-    ConfigWithTransformer,
-    train_with_mlp,
-    train_with_rnn,
-    train_with_transformer,
+from colingo.zoo.int_sequence_reco_signaling import train_mlp_rnn, train_mlp_transformer
+from colingo.zoo.int_sequence_reconstruction import (
+    train_mlp,
+    train_rnn,
+    train_transformer,
 )
-from colingo.zoo.signaling import ConfigWithMLPRNN, train_with_mlp_rnn
 
 if __name__ == "__main__":
-    path = "config/inferring/with_rnn/1.toml"
-    path = "config/inferring/with_mlp/1.toml"
-    path = "config/signaling/with_mlp_rnn/1.toml"
-    path = "config/inferring/with_transformer/1.toml"
+    zoo = "int_sequence_reconstruction"
+    zoo = "int_sequence_reco_signaling"
+    sub = "mlp1"
+    sub = "rnn1"
+    sub = "transformer1"
+    sub = "mlp_rnn1"
+    sub = "mlp_transformer1"
 
-    # config_path = sys.argv[1]
+    path = f"config/{zoo}/{sub}.toml"
 
     with open(path, "r") as f:
         if path.endswith(".json"):
@@ -31,11 +31,15 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown file extension: {path}")
 
-    if "inferring/with_mlp" in path:
-        train_with_mlp(ConfigWithMLP(**config))
-    elif "inferring/with_rnn" in path:
-        train_with_rnn(ConfigWithRNN(**config))
-    elif "inferring/with_transformer" in path:
-        train_with_transformer(ConfigWithTransformer(**config))
-    elif "signaling/with_mlp_rnn" in path:
-        train_with_mlp_rnn(ConfigWithMLPRNN(**config))
+    if "int_sequence_reconstruction" in zoo:
+        if "mlp" in sub:
+            train_mlp(config)
+        elif "rnn" in sub:
+            train_rnn(config)
+        elif "transformer" in sub:
+            train_transformer(config)
+    elif "int_sequence_reco_signaling" in zoo:
+        if "mlp_rnn" in sub:
+            train_mlp_rnn(config)
+        elif "mlp_transformer" in sub:
+            train_mlp_transformer(config)
