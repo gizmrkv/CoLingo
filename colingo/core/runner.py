@@ -14,7 +14,7 @@ class RunnerCallback:
         pass
 
 
-class IStopper:
+class EarlyStopper:
     def stop(self, step: int) -> bool:
         return False
 
@@ -23,12 +23,12 @@ class Runner:
     def __init__(
         self,
         callbacks: Iterable[RunnerCallback],
-        stopper: IStopper | None = None,
+        stopper: EarlyStopper | None = None,
         use_tqdm: bool = True,
     ):
         self.callbacks = callbacks
         self.use_tqdm = use_tqdm
-        self.stopper = stopper or IStopper()
+        self.stopper = stopper or EarlyStopper()
 
     def run(self, n_steps: int) -> None:
         for callback in self.callbacks:

@@ -14,13 +14,13 @@ class Evaluator(RunnerCallback, Generic[T, U]):
         self,
         agents: Iterable[nn.Module],
         input: Iterable[T],
-        game: Callable[[T], U],
-        callbacks: Iterable[Callable[[U], None]],
+        games: Iterable[Callable[[T], U]],
+        callbacks: Iterable[Callable[[int, T, Iterable[U]], None]],
     ) -> None:
         super().__init__()
         self.agents = agents
         self.input = input
-        self.game = game
+        self.games = games
         self.callbacks = callbacks
 
     def on_update(self, step: int) -> None:
@@ -29,12 +29,6 @@ class Evaluator(RunnerCallback, Generic[T, U]):
 
         input = next(iter(self.input))
         with torch.no_grad():
-            output = self.game(input)
+            outputs = [game(input) for game in self.games]
             for callback in self.callbacks:
-                callback(output)
-
-    def on_begin(self) -> None:
-        pass
-
-    def on_end(self) -> None:
-        pass
+                callback(step, input, outputs)

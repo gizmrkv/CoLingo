@@ -36,6 +36,7 @@ class ReconstructionGame(Generic[T, U, AE, AD]):
     def __init__(
         self, encoder: IEncoder[T, U, AE], decoder: IDecoder[U, T, AD]
     ) -> None:
+        super().__init__()
         self.encoder = encoder
         self.decoder = decoder
 

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...module import IntSequenceRNNDecoder, IntSequenceRNNEncoder
-from .train import Decoder, Encoder, train
+from .agent import Decoder, Encoder
+from .train import train
 
 
 @dataclass

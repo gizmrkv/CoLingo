@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .core import IStopper, RunnerCallback
+from .core import EarlyStopper, RunnerCallback
 
 
 def fix_seed(seed: int) -> None:
@@ -52,7 +52,7 @@ def random_split(dataset: torch.Tensor, proportions: list[float]) -> list[torch.
     return split_dataset
 
 
-class EarlyStopper(RunnerCallback, IStopper):
+class MetricsEarlyStopper(RunnerCallback, EarlyStopper):
     def __init__(self, pred: Callable[[dict[str, float]], bool]) -> None:
         self.pred = pred
         self.metrics: dict[str, float] = {}

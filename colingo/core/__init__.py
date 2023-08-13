@@ -1,10 +1,10 @@
 from .evaluator import Evaluator
-from .runner import IStopper, Runner, RunnerCallback
+from .runner import EarlyStopper, Runner, RunnerCallback
 from .trainer import Trainer
 
 __all__ = [
     "Evaluator",
-    "IStopper",
+    "EarlyStopper",
     "Runner",
     "RunnerCallback",
     "Trainer",

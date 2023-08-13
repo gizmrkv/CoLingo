@@ -13,24 +13,22 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from ...core import Evaluator, Runner, Trainer
-from ...game.reconstruction import (
-    IDecoder,
-    IEncoder,
-    ReconstructionGame,
-    ReconstructionGameResult,
-)
+from ...core import EarlyStopper, Evaluator, Runner, Trainer
+from ...game import IDecoder, IEncoder, ReconstructionGame, ReconstructionGameResult
 from ...loggers import WandbLogger
 from ...utils import (
     DuplicateChecker,
-    EarlyStopper,
     Interval,
+    MetricsEarlyStopper,
     StepCounter,
     Timer,
     fix_seed,
     init_weights,
     random_split,
 )
+from .agent import Decoder, Encoder
+from .loss import loss
+from .metrics import Metrics
 
 
 @dataclass
@@ -47,80 +45,6 @@ class Config:
     n_values: int
 
     metrics_interval: int
-
-
-class Encoder(nn.Module, IEncoder[TensorType[..., int], TensorType[..., float], None]):
-    def __init__(self, model: nn.Module):
-        super().__init__()
-        self.model = model
-
-    def encode(
-        self, input: TensorType[..., int]
-    ) -> Tuple[TensorType[..., float], None]:
-        return self.model(input), None
-
-
-class Decoder(
-    nn.Module,
-    IDecoder[TensorType[..., float], TensorType[..., int], TensorType[..., float]],
-):
-    def __init__(self, model: nn.Module):
-        super().__init__()
-        self.model = model
-
-    def decode(
-        self, latent: TensorType[..., float]
-    ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
-        return self.model(latent)  # type: ignore
-
-
-def loss(
-    result: ReconstructionGameResult[
-        TensorType[..., int], TensorType[..., float], None, TensorType[..., float]
-    ]
-) -> TensorType[..., float]:
-    return F.cross_entropy(
-        result.decoder_aux.view(-1, result.decoder_aux.shape[-1]),
-        result.input.view(-1),
-    )
-
-
-class Metrics:
-    def __init__(
-        self,
-        name: str,
-        length: int,
-        n_values: int,
-        callbacks: Iterable[Callable[[dict[str, float]], None]],
-    ) -> None:
-        self.name = name
-        self.length = length
-        self.n_values = n_values
-        self.callbacks = callbacks
-
-    def __call__(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., "length", int],
-            TensorType[..., float],
-            None,
-            TensorType[..., "length", "n_values", float],
-        ],
-    ) -> None:
-        metrics: dict[str, float] = {}
-
-        mark = result.output == result.input
-        acc_comp = mark.all(dim=-1).float().mean().item()
-        acc = mark.float().mean(dim=0)
-        acc_part = acc.mean().item()
-        metrics |= {"acc_comp": acc_comp, "acc_part": acc_part}
-        metrics |= {f"acc{i}": a.item() for i, a in enumerate(list(acc))}
-
-        metrics["loss"] = loss(result).mean().item()
-
-        metrics = {f"{self.name}.{k}": v for k, v in metrics.items()}
-        for callback in self.callbacks:
-            callback(metrics)
 
 
 def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
@@ -171,7 +95,7 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
 
     wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
     duplicate_checker = DuplicateChecker()
-    early_stopper = EarlyStopper(
+    early_stopper = MetricsEarlyStopper(
         lambda metrics: metrics["test.acc_comp"] > 0.99
         if "test.acc_comp" in metrics
         else False
@@ -188,13 +112,13 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
     train_evaluator = Evaluator(
         agents=models,
         input=train_dataloader,
-        game=game,
+        games=[game],
         callbacks=[train_metrics],
     )
     test_evaluator = Evaluator(
         agents=models,
         input=test_dataloader,
-        game=game,
+        games=[game],
         callbacks=[test_metrics],
     )
 

@@ -1,13 +1,8 @@
-from dataclasses import dataclass
-from itertools import product
-from typing import Callable, Generic, Iterable, Protocol, TypeVar
+from itertools import chain
+from typing import Callable, Generic, Iterable, TypeVar
 
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import tqdm
-from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
 from .runner import RunnerCallback
@@ -22,8 +17,10 @@ class Trainer(RunnerCallback, Generic[T, U]):
         agents: Iterable[nn.Module],
         input: Iterable[T],
         games: Iterable[Callable[[T], U]],
-        loss: Callable[[U], TensorType[..., float]],
+        loss: Callable[[int, T, Iterable[U]], TensorType[1, float]],
         optimizers: Iterable[torch.optim.Optimizer],
+        device: str = "cuda",
+        use_amp: bool = False,
     ) -> None:
         super().__init__()
         self.agents = agents
@@ -31,6 +28,12 @@ class Trainer(RunnerCallback, Generic[T, U]):
         self.games = games
         self.loss = loss
         self.optimizers = optimizers
+        self.device = device
+        self.use_amp = use_amp
+
+        self.parameters = chain.from_iterable(agent.parameters() for agent in agents)
+        self.amp = torch.cuda.amp if device.startswith("cuda") else torch.cpu.amp
+        self.scaler = self.amp.GradScaler(enabled=use_amp)
 
     def on_update(self, step: int) -> None:
         for agent in self.agents:
@@ -39,15 +42,17 @@ class Trainer(RunnerCallback, Generic[T, U]):
             optimizer.zero_grad()
 
         for input in self.input:
-            outputs = [game(input) for game in self.games]
-            losses = [self.loss(output) for output in outputs]
-            loss = torch.stack(losses).mean()
-            loss.backward(retain_graph=True)
+            with self.amp.autocast(enabled=self.use_amp, dtype=torch.float16):
+                outputs = [game(input) for game in self.games]
+                loss = self.loss(step, input, outputs)
+
+            self.scaler.scale(loss).backward()
+
             for optimizer in self.optimizers:
-                optimizer.step()
+                self.scaler.unscale_(optimizer)
 
-    def on_begin(self) -> None:
-        pass
+            nn.utils.clip_grad_norm_(self.parameters, 1.0)
 
-    def on_end(self) -> None:
-        pass
+            for optimizer in self.optimizers:
+                self.scaler.step(optimizer)
+                self.scaler.update()

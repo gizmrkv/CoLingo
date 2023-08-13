@@ -1,7 +1,6 @@
-from typing import Callable, Hashable, Literal, Sequence
+from typing import Callable, Hashable, Literal, Sequence, Tuple
 
 import numpy as np
-import torch as th
 from numpy.typing import NDArray
 from rapidfuzz.distance import (
     OSA,
@@ -17,6 +16,7 @@ from rapidfuzz.distance import (
 )
 from rapidfuzz.process import cdist
 from scipy.stats import kendalltau, pearsonr, spearmanr
+from torchtyping import TensorType
 
 str2distance = {
     "DamerauLevenshtein": DamerauLevenshtein,

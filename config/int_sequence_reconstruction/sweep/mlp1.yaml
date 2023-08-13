@@ -1,0 +1,48 @@
+method: grid|random|bayes
+project: int_sequence_reconstruction
+target: int_sequence_reconstruction/mlp
+metric:
+  goal: maximize|minimize
+  name: "######"
+name: "######"
+parameters:
+  batch_size:
+    value: 100000
+  decoder_activation:
+    value: gelu
+  decoder_embed_dim:
+    value: 8
+  decoder_hidden_dim:
+    value: 64
+  decoder_n_layers:
+    value: 2
+  device:
+    value: cuda
+  encoder_activation:
+    value: gelu
+  encoder_embed_dim:
+    value: 8
+  encoder_hidden_dim:
+    value: 64
+  encoder_n_layers:
+    value: 2
+  latent_dim:
+    value: 64
+  length:
+    value: 2
+  lr:
+    value: 0.001
+  metrics_interval:
+    value: 5
+  n_epochs:
+    value: 1000
+  n_values:
+    value: 50
+  seed:
+    value: 42
+  target:
+    value: int_sequence_reconstruction/mlp
+  use_tqdm:
+    value: true
+  wandb_project:
+    value: int-sequence-reconstruction

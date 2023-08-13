@@ -18,24 +18,22 @@ from torchtyping import TensorType
 
 from ...analysis import topographic_similarity
 from ...core import Evaluator, Runner, Trainer
-from ...game.reconstruction import (
-    IDecoder,
-    IEncoder,
-    ReconstructionGame,
-    ReconstructionGameResult,
-)
+from ...game import IDecoder, IEncoder, ReconstructionGame, ReconstructionGameResult
 from ...loggers import WandbLogger
 from ...loss import ReinforceLoss
 from ...utils import (
     DuplicateChecker,
-    EarlyStopper,
     Interval,
+    MetricsEarlyStopper,
     StepCounter,
     Timer,
     fix_seed,
     init_weights,
     random_split,
 )
+from .agent import Decoder, Encoder
+from .loss import Loss
+from .metrics import LanguageLogger, Metrics, TopographicSimilarityMetrics
 
 
 @dataclass
@@ -58,236 +56,7 @@ class Config:
 
     metrics_interval: int
     topsim_interval: int
-
-
-@dataclass
-class MessageAuxiliary:
-    max_len: int
-    n_values: int
-    message: TensorType[..., "max_len", int]
-    logits: TensorType[..., "max_len", "n_values", float]
-    log_prob: TensorType[..., "max_len", float]
-    entropy: TensorType[..., "max_len", float]
-    length: TensorType[..., int]
-
-
-class Encoder(
-    nn.Module,
-    IEncoder[TensorType[..., int], TensorType[..., int], MessageAuxiliary],
-):
-    def __init__(
-        self, object_encoder: nn.Module, message_decoder: nn.Module, eos: int = 0
-    ):
-        super().__init__()
-        self.object_encoder = object_encoder
-        self.message_decoder = message_decoder
-        self.eos = eos
-
-    def encode(
-        self, input: TensorType[..., int]
-    ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
-        latent = self.object_encoder(input)
-        message, logits = self.message_decoder(latent)
-
-        distr = Categorical(logits=logits)
-        log_prob = distr.log_prob(message)
-        entropy = distr.entropy()
-
-        mask = message == self.eos
-        indices = torch.argmax(mask.int(), dim=1)
-        no_mask = ~mask.any(dim=1)
-        indices[no_mask] = message.shape[1]
-        mask = torch.arange(message.shape[1]).expand(message.shape).to(message.device)
-        mask = (mask <= indices.unsqueeze(-1)).long()
-
-        length = mask.sum(dim=-1)
-        message = message * mask
-        log_prob = log_prob * mask
-        entropy = entropy * mask
-
-        return message, MessageAuxiliary(
-            max_len=message.shape[1],
-            n_values=logits.shape[-1],
-            message=message,
-            logits=logits,
-            log_prob=log_prob,
-            entropy=entropy,
-            length=length,
-        )
-
-
-class Decoder(
-    nn.Module,
-    IDecoder[TensorType[..., int], TensorType[..., int], TensorType[..., float]],
-):
-    def __init__(self, message_encoder: nn.Module, object_decoder: nn.Module):
-        super().__init__()
-        self.message_encoder = message_encoder
-        self.object_decoder = object_decoder
-
-    def decode(
-        self, latent: TensorType[..., float]
-    ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
-        latent = self.message_encoder(latent)
-        output, aux = self.object_decoder(latent)
-        return output, aux
-
-
-class Loss:
-    def __init__(self, cfg: Config) -> None:
-        super().__init__()
-        self.cfg = cfg
-
-        def baseline(x: TensorType[..., float]) -> TensorType[..., float]:
-            return x.detach().mean(dim=0)
-
-        self.reinforce_loss = ReinforceLoss(
-            max_len=cfg.message_length,
-            entropy_weight=cfg.entropy_weight,
-            length_weight=cfg.length_weight,
-            baseline=baseline,
-            length_baseline=baseline,
-        )
-
-    def decoder_loss(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            TensorType[..., float],
-            TensorType[..., float],
-        ],
-    ) -> TensorType[..., float]:
-        return (
-            F.cross_entropy(
-                result.decoder_aux.view(-1, self.cfg.object_n_values),
-                result.input.view(-1),
-                reduction="none",
-            )
-            .view(-1, self.cfg.object_length)
-            .mean(dim=-1)
-        )
-
-    def encoder_loss(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            MessageAuxiliary,
-            TensorType[..., float],
-        ],
-        decoder_loss: TensorType[..., float],
-    ) -> TensorType[..., float]:
-        return self.reinforce_loss(
-            reward=-decoder_loss.detach(),
-            log_prob=result.encoder_aux.log_prob,
-            entropy=result.encoder_aux.entropy,
-            length=result.encoder_aux.length,
-        )
-
-    def __call__(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            TensorType[..., float],
-            TensorType[..., float],
-        ],
-    ) -> TensorType[..., float]:
-        decoder_loss = self.decoder_loss(result)
-        encoder_loss = self.encoder_loss(result, decoder_loss)
-        return decoder_loss + encoder_loss
-
-
-class Metrics:
-    def __init__(
-        self,
-        name: str,
-        object_length: int,
-        object_n_values: int,
-        message_length: int,
-        message_n_values: int,
-        loss: Loss,
-        callbacks: Iterable[Callable[[dict[str, float]], None]],
-    ) -> None:
-        self.name = name
-        self.object_length = object_length
-        self.object_n_values = object_n_values
-        self.message_length = message_length
-        self.message_n_values = message_n_values
-        self.loss = loss
-        self.callbacks = callbacks
-
-    def __call__(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., "object_length", int],
-            TensorType[..., "message_length", int],
-            MessageAuxiliary,
-            TensorType[..., "object_length", "object_n_values", float],
-        ],
-    ) -> None:
-        metrics: dict[str, float] = {}
-
-        mark = result.output == result.input
-        acc_comp = mark.all(dim=-1).float().mean().item()
-        acc = mark.float().mean(dim=0)
-        acc_part = acc.mean().item()
-        metrics |= {"acc_comp": acc_comp, "acc_part": acc_part}
-        metrics |= {f"acc{i}": a.item() for i, a in enumerate(list(acc))}
-
-        metrics |= {
-            "entropy": result.encoder_aux.entropy.mean().item(),
-            "length": result.encoder_aux.length.float().mean().item(),
-            "unique": result.encoder_aux.message.unique(dim=0).shape[0]
-            / result.encoder_aux.message.shape[0],
-        }
-
-        decoder_loss = self.loss.decoder_loss(result)
-        encoder_loss = self.loss.encoder_loss(result, decoder_loss)
-        total_loss = decoder_loss + encoder_loss
-        metrics |= {
-            "decoder_loss": decoder_loss.mean().item(),
-            "encoder_loss": encoder_loss.mean().item(),
-            "total_loss": total_loss.mean().item(),
-        }
-
-        metrics = {f"{self.name}.{k}": v for k, v in metrics.items()}
-        for callback in self.callbacks:
-            callback(metrics)
-
-
-def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
-    i = np.argwhere(x == 0)
-    return x if len(i) == 0 else x[: i[0, 0]]
-
-
-class TopographicSimilarityMetrics:
-    def __init__(
-        self, name: str, callbacks: Iterable[Callable[[dict[str, float]], None]]
-    ) -> None:
-        self.name = name
-        self.callbacks = callbacks
-
-    def __call__(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            MessageAuxiliary,
-            TensorType[..., float],
-        ],
-    ) -> None:
-        metrics = {
-            f"{self.name}.topsim": topographic_similarity(
-                result.input.cpu().numpy(),
-                result.latent.cpu().numpy(),
-                y_processor=drop_padding,  # type: ignore
-            )
-        }
-
-        for callback in self.callbacks:
-            callback(metrics)
+    language_log_interval: int
 
 
 def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
@@ -327,10 +96,24 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
     train_dataloader = DataLoader(
         train_dataset, batch_size=cfg.batch_size, shuffle=True  # type: ignore
     )
-    test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)  # type: ignore
+    test_dataloader = DataLoader(test_dataset, batch_size=len(test_dataset))  # type: ignore
 
     game = ReconstructionGame(encoder, decoder)
-    loss = Loss(cfg)
+
+    def baseline(x: TensorType[..., float]) -> TensorType[..., float]:
+        return x.detach().mean(dim=0)
+
+    loss = Loss(
+        object_length=cfg.object_length,
+        object_n_values=cfg.object_n_values,
+        message_length=cfg.message_length,
+        message_n_values=cfg.message_n_values,
+        entropy_weight=cfg.entropy_weight,
+        length_weight=cfg.length_weight,
+        baseline=baseline,
+        length_baseline=baseline,
+    )
+
     trainer = Trainer(
         agents=models,
         input=train_dataloader,
@@ -341,7 +124,7 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
 
     wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
     duplicate_checker = DuplicateChecker()
-    early_stopper = EarlyStopper(
+    early_stopper = MetricsEarlyStopper(
         lambda metrics: metrics["test.acc_comp"] > 0.99
         if "test.acc_comp" in metrics
         else False
@@ -367,13 +150,13 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
     train_evaluator = Evaluator(
         agents=models,
         input=train_dataloader,
-        game=game,
+        games=[game],
         callbacks=[train_metrics],
     )
     test_evaluator = Evaluator(
         agents=models,
         input=test_dataloader,
-        game=game,
+        games=[game],
         callbacks=[test_metrics],
     )
 
@@ -386,20 +169,29 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
     train_topsim_evaluator = Evaluator(
         agents=models,
         input=train_dataloader,
-        game=game,
+        games=[game],
         callbacks=[train_topsim],
     )
     test_topsim_evaluator = Evaluator(
         agents=models,
         input=test_dataloader,
-        game=game,
+        games=[game],
         callbacks=[test_topsim],
+    )
+
+    language_logger = LanguageLogger(log_dir, "lang")
+    language_logger_evaluator = Evaluator(
+        agents=models,
+        input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
+        games=[game],
+        callbacks=[language_logger],
     )
 
     runner_callbacks = [
         trainer,
         Interval(cfg.metrics_interval, [train_evaluator, test_evaluator]),
         Interval(cfg.topsim_interval, [train_topsim_evaluator, test_topsim_evaluator]),
+        Interval(cfg.language_log_interval, [language_logger_evaluator]),
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         early_stopper,

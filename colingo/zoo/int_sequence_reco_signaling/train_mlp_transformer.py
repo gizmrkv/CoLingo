@@ -7,7 +7,8 @@ from ...module import (
     IntSequenceTransformerDecoder,
     IntSequenceTransformerEncoder,
 )
-from .train import Decoder, Encoder, train
+from .agent import Decoder, Encoder
+from .train import train
 
 
 @dataclass
@@ -30,6 +31,7 @@ class ConfigMLPTransformer:
 
     metrics_interval: int
     topsim_interval: int
+    language_log_interval: int
 
     latent_dim: int
 

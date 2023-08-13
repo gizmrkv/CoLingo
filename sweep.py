@@ -1,47 +1,53 @@
+import argparse
 import json
+import os
 
 import toml
 import yaml
 
 import wandb
-from colingo.zoo.signaling import ConfigWithMLPRNN, train_with_mlp_rnn
-
-
-def sweep() -> None:
-    wandb.init()
-    config = dict(wandb.config)
-    train_with_mlp_rnn(ConfigWithMLPRNN(**config))
-
-
-import argparse
+from colingo.zoo import train
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=str, help="Path to config file", default=None)
-    parser.add_argument("--id", type=str, help="Sweep ID", default=None)
     parser.add_argument(
-        "--wandb_project", "-p", type=str, help="Wandb project name", default="CoLingo"
+        "-p", "--sweep_path", type=str, help="Path to sweep file", default=None
+    )
+    parser.add_argument("-i", "--sweep_id", type=str, help="Sweep ID", default=None)
+    parser.add_argument(
+        "-w", "--wandb_project", type=str, help="Wandb project name", default=None
     )
 
     args = parser.parse_args()
 
-    id = None
-    if args.path and args.id is None:
-        with open(args.path, "r") as f:
-            if args.path.endswith(".json"):
+    path: str | None = args.sweep_path
+    id: str | None = args.sweep_id
+    project: str | None = args.wandb_project
+
+    if path and id is None:
+        ext = os.path.splitext(path)[-1][1:]
+        with open(path, "r") as f:
+            if ext == "json":
                 config = json.load(f)
-            elif args.path.endswith((".yaml", ".yml")):
+            elif ext in ("yaml", "yml"):
                 config = yaml.safe_load(f)
-            elif args.path.endswith(".toml"):
+            elif ext == "toml":
                 config = toml.load(f)
             else:
-                raise ValueError(f"Unknown file extension: {args.path}")
+                raise ValueError(f"Unknown file extension: {ext}")
 
-        id = wandb.sweep(sweep=config)
-    if args.path is None and args.id:
-        id = args.id
+        if project is None:
+            project = config["project"]
+        id = wandb.sweep(sweep=config, project=project)
 
     if id is None:
-        raise ValueError("Either --path or --id must be specified")
+        raise ValueError("Sweep ID is not specified.")
 
-    wandb.agent(id, function=sweep, project=args.wandb_project)
+    def sweep() -> None:
+        wandb.init()
+        train(dict(wandb.config))
+
+    if project is None:
+        raise ValueError("Wandb project name is not specified.")
+    else:
+        wandb.agent(id, function=sweep, project=project)

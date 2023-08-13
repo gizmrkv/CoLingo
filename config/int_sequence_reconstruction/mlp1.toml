@@ -1,8 +1,10 @@
-n_epochs = 1000
+target = "int_sequence_reconstruction/mlp"
+
+n_epochs = 1001
 batch_size = 100000
 device = "cuda"
 seed = 42
-wandb_project = "int-sequence-reconstruction"
+wandb_project = "int_sequence_reconstruction"
 use_tqdm = true
 
 lr = 0.001
