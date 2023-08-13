@@ -1,6 +1,6 @@
 import os
 from statistics import fmean
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ class GameMetrics(Callback):
     def __init__(
         self,
         name: str,
-        agents: dict[str, Agent],
+        agents: Mapping[str, Agent],
         input: Iterable[Any],
         losses: dict[str, nn.Module],
         topsim_interval: int,
@@ -28,7 +28,7 @@ class GameMetrics(Callback):
         metrics_loggers: Iterable[Logger],
         acc_comp_heatmap_loggers: Iterable[Logger],
         acc_part_heatmap_loggers: Iterable[Logger],
-        game_option: dict[str, Any] | None = None,
+        game_option: Mapping[str, Any] | None = None,
     ) -> None:
         self._name = name
         self._agents = agents
