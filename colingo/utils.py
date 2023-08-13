@@ -1,10 +1,11 @@
 import random
 import time
-from typing import Callable, Iterable
+from typing import Callable, Dict, Iterable
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torchtyping import TensorType
 
 from .core import EarlyStopper, RunnerCallback
 
@@ -37,7 +38,7 @@ def init_weights(m: nn.Module) -> None:
         nn.init.constant_(m.bias, 0)
 
 
-def random_split(dataset: torch.Tensor, proportions: list[float]) -> list[torch.Tensor]:
+def random_split(dataset: TensorType, proportions: Iterable[float]) -> list[TensorType]:
     indices = np.random.permutation(len(dataset))
 
     proportions_sum = sum(proportions)
@@ -53,13 +54,13 @@ def random_split(dataset: torch.Tensor, proportions: list[float]) -> list[torch.
 
 
 class MetricsEarlyStopper(RunnerCallback, EarlyStopper):
-    def __init__(self, pred: Callable[[dict[str, float]], bool]) -> None:
+    def __init__(self, pred: Callable[[Dict[str, float]], bool]) -> None:
         self.pred = pred
-        self.metrics: dict[str, float] = {}
+        self.metrics: Dict[str, float] = {}
 
         self._stop = False
 
-    def __call__(self, metrics: dict[str, float]) -> None:
+    def __call__(self, metrics: Dict[str, float]) -> None:
         self.metrics.update(metrics)
 
     def stop(self, step: int) -> bool:
@@ -100,7 +101,7 @@ class StepCounter(RunnerCallback):
     def __init__(
         self,
         name: str,
-        callbacks: Iterable[Callable[[dict[str, float]], None]],
+        callbacks: Iterable[Callable[[Dict[str, float]], None]],
     ) -> None:
         super().__init__()
         self.name = name

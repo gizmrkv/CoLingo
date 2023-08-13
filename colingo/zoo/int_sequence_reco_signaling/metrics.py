@@ -1,4 +1,4 @@
-from typing import Callable, Iterable
+from typing import Callable, Dict, Iterable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,7 +20,7 @@ class Metrics:
         message_length: int,
         message_n_values: int,
         loss: Loss,
-        callbacks: Iterable[Callable[[dict[str, float]], None]],
+        callbacks: Iterable[Callable[[Dict[str, float]], None]],
     ) -> None:
         self.name = name
         self.object_length = object_length
@@ -43,7 +43,7 @@ class Metrics:
             ]
         ],
     ) -> None:
-        metrics: dict[str, float] = {}
+        metrics: Dict[str, float] = {}
 
         output = next(iter(outputs))
 
@@ -82,7 +82,7 @@ def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
 
 class TopographicSimilarityMetrics:
     def __init__(
-        self, name: str, callbacks: Iterable[Callable[[dict[str, float]], None]]
+        self, name: str, callbacks: Iterable[Callable[[Dict[str, float]], None]]
     ) -> None:
         self.name = name
         self.callbacks = callbacks

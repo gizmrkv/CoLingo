@@ -1,10 +1,10 @@
-from typing import Any
+from typing import Any, Mapping
 
 from .int_sequence_reco_signaling import train_mlp_rnn, train_mlp_transformer
 from .int_sequence_reconstruction import train_mlp, train_rnn, train_transformer
 
 
-def train(config: dict[str, Any]) -> None:
+def train(config: Mapping[str, Any]) -> None:
     target: str = config["target"]
 
     if target == "int_sequence_reconstruction/mlp":

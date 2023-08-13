@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     def sweep() -> None:
         wandb.init()
-        train(dict(wandb.config))
+        train(wandb.config)
 
     if project is None:
         raise ValueError("Wandb project name is not specified.")

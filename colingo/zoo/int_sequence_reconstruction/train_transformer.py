@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from ...module import IntSequenceTransformerDecoder, IntSequenceTransformerEncoder
 from .agent import Decoder, Encoder
@@ -40,7 +40,7 @@ class ConfigTransformer:
     decoder_n_layers: int
 
 
-def train_transformer(config: dict[str, Any]) -> None:
+def train_transformer(config: Mapping[str, Any]) -> None:
     cfg = ConfigTransformer(
         **{k: config[k] for k in ConfigTransformer.__dataclass_fields__}
     )

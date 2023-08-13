@@ -1,4 +1,4 @@
-from typing import Callable, Iterable
+from typing import Callable, Dict, Iterable
 
 from torchtyping import TensorType
 
@@ -12,7 +12,7 @@ class Metrics:
         name: str,
         length: int,
         n_values: int,
-        callbacks: Iterable[Callable[[dict[str, float]], None]],
+        callbacks: Iterable[Callable[[Dict[str, float]], None]],
     ) -> None:
         self.name = name
         self.length = length
@@ -32,7 +32,7 @@ class Metrics:
             ]
         ],
     ) -> None:
-        metrics: dict[str, float] = {}
+        metrics: Dict[str, float] = {}
 
         output = next(iter(outputs))
 

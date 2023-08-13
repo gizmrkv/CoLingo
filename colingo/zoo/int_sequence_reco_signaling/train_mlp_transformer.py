@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from ...module import (
     IntSequenceMLPDecoder,
@@ -63,7 +63,7 @@ class ConfigMLPTransformer:
     object_decoder_activation: str
 
 
-def train_mlp_transformer(config: dict[str, Any]) -> None:
+def train_mlp_transformer(config: Mapping[str, Any]) -> None:
     cfg = ConfigMLPTransformer(
         **{k: config[k] for k in ConfigMLPTransformer.__dataclass_fields__}
     )

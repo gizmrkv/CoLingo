@@ -1,7 +1,7 @@
 import os
 import shutil
 from glob import glob
-from typing import Any
+from typing import Any, Dict, Mapping
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -22,9 +22,9 @@ matplotlib.use("Agg")
 class WandbLogger(RunnerCallback):
     def __init__(self, project: str, name: str | None = None) -> None:
         wandb.init(project=project, name=name)
-        self.metrics: dict[str, float] = {}
+        self.metrics: Dict[str, float] = {}
 
-    def __call__(self, metrics: dict[str, Any]) -> None:
+    def __call__(self, metrics: Mapping[str, Any]) -> None:
         self.metrics.update(metrics)
 
     def flush(self) -> None:
@@ -50,7 +50,7 @@ class HeatmapLogger(RunnerCallback):
         wandb_logger: WandbLogger | None = None,
         write_video: bool = True,
         delete_frames: bool = True,
-        heatmap_option: dict[str, Any] | None = None,
+        heatmap_option: Mapping[str, Any] | None = None,
     ) -> None:
         self.save_dir = save_dir
         self.name = name

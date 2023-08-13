@@ -4,7 +4,7 @@ import os
 import uuid
 from dataclasses import asdict, dataclass
 from itertools import product
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Callable, Iterable, Mapping, Tuple
 
 import numpy as np
 import torch
@@ -110,5 +110,5 @@ class Agent(
         return output, aux
 
 
-def train(agents: dict[str, Agent], config: dict[str, Any]) -> None:
+def train(agents: Mapping[str, Agent], config: Mapping[str, Any]) -> None:
     ...

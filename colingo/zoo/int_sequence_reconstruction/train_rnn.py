@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from ...module import IntSequenceRNNDecoder, IntSequenceRNNEncoder
 from .agent import Decoder, Encoder
@@ -32,7 +32,7 @@ class ConfigRNN:
     decoder_n_layers: int
 
 
-def train_rnn(config: dict[str, Any]) -> None:
+def train_rnn(config: Mapping[str, Any]) -> None:
     cfg = ConfigRNN(**{k: config[k] for k in ConfigRNN.__dataclass_fields__})
     encoder = Encoder(
         IntSequenceRNNEncoder(

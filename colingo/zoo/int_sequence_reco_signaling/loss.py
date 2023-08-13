@@ -1,25 +1,10 @@
-import datetime
-import json
-import os
-import uuid
-from dataclasses import asdict, dataclass
-from itertools import product
-from typing import Any, Callable, Iterable, Tuple
+from typing import Callable, Iterable
 
-import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from numpy.typing import NDArray
-from torch.distributions import Categorical
-from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from ...analysis import topographic_similarity
-from ...core import Evaluator, Runner, Trainer
-from ...game import IDecoder, IEncoder, ReconstructionGame, ReconstructionGameResult
-from ...loggers import IntSequenceLanguageLogger, WandbLogger
+from ...game import ReconstructionGameResult
 from ...loss import ReinforceLoss
 from .agent import MessageAuxiliary
 
@@ -61,7 +46,7 @@ class Loss:
         result: ReconstructionGameResult[
             TensorType[..., int],
             TensorType[..., int],
-            TensorType[..., float],
+            MessageAuxiliary,
             TensorType[..., float],
         ],
     ) -> TensorType[..., float]:
@@ -97,7 +82,7 @@ class Loss:
         output: ReconstructionGameResult[
             TensorType[..., int],
             TensorType[..., int],
-            TensorType[..., float],
+            MessageAuxiliary,
             TensorType[..., float],
         ],
     ) -> TensorType[..., float]:
@@ -113,7 +98,7 @@ class Loss:
             ReconstructionGameResult[
                 TensorType[..., int],
                 TensorType[..., int],
-                TensorType[..., float],
+                MessageAuxiliary,
                 TensorType[..., float],
             ]
         ],

@@ -1,7 +1,7 @@
 import os
 import shutil
 from glob import glob
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Dict, Iterable, Mapping
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -25,9 +25,9 @@ class Logger(Callback):
 class WandBLogger(Logger):
     def __init__(self, project: str, name: str | None = None) -> None:
         wandb.init(project=project, name=name)
-        self._metrics: dict[str, float] = {}
+        self._metrics: Dict[str, float] = {}
 
-    def log(self, metrics: dict[str, float]) -> None:
+    def log(self, metrics: Mapping[str, float]) -> None:
         self._metrics.update(metrics)
 
     def flush(self) -> None:
@@ -85,7 +85,7 @@ class HeatmapLogger(Logger):
         wandb_loggers: Iterable[Logger],
         write_video: bool = True,
         delete_frames: bool = True,
-        heatmap_option: dict[str, Any] | None = None,
+        heatmap_option: Mapping[str, Any] | None = None,
     ) -> None:
         self._save_dir = save_dir
         self._name = name

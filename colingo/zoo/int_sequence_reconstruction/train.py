@@ -4,17 +4,15 @@ import os
 import uuid
 from dataclasses import asdict, dataclass
 from itertools import product
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Mapping
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchtyping import TensorType
 
-from ...core import EarlyStopper, Evaluator, Runner, Trainer
-from ...game import IDecoder, IEncoder, ReconstructionGame, ReconstructionGameResult
+from ...core import Evaluator, Runner, Trainer
+from ...game import ReconstructionGame
 from ...loggers import WandbLogger
 from ...utils import (
     DuplicateChecker,
@@ -47,7 +45,7 @@ class Config:
     metrics_interval: int
 
 
-def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
+def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
 
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -80,9 +78,9 @@ def train(encoder: Encoder, decoder: Decoder, config: dict[str, Any]) -> None:
     )
     train_dataset, test_dataset = random_split(dataset, [0.8, 0.2])
     train_dataloader = DataLoader(
-        train_dataset, batch_size=cfg.batch_size, shuffle=True  # type: ignore
+        train_dataset, batch_size=cfg.batch_size, shuffle=True
     )
-    test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)  # type: ignore
+    test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)
 
     game = ReconstructionGame(encoder, decoder)
     trainer = Trainer(

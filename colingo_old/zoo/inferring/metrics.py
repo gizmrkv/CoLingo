@@ -1,5 +1,4 @@
-from statistics import mean
-from typing import Iterable
+from typing import Dict, Iterable
 
 from ...logger import Logger
 from .game import GameResult
@@ -11,7 +10,7 @@ class Metrics(Logger):
         self._loggers = loggers
 
     def log(self, result: GameResult) -> None:
-        metrics: dict[str, float] = {}
+        metrics: Dict[str, float] = {}
         mark = result.output == result.input
         acc_comp = mark.all(dim=-1).float().mean().item()
         acc = mark.float().mean(dim=0)

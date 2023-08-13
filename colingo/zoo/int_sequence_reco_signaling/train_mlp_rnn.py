@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from ...module import (
     IntSequenceMLPDecoder,
@@ -55,7 +55,7 @@ class ConfigMLPRNN:
     object_decoder_activation: str
 
 
-def train_mlp_rnn(config: dict[str, Any]) -> None:
+def train_mlp_rnn(config: Mapping[str, Any]) -> None:
     cfg = ConfigMLPRNN(**{k: config[k] for k in ConfigMLPRNN.__dataclass_fields__})
 
     encoder = Encoder(
