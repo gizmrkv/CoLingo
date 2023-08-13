@@ -4,7 +4,7 @@ import os
 import uuid
 from dataclasses import asdict, dataclass
 from itertools import product
-from typing import Any, Mapping
+from typing import Any, List, Mapping
 
 import torch
 import torch.nn as nn
@@ -72,7 +72,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
 
     fix_seed(cfg.seed)
 
-    models: list[nn.Module] = [encoder, decoder]
+    models: List[nn.Module] = [encoder, decoder]
     optimizers = [optim.Adam(model.parameters(), lr=cfg.lr) for model in models]
 
     for model in [encoder, decoder]:

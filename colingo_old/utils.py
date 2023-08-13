@@ -1,7 +1,7 @@
 import random
 import time
 from itertools import islice
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, List, Sequence
 
 import numpy as np
 import torch
@@ -45,7 +45,9 @@ def init_weights(m: nn.Module) -> None:
         nn.init.constant_(m.bias, 0)
 
 
-def random_split(dataset: torch.Tensor, proportions: list[float]) -> list[torch.Tensor]:
+def random_split(
+    dataset: torch.Tensor, proportions: Iterable[float]
+) -> List[torch.Tensor]:
     indices = np.random.permutation(len(dataset))
 
     proportions_sum = sum(proportions)

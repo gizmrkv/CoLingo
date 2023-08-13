@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import List, Literal
 
 import torch
 from torch import nn
@@ -100,7 +100,7 @@ class RNNDecoder(nn.Module):
             h = (h, torch.zeros_like(h))  # type: ignore
 
         if input is None:
-            outputs: list[torch.Tensor] = []
+            outputs: List[torch.Tensor] = []
             logitss = []
             i = self.sos_embed.repeat(x.shape[0], 1, 1)
             for _ in range(self._length):

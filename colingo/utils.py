@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Callable, Dict, Iterable
+from typing import Callable, Dict, Iterable, List
 
 import numpy as np
 import torch
@@ -38,7 +38,7 @@ def init_weights(m: nn.Module) -> None:
         nn.init.constant_(m.bias, 0)
 
 
-def random_split(dataset: TensorType, proportions: Iterable[float]) -> list[TensorType]:
+def random_split(dataset: TensorType, proportions: Iterable[float]) -> List[TensorType]:
     indices = np.random.permutation(len(dataset))
 
     proportions_sum = sum(proportions)
