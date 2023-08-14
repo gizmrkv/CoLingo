@@ -1,4 +1,4 @@
-target = "int_sequence_reconstruction/mlp"
+zoo = "int_sequence_reconstruction_mlp"
 
 n_epochs = 1001
 batch_size = 100000

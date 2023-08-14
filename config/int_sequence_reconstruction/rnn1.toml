@@ -1,4 +1,4 @@
-target = "int_sequence_reconstruction/rnn"
+zoo = "int_sequence_reconstruction_rnn"
 
 n_epochs = 1001
 batch_size = 100000

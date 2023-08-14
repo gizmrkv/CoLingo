@@ -1,4 +1,4 @@
-target = "int_sequence_reco_signaling/mlp_transformer"
+zoo = "int_sequence_reco_signaling_mlp_transformer"
 
 n_epochs = 1001
 batch_size = 100000

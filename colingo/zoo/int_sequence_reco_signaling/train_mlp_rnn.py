@@ -13,6 +13,8 @@ from .train import train
 
 @dataclass
 class ConfigMLPRNN:
+    zoo: str
+
     n_epochs: int
     batch_size: int
     device: str

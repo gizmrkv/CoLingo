@@ -8,6 +8,8 @@ from .train import train
 
 @dataclass
 class ConfigTransformer:
+    zoo: str
+
     n_epochs: int
     batch_size: int
     device: str

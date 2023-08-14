@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from itertools import product
 from typing import Any, List, Mapping
 
@@ -31,10 +31,11 @@ from .metrics import Metrics
 
 @dataclass
 class Config:
+    zoo: str
+
     n_epochs: int
     batch_size: int
     device: str
-    seed: int
     wandb_project: str
     use_tqdm: bool
 
@@ -43,6 +44,8 @@ class Config:
     n_values: int
 
     metrics_interval: int
+
+    seed: int | None = None
 
 
 def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None:
@@ -55,14 +58,15 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
     now = datetime.datetime.now()
     run_id = str(uuid.uuid4())[-4:]
     run_name = f"{now.date()}_{now.strftime('%H%M%S')}_{run_id}"
-    log_dir = f"log/int_sequence_auto_encoding_{run_name}"
+    log_dir = f"log/{run_name}_{cfg.zoo}"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
     with open(f"{log_dir}/config.json", "w") as f:
-        json.dump(asdict(cfg), f, indent=4)
+        json.dump(config, f, indent=4)
 
-    fix_seed(cfg.seed)
+    if cfg.seed is not None:
+        fix_seed(cfg.seed)
 
     models: List[nn.Module] = [encoder, decoder]
     optimizers = [optim.Adam(model.parameters(), lr=cfg.lr) for model in models]

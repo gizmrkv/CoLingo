@@ -32,7 +32,7 @@ if __name__ == "__main__":
             raise ValueError(f"Unknown file extension: {file_ext}")
 
     sweep_config = {
-        "target": config["target"],
+        "zoo": config["zoo"],
         "method": "grid|random|bayes",
         "name": "######",
         "project": "######",

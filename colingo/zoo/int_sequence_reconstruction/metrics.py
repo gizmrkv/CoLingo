@@ -1,5 +1,6 @@
 from typing import Callable, Dict, Iterable
 
+from torch.distributions import Categorical
 from torchtyping import TensorType
 
 from ...game import ReconstructionGameResult
@@ -42,6 +43,10 @@ class Metrics:
         acc_part = acc.mean().item()
         metrics |= {"acc_comp": acc_comp, "acc_part": acc_part}
         metrics |= {f"acc{i}": a.item() for i, a in enumerate(list(acc))}
+
+        metrics["entropy"] = (
+            Categorical(logits=output.decoder_aux).entropy().mean().item()
+        )
 
         metrics["loss"] = loss(step, input, outputs).mean().item()
 
