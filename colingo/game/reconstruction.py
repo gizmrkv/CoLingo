@@ -21,6 +21,10 @@ class IDecoder(ABC, Generic[T, U, A]):
         ...
 
 
+class IEncoderDecoder(IEncoder[T, U, AE], IDecoder[U, T, AD], Generic[T, U, AE, AD]):
+    ...
+
+
 @dataclass
 class ReconstructionGameResult(Generic[T, U, AE, AD]):
     encoder: IEncoder[T, U, AE]
