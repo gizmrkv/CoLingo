@@ -123,55 +123,41 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
         if "test.acc_comp" in metrics
         else False
     )
-    train_metrics = Metrics(
-        name="train",
-        object_length=cfg.object_length,
-        object_n_values=cfg.object_n_values,
-        message_length=cfg.message_length,
-        message_n_values=cfg.message_n_values,
-        loss=loss,
-        callbacks=[wandb_logger, duplicate_checker],
-    )
-    test_metrics = Metrics(
-        name="test",
-        object_length=cfg.object_length,
-        object_n_values=cfg.object_n_values,
-        message_length=cfg.message_length,
-        message_n_values=cfg.message_n_values,
-        loss=loss,
-        callbacks=[wandb_logger, early_stopper, duplicate_checker],
-    )
-    train_evaluator = Evaluator(
-        agents=models,
-        input=train_dataloader,
-        games=[game],
-        callbacks=[train_metrics],
-    )
-    test_evaluator = Evaluator(
-        agents=models,
-        input=test_dataloader,
-        games=[game],
-        callbacks=[test_metrics],
-    )
+    metrics_evals = []
+    topsim_evals = []
+    for name, input in [
+        ("train", train_dataloader),
+        ("test", test_dataloader),
+    ]:
+        metrics = Metrics(
+            name=name,
+            object_length=cfg.object_length,
+            object_n_values=cfg.object_n_values,
+            message_length=cfg.message_length,
+            message_n_values=cfg.message_n_values,
+            loss=loss,
+            callbacks=[wandb_logger, early_stopper, duplicate_checker],
+        )
+        metrics_evals.append(
+            Evaluator(
+                agents=models,
+                input=input,
+                games=[game],
+                callbacks=[metrics],
+            )
+        )
 
-    train_topsim = TopographicSimilarityMetrics(
-        "train", [wandb_logger, duplicate_checker]
-    )
-    test_topsim = TopographicSimilarityMetrics(
-        "test", [wandb_logger, duplicate_checker]
-    )
-    train_topsim_evaluator = Evaluator(
-        agents=models,
-        input=train_dataloader,
-        games=[game],
-        callbacks=[train_topsim],
-    )
-    test_topsim_evaluator = Evaluator(
-        agents=models,
-        input=test_dataloader,
-        games=[game],
-        callbacks=[test_topsim],
-    )
+        topsim = TopographicSimilarityMetrics(
+            name=name, callbacks=[wandb_logger, duplicate_checker]
+        )
+        topsim_evals.append(
+            Evaluator(
+                agents=models,
+                input=input,
+                games=[game],
+                callbacks=[topsim],
+            )
+        )
 
     language_logger = LanguageLogger(log_dir, "lang")
     language_logger_evaluator = Evaluator(
@@ -183,8 +169,8 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, [train_evaluator, test_evaluator]),
-        Interval(cfg.topsim_interval, [train_topsim_evaluator, test_topsim_evaluator]),
+        Interval(cfg.metrics_interval, metrics_evals),
+        Interval(cfg.topsim_interval, topsim_evals),
         Interval(cfg.language_log_interval, [language_logger_evaluator]),
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,

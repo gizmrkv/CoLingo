@@ -1,10 +1,10 @@
 zoo = "int_sequence_reco_net_signaling_mlp_rnn"
 
-n_epochs = 1001
+n_epochs = 501
 batch_size = 100000
 device = "cuda"
 seed = 42
-wandb_project = "int_sequence_reco_signaling"
+wandb_project = "int_sequence_reco_net_signaling"
 use_tqdm = true
 
 lr = 0.001
@@ -20,7 +20,7 @@ metrics_interval = 10
 topsim_interval = 100
 language_log_interval = 100
 
-n_agents = 2
+n_agents = 3
 network_type = "linear"
 latent_dim = 64
 

@@ -102,31 +102,30 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
         if "test.acc_comp" in metrics
         else False
     )
-    train_metrics = Metrics(
-        "train", cfg.length, cfg.n_values, [wandb_logger, duplicate_checker]
-    )
-    test_metrics = Metrics(
-        "test",
-        cfg.length,
-        cfg.n_values,
-        [wandb_logger, early_stopper, duplicate_checker],
-    )
-    train_evaluator = Evaluator(
-        agents=models,
-        input=train_dataloader,
-        games=[game],
-        callbacks=[train_metrics],
-    )
-    test_evaluator = Evaluator(
-        agents=models,
-        input=test_dataloader,
-        games=[game],
-        callbacks=[test_metrics],
-    )
+    evaluators = []
+    for name, input in [
+        ("train", train_dataloader),
+        ("test", test_dataloader),
+    ]:
+        evaluators.append(
+            Evaluator(
+                agents=models,
+                input=input,
+                games=[game],
+                callbacks=[
+                    Metrics(
+                        name,
+                        cfg.length,
+                        cfg.n_values,
+                        [wandb_logger, early_stopper, duplicate_checker],
+                    )
+                ],
+            )
+        )
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, [train_evaluator, test_evaluator]),
+        Interval(cfg.metrics_interval, evaluators),
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         early_stopper,

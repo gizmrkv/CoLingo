@@ -94,10 +94,10 @@ class Metrics:
             acc_comp_max = max(acc_comps)
             acc_part_max = max(acc_parts)
             metrics |= {
-                f"{name_e}.acc_comp_mean": acc_comp_mean,
-                f"{name_e}.acc_part_mean": acc_part_mean,
-                f"{name_e}.acc_comp_max": acc_comp_max,
-                f"{name_e}.acc_part_max": acc_part_max,
+                f"{name_e}.acc_comp.mean": acc_comp_mean,
+                f"{name_e}.acc_part.mean": acc_part_mean,
+                f"{name_e}.acc_comp.max": acc_comp_max,
+                f"{name_e}.acc_part.max": acc_part_max,
             }
 
         metrics = {f"{self.name}.{k}": v for k, v in metrics.items()}
@@ -113,3 +113,46 @@ class Metrics:
         acc_comp = mark.all(dim=-1).float().mean().item()
         acc_part = mark.float().mean(dim=0).mean().item()
         return acc_comp, acc_part
+
+
+class TopographicSimilarityMetrics:
+    def __init__(
+        self, name: str, callbacks: Iterable[Callable[[Dict[str, float]], None]]
+    ) -> None:
+        self.name = name
+        self.callbacks = callbacks
+
+    def __call__(
+        self,
+        step: int,
+        input: TensorType[..., int],
+        outputs: Iterable[
+            Dict[
+                str,
+                ReconstructionNetworkSubGameResult[
+                    TensorType[..., int],
+                    TensorType[..., int],
+                    MessageAuxiliary,
+                    TensorType[..., float],
+                ],
+            ]
+        ],
+    ) -> None:
+        output = next(iter(outputs))
+        metrics: Dict[str, float] = {}
+        for name_e, result_e in output.items():
+            metrics |= {
+                f"{self.name}.{name_e}.topsim": topographic_similarity(
+                    result_e.input.cpu().numpy(),
+                    result_e.latent.cpu().numpy(),
+                    y_processor=drop_padding,  # type: ignore
+                )
+            }
+
+        for callback in self.callbacks:
+            callback(metrics)
+
+
+def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
+    i = np.argwhere(x == 0)
+    return x if len(i) == 0 else x[: i[0, 0]]

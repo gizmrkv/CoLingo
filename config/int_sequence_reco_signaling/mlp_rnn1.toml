@@ -1,6 +1,6 @@
 zoo = "int_sequence_reco_signaling_mlp_rnn"
 
-n_epochs = 1001
+n_epochs = 501
 batch_size = 100000
 device = "cuda"
 seed = 42

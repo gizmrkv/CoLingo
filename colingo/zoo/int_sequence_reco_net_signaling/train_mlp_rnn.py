@@ -34,6 +34,7 @@ class ConfigMLPRNN:
     length_weight: float
 
     metrics_interval: int
+    topsim_interval: int
 
     n_agents: int
     network_type: str

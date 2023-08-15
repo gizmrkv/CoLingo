@@ -40,7 +40,7 @@ from ...utils import (
 )
 from .agent import Agent, MessageAuxiliary
 from .loss import Loss
-from .metrics import Metrics
+from .metrics import Metrics, TopographicSimilarityMetrics
 
 
 @dataclass
@@ -63,6 +63,7 @@ class Config:
     length_weight: float
 
     metrics_interval: int
+    topsim_interval: int
 
     seed: int | None = None
 
@@ -140,48 +141,61 @@ def train(
     wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
     duplicate_checker = DuplicateChecker()
 
-    adj_all = {s: {t for t in agents} for s in agents}
+    adj_all: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
+    adj_nil: Dict[str, Set[str]] = {s: set() for s in agents}
     game_all: ReconstructionNetworkGame[
         TensorType[..., int],
         TensorType[..., int],
         MessageAuxiliary,
         TensorType[..., float],
     ] = ReconstructionNetworkGame(agents, adj_all)
+    game_nil: ReconstructionNetworkGame[
+        TensorType[..., int],
+        TensorType[..., int],
+        MessageAuxiliary,
+        TensorType[..., float],
+    ] = ReconstructionNetworkGame(agents, adj_nil)
 
-    train_metrics = Metrics(
-        name="train",
-        object_length=cfg.object_length,
-        object_n_values=cfg.object_n_values,
-        message_length=cfg.message_length,
-        message_n_values=cfg.message_n_values,
-        loss=loss,
-        callbacks=[wandb_logger, duplicate_checker],
-    )
-    test_metrics = Metrics(
-        name="test",
-        object_length=cfg.object_length,
-        object_n_values=cfg.object_n_values,
-        message_length=cfg.message_length,
-        message_n_values=cfg.message_n_values,
-        loss=loss,
-        callbacks=[wandb_logger, duplicate_checker],
-    )
-    train_evaluator = Evaluator(
-        agents=agents.values(),
-        input=train_dataloader,
-        games=[game_all],
-        callbacks=[train_metrics],
-    )
-    test_evaluator = Evaluator(
-        agents=agents.values(),
-        input=test_dataloader,
-        games=[game_all],
-        callbacks=[test_metrics],
-    )
+    metrics_evals = []
+    topsim_evals = []
+    for name, input in [
+        ("train", train_dataloader),
+        ("test", test_dataloader),
+    ]:
+        metrics = Metrics(
+            name=name,
+            object_length=cfg.object_length,
+            object_n_values=cfg.object_n_values,
+            message_length=cfg.message_length,
+            message_n_values=cfg.message_n_values,
+            loss=loss,
+            callbacks=[wandb_logger, duplicate_checker],
+        )
+        metrics_evals.append(
+            Evaluator(
+                agents=agents.values(),
+                input=input,
+                games=[game_all],
+                callbacks=[metrics],
+            )
+        )
+
+        topsim = TopographicSimilarityMetrics(
+            name=name, callbacks=[wandb_logger, duplicate_checker]
+        )
+        topsim_evals.append(
+            Evaluator(
+                agents=agents.values(),
+                input=input,
+                games=[game_nil],
+                callbacks=[topsim],
+            )
+        )
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, [train_evaluator, test_evaluator]),
+        Interval(cfg.metrics_interval, metrics_evals),
+        Interval(cfg.topsim_interval, topsim_evals),
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         duplicate_checker,
