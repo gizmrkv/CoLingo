@@ -1,5 +1,6 @@
 from typing import Any, Mapping
 
+from .int_sequence_reco_net_signaling import train_mlp_rnn as train_mlp_rnn_net
 from .int_sequence_reco_signaling import train_mlp_rnn, train_mlp_transformer
 from .int_sequence_reconstruction import train_mlp, train_rnn, train_transformer
 
@@ -17,5 +18,7 @@ def train(config: Mapping[str, Any]) -> None:
         train_mlp_rnn(config)
     elif target == "int_sequence_reco_signaling_mlp_transformer":
         train_mlp_transformer(config)
+    elif target == "int_sequence_reco_net_signaling_mlp_rnn":
+        train_mlp_rnn_net(config)
     else:
         raise ValueError(f"Unknown target: {target}")

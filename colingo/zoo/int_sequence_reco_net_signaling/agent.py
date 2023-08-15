@@ -21,10 +21,10 @@ from ...core import Evaluator, Runner, Trainer
 from ...game import (
     IDecoder,
     IEncoder,
-    ReconstructionBroadcastGame,
-    ReconstructionBroadcastGameResult,
-    ReconstructionGame,
-    ReconstructionGameResult,
+    IEncoderDecoder,
+    ReconstructionNetworkGame,
+    ReconstructionNetworkSubGame,
+    ReconstructionNetworkSubGameResult,
 )
 from ...loggers import WandbLogger
 from ...loss import ReinforceLoss
@@ -53,7 +53,12 @@ class MessageAuxiliary:
 
 class Agent(
     nn.Module,
-    IEncoder[TensorType[..., int], TensorType[..., int], MessageAuxiliary],
+    IEncoderDecoder[
+        TensorType[..., int],
+        TensorType[..., int],
+        MessageAuxiliary,
+        TensorType[..., float],
+    ],
 ):
     def __init__(
         self,
@@ -108,7 +113,3 @@ class Agent(
         latent = self.message_encoder(latent)
         output, aux = self.object_decoder(latent)
         return output, aux
-
-
-def train(agents: Mapping[str, Agent], config: Mapping[str, Any]) -> None:
-    ...
