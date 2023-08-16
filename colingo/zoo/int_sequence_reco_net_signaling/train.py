@@ -11,9 +11,11 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
+import wandb
+
 from ...core import Evaluator, Runner, RunnerCallback, Trainer
 from ...game import ReconstructionNetworkGame
-from ...loggers import WandbLogger
+from ...loggers import HeatmapLogger, WandbLogger
 from ...utils import (
     DuplicateChecker,
     EarlyStopper,
@@ -25,7 +27,12 @@ from ...utils import (
 )
 from .agent import Agent, MessageAuxiliary
 from .loss import Loss
-from .metrics import LanguageLogger, Metrics, TopographicSimilarityMetrics
+from .metrics import (
+    AccuracyHeatmapLogger,
+    LanguageLogger,
+    Metrics,
+    TopographicSimilarityMetrics,
+)
 
 
 @dataclass
@@ -50,6 +57,7 @@ class Config:
     metrics_interval: int
     topsim_interval: int
     language_log_interval: int
+    acc_heatmap_interval: int
 
     seed: int | None = None
 
@@ -135,7 +143,25 @@ def train(
         TensorType[..., float],
     ] = ReconstructionNetworkGame(agents, adj_comp)
 
+    heatmap_option = {
+        "vmin": 0,
+        "vmax": 1,
+        "cmap": "viridis",
+        "annot": True,
+        "fmt": ".2f",
+        "cbar": True,
+        "square": True,
+    }
+
+    class WandbHeatmapLogger:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def __call__(self, path: str) -> None:
+            wandb_logger({f"{self.name}": wandb.Video(path)})
+
     evaluators = []
+    heatmap_loggers = []
     for name, input in [
         ("train", train_dataloader),
         ("test", test_dataloader),
@@ -146,13 +172,38 @@ def train(
         topsim = TopographicSimilarityMetrics(
             name=name, callbacks=[wandb_logger, duplicate_checker]
         )
+
+        acc_comp_heatmap = HeatmapLogger(
+            save_dir=os.path.join(log_dir, f"{name}_acc_comp"),
+            heatmap_option=heatmap_option,
+            callbacks=[
+                WandbHeatmapLogger(f"{name}.acc_comp"),
+            ],
+        )
+        acc_part_heatmap = HeatmapLogger(
+            save_dir=os.path.join(log_dir, f"{name}_acc_part"),
+            heatmap_option=heatmap_option,
+            callbacks=[
+                WandbHeatmapLogger(f"{name}.acc_part"),
+            ],
+        )
+        acc_heatmap = AccuracyHeatmapLogger(
+            acc_comp_logger=acc_comp_heatmap,
+            acc_part_logger=acc_part_heatmap,
+        )
+        heatmap_loggers.extend([acc_comp_heatmap, acc_part_heatmap])
+
         evaluators.append(
             Evaluator(
                 agents=agents.values(),
                 input=input,
                 games=[game_comp],
-                callbacks=[metrics, topsim],
-                intervals=[cfg.metrics_interval, cfg.topsim_interval],
+                callbacks=[metrics, topsim, acc_heatmap],
+                intervals=[
+                    cfg.metrics_interval,
+                    cfg.topsim_interval,
+                    cfg.acc_heatmap_interval,
+                ],
             )
         )
 
@@ -179,6 +230,7 @@ def train(
         trainer,
         *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),
+        *heatmap_loggers,
         wandb_logger,
         duplicate_checker,
     ]

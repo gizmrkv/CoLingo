@@ -1,14 +1,15 @@
 import os
 from statistics import fmean
-from typing import Callable, Dict, Iterable, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from torchtyping import TensorType
 
 from ...analysis import topographic_similarity
 from ...game import ReconstructionNetworkSubGameResult
-from ...loggers import IntSequenceLanguageLogger
+from ...loggers import HeatmapLogger, IntSequenceLanguageLogger
 from .agent import MessageAuxiliary
 from .loss import Loss
 
@@ -47,7 +48,7 @@ class Metrics:
         for name_e, result_e in result.items():
             acc_comps, acc_parts = zip(
                 *[
-                    self.acc(output_d, result_e.input)
+                    acc_comp_part(output_d, result_e.input)
                     for output_d in result_e.outputs.values()
                 ]
             )
@@ -65,16 +66,6 @@ class Metrics:
         metrics = {f"{self.name}.{k}": v for k, v in metrics.items()}
         for callback in self.callbacks:
             callback(metrics)
-
-    def acc(
-        self,
-        input: TensorType[..., int],
-        target: TensorType[..., int],
-    ) -> Tuple[float, float]:
-        mark = target == input
-        acc_comp = mark.all(dim=-1).float().mean().item()
-        acc_part = mark.float().mean(dim=0).mean().item()
-        return acc_comp, acc_part
 
 
 class TopographicSimilarityMetrics:
@@ -116,11 +107,6 @@ class TopographicSimilarityMetrics:
             callback(metrics)
 
 
-def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
-    i = np.argwhere(x == 0)
-    return x if len(i) == 0 else x[: i[0, 0]]
-
-
 class LanguageLogger:
     def __init__(self, save_dir: str, agent_names: Iterable[str]) -> None:
         self.loggers = {
@@ -147,3 +133,67 @@ class LanguageLogger:
         output = next(iter(outputs))
         for name_e, result_e in output.items():
             self.loggers[name_e](step, result_e.input, result_e.latent)
+
+
+class AccuracyHeatmapLogger:
+    def __init__(
+        self,
+        acc_comp_logger: HeatmapLogger,
+        acc_part_logger: HeatmapLogger,
+    ) -> None:
+        self.acc_comp_logger = acc_comp_logger
+        self.acc_part_logger = acc_part_logger
+
+    def __call__(
+        self,
+        step: int,
+        input: TensorType[..., int],
+        outputs: Iterable[
+            Dict[
+                str,
+                ReconstructionNetworkSubGameResult[
+                    TensorType[..., int],
+                    TensorType[..., int],
+                    MessageAuxiliary,
+                    TensorType[..., float],
+                ],
+            ]
+        ],
+    ) -> None:
+        output = next(iter(outputs))
+        agent_names = list(output.keys())
+        matrix_comp: List[List[float]] = []
+        matrix_part: List[List[float]] = []
+        for name_e in agent_names:
+            comps, parts = [], []
+            for name_d in agent_names:
+                acc_comp, acc_part = acc_comp_part(
+                    output[name_e].outputs[name_d], input
+                )
+                comps.append(acc_comp)
+                parts.append(acc_part)
+
+            matrix_comp.append(comps)
+            matrix_part.append(parts)
+
+        for matrix, logger in [
+            (matrix_comp, self.acc_comp_logger),
+            (matrix_part, self.acc_part_logger),
+        ]:
+            df = pd.DataFrame(matrix, columns=agent_names, index=agent_names)
+            logger(step, df)
+
+
+def acc_comp_part(
+    input: TensorType[..., int],
+    target: TensorType[..., int],
+) -> Tuple[float, float]:
+    mark = target == input
+    acc_comp = mark.all(dim=-1).float().mean().item()
+    acc_part = mark.float().mean(dim=0).mean().item()
+    return acc_comp, acc_part
+
+
+def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
+    i = np.argwhere(x == 0)
+    return x if len(i) == 0 else x[: i[0, 0]]
