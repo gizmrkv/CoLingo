@@ -113,12 +113,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
                 input=input,
                 games=[game],
                 callbacks=[
-                    Metrics(
-                        name,
-                        cfg.length,
-                        cfg.n_values,
-                        [wandb_logger, early_stopper, duplicate_checker],
-                    )
+                    Metrics(name, [wandb_logger, early_stopper, duplicate_checker])
                 ],
             )
         )

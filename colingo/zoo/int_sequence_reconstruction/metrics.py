@@ -11,25 +11,21 @@ class Metrics:
     def __init__(
         self,
         name: str,
-        length: int,
-        n_values: int,
         callbacks: Iterable[Callable[[Dict[str, float]], None]],
     ) -> None:
         self.name = name
-        self.length = length
-        self.n_values = n_values
         self.callbacks = callbacks
 
     def __call__(
         self,
         step: int,
-        input: TensorType[..., "length", int],
+        input: TensorType[..., int],
         outputs: Iterable[
             ReconstructionGameResult[
-                TensorType[..., "length", int],
+                TensorType[..., int],
                 TensorType[..., float],
                 None,
-                TensorType[..., "length", "n_values", float],
+                TensorType[..., float],
             ]
         ],
     ) -> None:

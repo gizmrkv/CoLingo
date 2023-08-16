@@ -163,13 +163,7 @@ def train(
         ("test", test_dataloader),
     ]:
         metrics = Metrics(
-            name=name,
-            object_length=cfg.object_length,
-            object_n_values=cfg.object_n_values,
-            message_length=cfg.message_length,
-            message_n_values=cfg.message_n_values,
-            loss=loss,
-            callbacks=[wandb_logger, duplicate_checker],
+            name=name, loss=loss, callbacks=[wandb_logger, duplicate_checker]
         )
         metrics_evals.append(
             Evaluator(

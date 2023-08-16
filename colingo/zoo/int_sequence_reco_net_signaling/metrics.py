@@ -47,33 +47,25 @@ class Metrics:
     def __init__(
         self,
         name: str,
-        object_length: int,
-        object_n_values: int,
-        message_length: int,
-        message_n_values: int,
         loss: Loss,
         callbacks: Iterable[Callable[[Dict[str, float]], None]],
     ) -> None:
         self.name = name
-        self.object_length = object_length
-        self.object_n_values = object_n_values
-        self.message_length = message_length
-        self.message_n_values = message_n_values
         self.loss = loss
         self.callbacks = callbacks
 
     def __call__(
         self,
         step: int,
-        input: TensorType[..., "object_length", int],
+        input: TensorType[..., int],
         outputs: Iterable[
             Dict[
                 str,
                 ReconstructionNetworkSubGameResult[
-                    TensorType[..., "object_length", int],
-                    TensorType[..., "message_length", int],
+                    TensorType[..., int],
+                    TensorType[..., int],
                     MessageAuxiliary,
-                    TensorType[..., "object_length", "object_n_values", float],
+                    TensorType[..., float],
                 ],
             ]
         ],
@@ -106,8 +98,8 @@ class Metrics:
 
     def acc(
         self,
-        input: TensorType[..., "object_length", int],
-        target: TensorType[..., "object_length", int],
+        input: TensorType[..., int],
+        target: TensorType[..., int],
     ) -> Tuple[float, float]:
         mark = target == input
         acc_comp = mark.all(dim=-1).float().mean().item()

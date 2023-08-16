@@ -131,10 +131,6 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
     ]:
         metrics = Metrics(
             name=name,
-            object_length=cfg.object_length,
-            object_n_values=cfg.object_n_values,
-            message_length=cfg.message_length,
-            message_n_values=cfg.message_n_values,
             loss=loss,
             callbacks=[wandb_logger, early_stopper, duplicate_checker],
         )
