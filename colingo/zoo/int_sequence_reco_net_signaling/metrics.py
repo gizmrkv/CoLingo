@@ -7,7 +7,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from torchtyping import TensorType
 
-from ...analysis import topographic_similarity
+from ...analysis import language_similarity, topographic_similarity
 from ...game import ReconstructionNetworkSubGameResult
 from ...loggers import HeatmapLogger, IntSequenceLanguageLogger
 from .agent import MessageAuxiliary
@@ -57,13 +57,12 @@ class Metrics:
             acc_comp_max = max(acc_comps)
             acc_part_max = max(acc_parts)
             metrics |= {
-                f"{name_e}.acc_comp.mean": acc_comp_mean,
-                f"{name_e}.acc_part.mean": acc_part_mean,
-                f"{name_e}.acc_comp.max": acc_comp_max,
-                f"{name_e}.acc_part.max": acc_part_max,
+                f"{self.name}.{name_e}.acc_comp.mean": acc_comp_mean,
+                f"{self.name}.{name_e}.acc_part.mean": acc_part_mean,
+                f"{self.name}.{name_e}.acc_comp.max": acc_comp_max,
+                f"{self.name}.{name_e}.acc_part.max": acc_part_max,
             }
 
-        metrics = {f"{self.name}.{k}": v for k, v in metrics.items()}
         for callback in self.callbacks:
             callback(metrics)
 
@@ -161,12 +160,12 @@ class AccuracyHeatmapLogger:
         ],
     ) -> None:
         output = next(iter(outputs))
-        agent_names = list(output.keys())
+        names = list(output.keys())
         matrix_comp: List[List[float]] = []
         matrix_part: List[List[float]] = []
-        for name_e in agent_names:
+        for name_e in names:
             comps, parts = [], []
-            for name_d in agent_names:
+            for name_d in names:
                 acc_comp, acc_part = acc_comp_part(
                     output[name_e].outputs[name_d], input
                 )
@@ -180,8 +179,66 @@ class AccuracyHeatmapLogger:
             (matrix_comp, self.acc_comp_logger),
             (matrix_part, self.acc_part_logger),
         ]:
-            df = pd.DataFrame(matrix, columns=agent_names, index=agent_names)
+            df = pd.DataFrame(matrix, columns=names, index=names)
             logger(step, df)
+
+
+class LanguageSimilarityMetrics:
+    def __init__(
+        self,
+        name: str,
+        callbacks: Iterable[Callable[[Dict[str, float]], None]],
+        heatmap_logger: HeatmapLogger | None = None,
+    ) -> None:
+        self.name = name
+        self.callbacks = callbacks
+        self.heatmap_logger = heatmap_logger
+
+    def __call__(
+        self,
+        step: int,
+        input: TensorType[..., int],
+        outputs: Iterable[
+            Dict[
+                str,
+                ReconstructionNetworkSubGameResult[
+                    TensorType[..., int],
+                    TensorType[..., int],
+                    MessageAuxiliary,
+                    TensorType[..., float],
+                ],
+            ]
+        ],
+    ) -> None:
+        output = next(iter(outputs))
+        names = list(output.keys())
+
+        langs = []
+        for name in names:
+            langs.append(output[name].latent.cpu().numpy())
+
+        matrix: List[List[float]] = []
+        for _ in names:
+            matrix.append([0.0] * len(names))
+
+        for i in range(len(names)):
+            for j in range(i, len(names)):
+                lansim = language_similarity(langs[i], langs[j], processor=drop_padding)
+                matrix[i][j] = lansim
+                matrix[j][i] = lansim
+
+        if self.heatmap_logger is not None:
+            df = pd.DataFrame(matrix, columns=names, index=names)
+            self.heatmap_logger(step, df)
+
+        metrics: Dict[str, float] = {}
+        for name, lansims in zip(names, matrix):
+            metrics[f"{self.name}.{name}.lansim.mean"] = fmean(lansims)
+
+        metrics[f"{self.name}.lansim.mean"] = fmean(metrics.values())
+
+        for callback in self.callbacks:
+            callback(metrics)
 
 
 def acc_comp_part(

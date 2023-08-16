@@ -88,9 +88,17 @@ class Loss:
         ],
     ) -> TensorType[..., float]:
         decoders_loss = self.decoders_loss(result)
-        decoder_loss = torch.stack(list(decoders_loss.values()), dim=-1).mean(dim=-1)
-        encoder_loss = self.encoder_loss(result, decoder_loss)
-        return decoder_loss + encoder_loss
+        decoders_loss_list = list(decoders_loss.values())
+        if len(decoders_loss_list) > 0:
+            decoder_loss = torch.stack(list(decoders_loss.values()), dim=-1).mean(
+                dim=-1
+            )
+            encoder_loss = self.encoder_loss(result, decoder_loss)
+            return decoder_loss + encoder_loss
+        else:
+            return torch.zeros(
+                result.input.size(0), device=result.input.device, dtype=torch.float32
+            )
 
     def total_loss(
         self,

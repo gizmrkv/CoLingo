@@ -20,9 +20,10 @@ metrics_interval = 10
 topsim_interval = 100
 language_log_interval = 100
 acc_heatmap_interval = 100
+lansim_interval = 100
 
 n_agents = 3
-network_type = "linear"
+network_type = "oneway"
 latent_dim = 64
 
 object_encoder_embed_dim = 8

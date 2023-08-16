@@ -37,6 +37,7 @@ class ConfigMLPRNN:
     topsim_interval: int
     language_log_interval: int
     acc_heatmap_interval: int
+    lansim_interval: int
 
     n_agents: int
     network_type: str
@@ -120,6 +121,12 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         for i in range(cfg.n_agents - 1):
             adj[agent_name(i)].add(agent_name(i + 1))
             adj[agent_name(i + 1)].add(agent_name(i))
+    elif cfg.network_type == "oneway":
+        for i in range(cfg.n_agents - 1):
+            adj[agent_name(i)].add(agent_name(i + 1))
+    elif cfg.network_type == "ring":
+        for i in range(cfg.n_agents):
+            adj[agent_name(i)].add(agent_name((i + 1) % cfg.n_agents))
 
     game = ReconstructionNetworkGame(agents, adj)
 

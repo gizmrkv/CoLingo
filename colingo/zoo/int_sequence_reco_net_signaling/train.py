@@ -30,6 +30,7 @@ from .loss import Loss
 from .metrics import (
     AccuracyHeatmapLogger,
     LanguageLogger,
+    LanguageSimilarityMetrics,
     Metrics,
     TopographicSimilarityMetrics,
 )
@@ -58,6 +59,7 @@ class Config:
     topsim_interval: int
     language_log_interval: int
     acc_heatmap_interval: int
+    lansim_interval: int
 
     seed: int | None = None
 
@@ -193,16 +195,31 @@ def train(
         )
         heatmap_loggers.extend([acc_comp_heatmap, acc_part_heatmap])
 
+        lansim_heatmap = HeatmapLogger(
+            save_dir=os.path.join(log_dir, f"{name}_lansim"),
+            heatmap_option=heatmap_option,
+            callbacks=[
+                WandbHeatmapLogger(f"{name}.lansim"),
+            ],
+        )
+        lansim = LanguageSimilarityMetrics(
+            name=name,
+            callbacks=[wandb_logger, duplicate_checker],
+            heatmap_logger=lansim_heatmap,
+        )
+        heatmap_loggers.append(lansim_heatmap)
+
         evaluators.append(
             Evaluator(
                 agents=agents.values(),
                 input=input,
                 games=[game_comp],
-                callbacks=[metrics, topsim, acc_heatmap],
+                callbacks=[metrics, topsim, acc_heatmap, lansim],
                 intervals=[
                     cfg.metrics_interval,
                     cfg.topsim_interval,
                     cfg.acc_heatmap_interval,
+                    cfg.lansim_interval,
                 ],
             )
         )
