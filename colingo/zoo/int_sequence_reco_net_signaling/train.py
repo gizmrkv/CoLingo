@@ -2,36 +2,21 @@ import datetime
 import json
 import os
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from itertools import product
-from typing import Any, Callable, Dict, Iterable, Mapping, Set, Tuple
+from typing import Any, Dict, Mapping, Set
 
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from numpy.typing import NDArray
-from torch.distributions import Categorical
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from ...analysis import topographic_similarity
 from ...core import Evaluator, Runner, RunnerCallback, Trainer
-from ...game import (
-    IDecoder,
-    IEncoder,
-    IEncoderDecoder,
-    ReconstructionNetworkGame,
-    ReconstructionNetworkSubGame,
-    ReconstructionNetworkSubGameResult,
-)
+from ...game import ReconstructionNetworkGame
 from ...loggers import WandbLogger
-from ...loss import ReinforceLoss
 from ...utils import (
     DuplicateChecker,
     EarlyStopper,
-    Interval,
     StepCounter,
     Timer,
     fix_seed,
@@ -142,23 +127,15 @@ def train(
     wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
     duplicate_checker = DuplicateChecker()
 
-    adj_all: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
-    adj_nil: Dict[str, Set[str]] = {s: set() for s in agents}
-    game_all: ReconstructionNetworkGame[
+    adj_comp: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
+    game_comp: ReconstructionNetworkGame[
         TensorType[..., int],
         TensorType[..., int],
         MessageAuxiliary,
         TensorType[..., float],
-    ] = ReconstructionNetworkGame(agents, adj_all)
-    game_nil: ReconstructionNetworkGame[
-        TensorType[..., int],
-        TensorType[..., int],
-        MessageAuxiliary,
-        TensorType[..., float],
-    ] = ReconstructionNetworkGame(agents, adj_nil)
+    ] = ReconstructionNetworkGame(agents, adj_comp)
 
-    metrics_evals = []
-    topsim_evals = []
+    evaluators = []
     for name, input in [
         ("train", train_dataloader),
         ("test", test_dataloader),
@@ -166,40 +143,41 @@ def train(
         metrics = Metrics(
             name=name, loss=loss, callbacks=[wandb_logger, duplicate_checker]
         )
-        metrics_evals.append(
-            Evaluator(
-                agents=agents.values(),
-                input=input,
-                games=[game_all],
-                callbacks=[metrics],
-            )
-        )
-
         topsim = TopographicSimilarityMetrics(
             name=name, callbacks=[wandb_logger, duplicate_checker]
         )
-        topsim_evals.append(
+        evaluators.append(
             Evaluator(
                 agents=agents.values(),
                 input=input,
-                games=[game_nil],
-                callbacks=[topsim],
+                games=[game_comp],
+                callbacks=[metrics, topsim],
+                intervals=[cfg.metrics_interval, cfg.topsim_interval],
             )
         )
 
+    adj_none: Dict[str, Set[str]] = {s: set() for s in agents}
+    game_none: ReconstructionNetworkGame[
+        TensorType[..., int],
+        TensorType[..., int],
+        MessageAuxiliary,
+        TensorType[..., float],
+    ] = ReconstructionNetworkGame(agents, adj_none)
+
     language_logger = LanguageLogger(os.path.join(log_dir, "lang"), agents)
-    language_logger_evaluator = Evaluator(
-        agents=agents.values(),
-        input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
-        games=[game_nil],
-        callbacks=[language_logger],
+    evaluators.append(
+        Evaluator(
+            agents=agents.values(),
+            input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
+            games=[game_none],
+            callbacks=[language_logger],
+            intervals=[cfg.language_log_interval],
+        )
     )
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, metrics_evals),
-        Interval(cfg.topsim_interval, topsim_evals),
-        Interval(cfg.language_log_interval, [language_logger_evaluator]),
+        *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         duplicate_checker,

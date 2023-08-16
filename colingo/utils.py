@@ -125,23 +125,3 @@ class Timer(RunnerCallback):
             torch.cuda.synchronize()
             end = time.time()
             print(f"{i}st time: {end - start:.3f} sec")
-
-
-class Interval(RunnerCallback):
-    def __init__(self, interval: int, callbacks: Iterable[RunnerCallback]) -> None:
-        super().__init__()
-        self.interval = interval
-        self.callbacks = callbacks
-
-    def on_begin(self) -> None:
-        for callback in self.callbacks:
-            callback.on_begin()
-
-    def on_end(self) -> None:
-        for callback in self.callbacks:
-            callback.on_end()
-
-    def on_update(self, step: int) -> None:
-        if step % self.interval == 0:
-            for callback in self.callbacks:
-                callback.on_update(step)

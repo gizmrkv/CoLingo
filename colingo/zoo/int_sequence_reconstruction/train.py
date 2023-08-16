@@ -16,7 +16,6 @@ from ...game import ReconstructionGame
 from ...loggers import WandbLogger
 from ...utils import (
     DuplicateChecker,
-    Interval,
     MetricsEarlyStopper,
     StepCounter,
     Timer,
@@ -115,12 +114,13 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
                 callbacks=[
                     Metrics(name, [wandb_logger, early_stopper, duplicate_checker])
                 ],
+                intervals=[cfg.metrics_interval],
             )
         )
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, evaluators),
+        *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         early_stopper,

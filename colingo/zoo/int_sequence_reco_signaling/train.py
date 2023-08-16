@@ -17,7 +17,6 @@ from ...game import ReconstructionGame
 from ...loggers import WandbLogger
 from ...utils import (
     DuplicateChecker,
-    Interval,
     MetricsEarlyStopper,
     StepCounter,
     Timer,
@@ -123,8 +122,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
         if "test.acc_comp" in metrics
         else False
     )
-    metrics_evals = []
-    topsim_evals = []
+    evaluators = []
     for name, input in [
         ("train", train_dataloader),
         ("test", test_dataloader),
@@ -134,40 +132,34 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
             loss=loss,
             callbacks=[wandb_logger, early_stopper, duplicate_checker],
         )
-        metrics_evals.append(
-            Evaluator(
-                agents=models,
-                input=input,
-                games=[game],
-                callbacks=[metrics],
-            )
-        )
 
         topsim = TopographicSimilarityMetrics(
             name=name, callbacks=[wandb_logger, duplicate_checker]
         )
-        topsim_evals.append(
+        evaluators.append(
             Evaluator(
                 agents=models,
                 input=input,
                 games=[game],
-                callbacks=[topsim],
+                callbacks=[metrics, topsim],
+                intervals=[cfg.metrics_interval, cfg.topsim_interval],
             )
         )
 
     language_logger = LanguageLogger(os.path.join(log_dir, "lang"))
-    language_logger_evaluator = Evaluator(
-        agents=models,
-        input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
-        games=[game],
-        callbacks=[language_logger],
+    evaluators.append(
+        Evaluator(
+            agents=models,
+            input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
+            games=[game],
+            callbacks=[language_logger],
+            intervals=[cfg.language_log_interval],
+        )
     )
 
     runner_callbacks = [
         trainer,
-        Interval(cfg.metrics_interval, metrics_evals),
-        Interval(cfg.topsim_interval, topsim_evals),
-        Interval(cfg.language_log_interval, [language_logger_evaluator]),
+        *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         early_stopper,
