@@ -106,8 +106,8 @@ class TopographicSimilarityMetrics:
 
 
 class LanguageLogger:
-    def __init__(self, save_dir: str, name: str) -> None:
-        self.logger = IntSequenceLanguageLogger(save_dir, name)
+    def __init__(self, save_dir: str) -> None:
+        self.logger = IntSequenceLanguageLogger(save_dir)
 
     def __call__(
         self,

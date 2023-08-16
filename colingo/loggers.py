@@ -8,11 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
+import wandb
 from moviepy.editor import ImageSequenceClip
 from numpy.typing import NDArray
 from torchtyping import TensorType
-
-import wandb
 
 from .core import RunnerCallback
 
@@ -90,10 +89,9 @@ class HeatmapLogger(RunnerCallback):
 
 
 class IntSequenceLanguageLogger:
-    def __init__(self, save_dir: str, name: str) -> None:
+    def __init__(self, save_dir: str) -> None:
         self.save_dir = save_dir
-        self.name = name
-        os.makedirs(f"{self.save_dir}/{self.name}", exist_ok=True)
+        os.makedirs(f"{self.save_dir}", exist_ok=True)
 
     def __call__(
         self, step: int, sequence: TensorType[..., int], message: TensorType[..., int]
@@ -109,5 +107,5 @@ class IntSequenceLanguageLogger:
 
         lang = "".join(lines)
 
-        with open(f"{self.save_dir}/{self.name}/{step}.txt", "w") as f:
+        with open(f"{self.save_dir}/{step}.txt", "w") as f:
             f.write(lang)

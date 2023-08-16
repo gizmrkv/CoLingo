@@ -27,7 +27,7 @@ from ...game import (
     ReconstructionNetworkSubGame,
     ReconstructionNetworkSubGameResult,
 )
-from ...loggers import WandbLogger
+from ...loggers import IntSequenceLanguageLogger, WandbLogger
 from ...loss import ReinforceLoss
 from ...utils import (
     DuplicateChecker,
@@ -141,6 +141,7 @@ class TopographicSimilarityMetrics:
                 )
             }
 
+        metrics[f"{self.name}.topsim.mean"] = fmean(metrics.values())
         for callback in self.callbacks:
             callback(metrics)
 
@@ -148,3 +149,31 @@ class TopographicSimilarityMetrics:
 def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:
     i = np.argwhere(x == 0)
     return x if len(i) == 0 else x[: i[0, 0]]
+
+
+class LanguageLogger:
+    def __init__(self, save_dir: str, agent_names: Iterable[str]) -> None:
+        self.loggers = {
+            name: IntSequenceLanguageLogger(os.path.join(save_dir, name))
+            for name in agent_names
+        }
+
+    def __call__(
+        self,
+        step: int,
+        input: TensorType[..., int],
+        outputs: Iterable[
+            Dict[
+                str,
+                ReconstructionNetworkSubGameResult[
+                    TensorType[..., int],
+                    TensorType[..., int],
+                    MessageAuxiliary,
+                    TensorType[..., float],
+                ],
+            ]
+        ],
+    ) -> None:
+        output = next(iter(outputs))
+        for name_e, result_e in output.items():
+            self.loggers[name_e](step, result_e.input, result_e.latent)

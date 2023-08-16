@@ -40,7 +40,7 @@ from ...utils import (
 )
 from .agent import Agent, MessageAuxiliary
 from .loss import Loss
-from .metrics import Metrics, TopographicSimilarityMetrics
+from .metrics import LanguageLogger, Metrics, TopographicSimilarityMetrics
 
 
 @dataclass
@@ -64,6 +64,7 @@ class Config:
 
     metrics_interval: int
     topsim_interval: int
+    language_log_interval: int
 
     seed: int | None = None
 
@@ -186,10 +187,19 @@ def train(
             )
         )
 
+    language_logger = LanguageLogger(os.path.join(log_dir, "lang"), agents)
+    language_logger_evaluator = Evaluator(
+        agents=agents.values(),
+        input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
+        games=[game_nil],
+        callbacks=[language_logger],
+    )
+
     runner_callbacks = [
         trainer,
         Interval(cfg.metrics_interval, metrics_evals),
         Interval(cfg.topsim_interval, topsim_evals),
+        Interval(cfg.language_log_interval, [language_logger_evaluator]),
         StepCounter("step", [wandb_logger, duplicate_checker]),
         wandb_logger,
         duplicate_checker,

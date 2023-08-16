@@ -35,6 +35,7 @@ class ConfigMLPRNN:
 
     metrics_interval: int
     topsim_interval: int
+    language_log_interval: int
 
     n_agents: int
     network_type: str

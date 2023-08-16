@@ -155,7 +155,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
             )
         )
 
-    language_logger = LanguageLogger(log_dir, "lang")
+    language_logger = LanguageLogger(os.path.join(log_dir, "lang"))
     language_logger_evaluator = Evaluator(
         agents=models,
         input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
