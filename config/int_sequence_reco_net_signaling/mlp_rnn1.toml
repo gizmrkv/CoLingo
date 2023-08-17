@@ -1,6 +1,6 @@
 zoo = "int_sequence_reco_net_signaling_mlp_rnn"
 
-n_epochs = 501
+n_epochs = 10001
 batch_size = 100000
 device = "cuda"
 seed = 42
@@ -22,7 +22,9 @@ language_log_interval = 100
 acc_heatmap_interval = 100
 lansim_interval = 100
 
-n_agents = 3
+decoder_ae = true
+
+n_agents = 6
 network_type = "oneway"
 latent_dim = 64
 

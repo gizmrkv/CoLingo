@@ -61,6 +61,8 @@ class Config:
     acc_heatmap_interval: int
     lansim_interval: int
 
+    decoder_ae: bool
+
     seed: int | None = None
 
 
@@ -116,6 +118,7 @@ def train(
         return x.detach().mean(dim=0)
 
     loss = Loss(
+        agents=agents,
         object_length=cfg.object_length,
         object_n_values=cfg.object_n_values,
         message_length=cfg.message_length,
@@ -124,6 +127,7 @@ def train(
         length_weight=cfg.length_weight,
         baseline=baseline,
         length_baseline=baseline,
+        decoder_ae=cfg.decoder_ae,
     )
 
     trainer = Trainer(

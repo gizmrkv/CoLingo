@@ -39,6 +39,8 @@ class ConfigMLPRNN:
     acc_heatmap_interval: int
     lansim_interval: int
 
+    decoder_ae: bool
+
     n_agents: int
     network_type: str
 
