@@ -1,6 +1,6 @@
 zoo = "int_sequence_reco_signaling_mlp_transformer"
 
-n_epochs = 501
+n_epochs = 2001
 batch_size = 100000
 device = "cuda"
 seed = 42
@@ -23,7 +23,7 @@ language_log_interval = 100
 latent_dim = 64
 
 object_encoder_embed_dim = 8
-object_encoder_hidden_dim = 150
+object_encoder_hidden_dim = 64
 object_encoder_n_layers = 2
 object_encoder_activation = "gelu"
 
@@ -45,6 +45,6 @@ message_encoder_layer_norm_eps = 1e-5
 message_encoder_norm_first = false
 message_encoder_n_layers = 1
 
-object_decoder_hidden_dim = 150
+object_decoder_hidden_dim = 64
 object_decoder_n_layers = 2
 object_decoder_activation = "gelu"

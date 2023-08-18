@@ -1,6 +1,6 @@
 zoo = "int_sequence_reco_signaling_mlp_rnn"
 
-n_epochs = 501
+n_epochs = 2001
 batch_size = 100000
 device = "cuda"
 seed = 42
@@ -23,20 +23,20 @@ language_log_interval = 100
 latent_dim = 64
 
 object_encoder_embed_dim = 8
-object_encoder_hidden_dim = 150
+object_encoder_hidden_dim = 64
 object_encoder_n_layers = 2
 object_encoder_activation = "gelu"
 
-message_decoder_hidden_dim = 150
+message_decoder_hidden_dim = 128
 message_decoder_embed_dim = 8
 message_decoder_rnn_type = "gru"
 message_decoder_n_layers = 2
 
-message_encoder_hidden_dim = 150
+message_encoder_hidden_dim = 128
 message_encoder_embed_dim = 8
 message_encoder_rnn_type = "gru"
 message_encoder_n_layers = 2
 
-object_decoder_hidden_dim = 150
+object_decoder_hidden_dim = 64
 object_decoder_n_layers = 2
 object_decoder_activation = "gelu"

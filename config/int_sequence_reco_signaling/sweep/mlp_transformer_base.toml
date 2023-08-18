@@ -1,0 +1,135 @@
+zoo = "int_sequence_reco_signaling_mlp_transformer"
+method = "bayes"
+name = "int_sequence_reco_signaling_mlp_transformer"
+project = "int_sequence_reco_signaling"
+
+[metric]
+name = "test.acc_comp"
+goal = "maximize"
+
+[parameters.zoo]
+value = "int_sequence_reco_signaling_mlp_transformer"
+
+[parameters.n_epochs]
+value = 1001
+
+[parameters.batch_size]
+value = 100000
+
+[parameters.device]
+value = "cuda"
+
+[parameters.seed]
+values = [1, 2, 3, 4, 5]
+
+[parameters.wandb_project]
+value = "int_sequence_reco_signaling"
+
+[parameters.use_tqdm]
+value = false
+
+[parameters.lr]
+value = 0.001
+
+[parameters.object_length]
+value = 2
+
+[parameters.object_n_values]
+value = 50
+
+[parameters.message_length]
+value = 8
+
+[parameters.message_n_values]
+value = 50
+
+[parameters.entropy_weight]
+value = 0.01
+
+[parameters.length_weight]
+value = 0.0
+
+[parameters.metrics_interval]
+value = 10
+
+[parameters.topsim_interval]
+value = 100
+
+[parameters.language_log_interval]
+value = 100
+
+[parameters.latent_dim]
+values = [8, 16, 32, 64, 128]
+
+[parameters.object_encoder_embed_dim]
+value = 8
+
+[parameters.object_encoder_hidden_dim]
+value = 64
+
+[parameters.object_encoder_n_layers]
+value = 2
+
+[parameters.object_encoder_activation]
+value = "gelu"
+
+[parameters.message_decoder_embed_dim]
+values = [8, 16, 32, 64, 128]
+
+[parameters.message_decoder_n_heads]
+values = [1, 2, 4, 8]
+
+[parameters.message_decoder_ff_dim]
+values = [8, 16, 32, 64, 128, 256]
+
+[parameters.message_decoder_dropout]
+min = 0.0
+max = 0.01
+
+[parameters.message_decoder_activation]
+values = ["gelu", "relu"]
+
+[parameters.message_decoder_layer_norm_eps]
+min = 0.0
+max = 1e-5
+
+[parameters.message_decoder_norm_first]
+values = [false, true]
+
+[parameters.message_decoder_n_layers]
+values = [1, 2, 3]
+
+[parameters.message_encoder_embed_dim]
+values = [8, 16, 32, 64, 128]
+
+[parameters.message_encoder_n_heads]
+values = [1, 2, 4, 8]
+
+[parameters.message_encoder_ff_dim]
+values = [8, 16, 32, 64, 128, 256]
+
+[parameters.message_encoder_dropout]
+min = 0.0
+max = 0.01
+
+[parameters.message_encoder_activation]
+values = ["gelu", "relu"]
+
+[parameters.message_encoder_layer_norm_eps]
+min = 0.0
+max = 1e-5
+
+[parameters.message_encoder_norm_first]
+values = [false, true]
+
+[parameters.message_encoder_n_layers]
+values = [1, 2, 3]
+
+[parameters.object_decoder_hidden_dim]
+value = 64
+
+[parameters.object_decoder_n_layers]
+value = 2
+
+[parameters.object_decoder_activation]
+value = "gelu"
