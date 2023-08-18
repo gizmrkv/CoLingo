@@ -20,14 +20,27 @@ matplotlib.use("Agg")
 
 
 class WandbLogger(RunnerCallback):
+    """
+    Callback to log metrics using WandB (Weights and Biases) platform.
+    """
+
     def __init__(self, project: str, name: str | None = None) -> None:
         wandb.init(project=project, name=name)
         self.metrics: Dict[str, float] = {}
 
     def __call__(self, metrics: Mapping[str, Any]) -> None:
+        """
+        Log metrics to the internal metrics dictionary.
+
+        Args:
+            metrics (Mapping[str, Any]): Metrics to log.
+        """
         self.metrics.update(metrics)
 
     def flush(self) -> None:
+        """
+        Log the metrics to WandB and clear the internal metrics dictionary.
+        """
         wandb.log(self.metrics)
         self.metrics.clear()
 
@@ -43,6 +56,10 @@ class WandbLogger(RunnerCallback):
 
 
 class HeatmapLogger(RunnerCallback):
+    """
+    Callback to log heatmap frames and generate a video.
+    """
+
     def __init__(
         self,
         save_dir: str,
@@ -50,6 +67,16 @@ class HeatmapLogger(RunnerCallback):
         heatmap_option: Mapping[str, Any] | None = None,
         callbacks: Iterable[Callable[[str], None]] | None = None,
     ) -> None:
+        """
+        Initialize the HeatmapLogger.
+
+        Args:
+            save_dir (str): Directory to save heatmap images and video.
+            cleanup (bool, optional): Whether to delete heatmap frames and the video after generating the video. Defaults to False.
+            heatmap_option (Mapping[str, Any], optional): Options for creating the heatmap using seaborn. Defaults to None.
+            callbacks (Iterable[Callable[[str], None]], optional): List of callbacks to be called with the video file name. Defaults to None.
+        """
+
         self.save_dir = save_dir
         self.cleanup = cleanup
         self.heatmap_option = heatmap_option or {}
@@ -58,14 +85,21 @@ class HeatmapLogger(RunnerCallback):
         os.makedirs(self.save_dir, exist_ok=True)
 
     def __call__(self, step: int, data: NDArray[np.float32]) -> None:
-        # Save a heatmap frame
+        """
+        Log a heatmap frame.
+
+        Args:
+            step (int): Current step number.
+            data (NDArray[np.float32]): Heatmap data.
+        """
+
         sns.heatmap(data, **self.heatmap_option)
         plt.title(f"step: {step}")
         plt.savefig(f"{self.save_dir}/{step:0>8}.png")
         plt.clf()
 
     def on_end(self) -> None:
-        # Save a video of the heatmap
+        # Generates a video from the saved heatmap frames.
         frames = sorted(glob(f"{self.save_dir}/*.png"))
         name = f"{self.save_dir}/video.mp4"
         clip = ImageSequenceClip(frames, fps=10)
@@ -80,13 +114,33 @@ class HeatmapLogger(RunnerCallback):
 
 
 class IntSequenceLanguageLogger:
+    """
+    Callback to log integer sequences and corresponding language messages.
+    """
+
     def __init__(self, save_dir: str) -> None:
+        """
+        Initialize the IntSequenceLanguageLogger.
+
+        Args:
+            save_dir (str): Directory to save log files.
+        """
+
         self.save_dir = save_dir
         os.makedirs(f"{self.save_dir}", exist_ok=True)
 
     def __call__(
         self, step: int, sequence: TensorType[..., int], message: TensorType[..., int]
     ) -> None:
+        """
+        Log integer sequences and corresponding language messages.
+
+        Args:
+            step (int): Current step number.
+            sequence (TensorType[..., int]): Integer sequences.
+            message (TensorType[..., int]): Corresponding language messages.
+        """
+
         lines = []
         for seq, msg in zip(sequence, message):
             i = torch.argwhere(msg == 0)

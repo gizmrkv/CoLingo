@@ -5,6 +5,17 @@ from torchtyping import TensorType
 
 
 class MLP(nn.Module):
+    """
+    Multi-Layer Perceptron (MLP) module.
+
+    Args:
+        input_dim (int): Dimension of the input.
+        output_dim (int): Dimension of the output.
+        hidden_dim (int): Number of units in hidden layers.
+        n_layers (int): Number of hidden layers.
+        activation (str, optional): Activation function name. Can be 'relu', 'elu', or 'gelu'. Defaults to 'relu'.
+    """
+
     def __init__(
         self,
         input_dim: int,
@@ -48,6 +59,19 @@ class MLP(nn.Module):
 
 
 class IntSequenceMLPEncoder(nn.Module):
+    """
+    Encoder module for integer sequence data.
+
+    Args:
+        length (int): Length of the input sequence.
+        n_values (int): Number of unique values in the input sequence.
+        output_dim (int): Dimension of the output.
+        embed_dim (int): Dimension of the embedding.
+        hidden_dim (int): Number of units in hidden layers.
+        n_layers (int): Number of hidden layers.
+        activation (str, optional): Activation function name. Can be 'relu', 'elu', or 'gelu'. Defaults to 'relu'.
+    """
+
     def __init__(
         self,
         length: int,
@@ -79,6 +103,18 @@ class IntSequenceMLPEncoder(nn.Module):
 
 
 class IntSequenceMLPDecoder(nn.Module):
+    """
+    Decoder module for integer sequence data.
+
+    Args:
+        input_dim (int): Dimension of the input.
+        length (int): Length of the output sequence.
+        n_values (int): Number of unique values in the output sequence.
+        hidden_dim (int): Number of units in hidden layers.
+        n_layers (int, optional): Number of hidden layers. Defaults to 1.
+        activation (str, optional): Activation function name. Can be 'relu', 'elu', or 'gelu'. Defaults to 'relu'.
+    """
+
     def __init__(
         self,
         input_dim: int,

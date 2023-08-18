@@ -12,6 +12,19 @@ U = TypeVar("U")
 
 
 class Trainer(RunnerCallback, Generic[T, U]):
+    """
+    Class for managing the training process using agents, input data, games, loss function, and optimizers.
+
+    Args:
+        agents (Iterable[nn.Module]): List of agent (model) instances to be trained.
+        input (Iterable[T]): List of input data for training.
+        games (Iterable[Callable[[T], U]]): List of game (function) instances to be played with input data.
+        loss (Callable[[int, T, Iterable[U]], TensorType[1, float]]): Loss function to compute training loss.
+        optimizers (Iterable[torch.optim.Optimizer]): List of optimizer instances for each agent.
+        device (str, optional): Device to perform training on ("cuda" or "cpu"). Defaults to "cuda".
+        use_amp (bool, optional): Whether to use Automatic Mixed Precision (AMP). Defaults to False.
+    """
+
     def __init__(
         self,
         agents: Iterable[nn.Module],

@@ -11,6 +11,12 @@ from .core import EarlyStopper, RunnerCallback
 
 
 def fix_seed(seed: int) -> None:
+    """
+    Fix random seed for reproducibility of random operations.
+
+    Args:
+        seed (int): Seed value for random number generators.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -18,6 +24,13 @@ def fix_seed(seed: int) -> None:
 
 
 def init_weights(m: nn.Module) -> None:
+    """
+    Initialize the weights of a neural network module.
+
+    Args:
+        m (nn.Module): The neural network module to initialize.
+    """
+
     if isinstance(m, (nn.Linear, nn.Conv2d)):
         nn.init.kaiming_uniform_(m.weight)
         if m.bias is not None:
@@ -39,6 +52,16 @@ def init_weights(m: nn.Module) -> None:
 
 
 def random_split(dataset: TensorType, proportions: Iterable[float]) -> List[TensorType]:
+    """
+    Randomly split a dataset into multiple subsets according to given proportions.
+
+    Args:
+        dataset (TensorType): The dataset to split.
+        proportions (Iterable[float]): Proportions for splitting the dataset.
+
+    Returns:
+        List[TensorType]: List of subsets of the dataset.
+    """
     indices = np.random.permutation(len(dataset))
 
     proportions_sum = sum(proportions)
@@ -54,6 +77,13 @@ def random_split(dataset: TensorType, proportions: Iterable[float]) -> List[Tens
 
 
 class MetricsEarlyStopper(RunnerCallback, EarlyStopper):
+    """
+    Callback for early stopping based on user-defined metrics conditions.
+
+    Args:
+        pred (Callable[[Dict[str, float]], bool]): Prediction function for early stopping.
+    """
+
     def __init__(self, pred: Callable[[Dict[str, float]], bool]) -> None:
         self.pred = pred
         self.metrics: Dict[str, float] = {}
@@ -78,6 +108,15 @@ class MetricsEarlyStopper(RunnerCallback, EarlyStopper):
 
 
 class DuplicateChecker(RunnerCallback):
+    """
+    Callback to check for duplicate keys during execution.
+
+    This callback helps prevent the usage of duplicate keys within the same execution run.
+
+    Raises:
+        ValueError: If a duplicate key is detected.
+    """
+
     def __init__(self) -> None:
         self.seen: set[str] = set()
 
@@ -98,6 +137,14 @@ class DuplicateChecker(RunnerCallback):
 
 
 class StepCounter(RunnerCallback):
+    """
+    Callback to count and report step numbers to other callbacks.
+
+    Args:
+        name (str): The name of the step counter.
+        callbacks (Iterable[Callable[[Dict[str, float]], None]]): List of callback functions to notify with the step count.
+    """
+
     def __init__(
         self,
         name: str,
@@ -113,6 +160,13 @@ class StepCounter(RunnerCallback):
 
 
 class Timer(RunnerCallback):
+    """
+    Callback to measure execution time of other callbacks.
+
+    Args:
+        callbacks (Iterable[RunnerCallback]): List of callbacks to measure execution time for.
+    """
+
     def __init__(self, callbacks: Iterable[RunnerCallback]) -> None:
         super().__init__()
         self.callbacks = callbacks

@@ -42,6 +42,26 @@ def topographic_similarity(
     normalized: bool = True,
     workers: int = 1,
 ) -> float:
+    """
+    Calculate the topographic similarity between two sets of integer sequences.
+
+    Args:
+        x (NDArray[np.int32]): The first set of integer sequences.
+        y (NDArray[np.int32]): The second set of integer sequences.
+        x_dist (str, optional): The distance metric for x. Defaults to "Hamming".
+        y_dist (str, optional): The distance metric for y. Defaults to "Levenshtein".
+        correlation (Literal["spearman", "kendall", "pearson"], optional):
+            The method for evaluating the correlation of calculated similarities. Defaults to "spearman".
+        x_processor (Callable[[NDArray[np.int32]], Sequence[Hashable]] | None, optional):
+            Custom processor function for x. Defaults to None.
+        y_processor (Callable[[NDArray[np.int32]], Sequence[Hashable]] | None, optional):
+            Custom processor function for y. Defaults to None.
+        normalized (bool, optional): Whether to use normalized distances. Defaults to True.
+        workers (int, optional): The number of parallel workers. Defaults to 1.
+
+    Returns:
+        float: The calculated correlation of topographic similarities.
+    """
     x_dist_type = str2distance[x_dist]
     y_dist_type = str2distance[y_dist]
 
@@ -74,6 +94,20 @@ def language_similarity(
     processor: Callable[[NDArray[np.int32]], NDArray[np.int32]] | None = None,
     normalized: bool = True,
 ) -> float:
+    """
+    Calculate the language similarity between two sets of integer sequences.
+
+    Args:
+        x (NDArray[np.int32]): The first set of integer sequences.
+        y (NDArray[np.int32]): The second set of integer sequences.
+        dist (str, optional): The distance metric. Defaults to "Levenshtein".
+        processor (Callable[[NDArray[np.int32]], NDArray[np.int32]] | None, optional):
+            Custom processor function. Defaults to None.
+        normalized (bool, optional): Whether to use normalized similarities. Defaults to True.
+
+    Returns:
+        float: The mean language similarity between x and y.
+    """
     dist_type = str2distance[dist]
     if normalized:
         sim = dist_type.normalized_similarity

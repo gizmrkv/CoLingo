@@ -10,6 +10,17 @@ U = TypeVar("U")
 
 
 class Evaluator(RunnerCallback, Generic[T, U]):
+    """
+    Class for evaluating models and managing evaluation callbacks during a Runner's execution.
+
+    Args:
+        agents (Iterable[nn.Module]): List of neural network models to evaluate.
+        input (Iterable[T]): List of input data for evaluation.
+        games (Iterable[Callable[[T], U]]): List of evaluation functions (games) for each model and input.
+        callbacks (Collection[Callable[[int, T, Iterable[U]], None]]): List of callbacks for handling evaluation results.
+        intervals (Collection[int] | None, optional): List of intervals at which to perform evaluation. Defaults to None.
+    """
+
     def __init__(
         self,
         agents: Iterable[nn.Module],
@@ -46,10 +57,3 @@ class Evaluator(RunnerCallback, Generic[T, U]):
             for flag, callback in zip(flags, self.callbacks):
                 if flag:
                     callback(step, input, outputs)
-
-
-class IntervalEvaluator(RunnerCallback, Generic[T, U]):
-    def __init__(
-        self,
-    ) -> None:
-        super().__init__()

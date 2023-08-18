@@ -5,6 +5,18 @@ from torchtyping import TensorType
 
 
 class IntSequenceRNNEncoder(nn.Module):
+    """
+    RNN-based encoder for integer sequence to latent representation conversion.
+
+    Args:
+        n_values (int): Number of unique integer values.
+        output_dim (int): Dimension of the output.
+        embed_dim (int): Dimension of the embedding.
+        hidden_dim (int): Dimension of the hidden state in the RNN.
+        rnn_type (str, optional): Type of RNN ("rnn", "lstm", "gru"). Defaults to "rnn".
+        n_layers (int, optional): Number of RNN layers. Defaults to 1.
+    """
+
     def __init__(
         self,
         n_values: int,
@@ -38,11 +50,25 @@ class IntSequenceRNNEncoder(nn.Module):
         if isinstance(self.rnn, nn.LSTM):
             hidden, _ = hidden
         hidden = hidden[-1]
+        # The output is the dimension of the hidden state of the last layer
         output = self.linear(hidden)
         return output
 
 
 class IntSequenceRNNDecoder(nn.Module):
+    """
+    RNN-based decoder for generating integer sequences from latent representations.
+
+    Args:
+        input_dim (int): Dimension of the input.
+        length (int): Length of the generated sequence.
+        n_values (int): Number of unique integer values.
+        embed_dim (int): Dimension of the embedding.
+        hidden_dim (int): Dimension of the hidden state in the RNN.
+        rnn_type (str, optional): Type of RNN ("rnn", "lstm", "gru"). Defaults to "rnn".
+        n_layers (int, optional): Number of RNN layers. Defaults to 2.
+    """
+
     def __init__(
         self,
         input_dim: int,
@@ -76,6 +102,7 @@ class IntSequenceRNNDecoder(nn.Module):
         self,
         latent: TensorType[..., "input_dim", float],
     ) -> TensorType[..., "length", "n_values", float]:
+        # Adjust the dimension of the input, put it in hidden, and duplicate it
         hidden = self.pre_linear(latent)
         hidden = hidden.repeat(self.n_layers, 1, 1)
         if isinstance(self.rnn, nn.LSTM):

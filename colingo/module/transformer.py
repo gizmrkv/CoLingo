@@ -7,6 +7,21 @@ from torchtyping import TensorType
 
 
 class TransformerEncoder(nn.Module):
+    """
+    Implementation of a Transformer encoder.
+
+    Args:
+        input_dim (int): Dimension of the input data.
+        n_heads (int): Number of attention heads.
+        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
+        dropout (float, optional): Dropout rate. Defaults to 0.1.
+        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
+        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
+        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
+        n_layers (int, optional): Number of encoder layers. Defaults to 6.
+        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
+    """
+
     def __init__(
         self,
         input_dim: int,
@@ -56,6 +71,15 @@ class TransformerEncoder(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
+    """
+    Positional encoding for Transformer models.
+
+    Args:
+        input_dim (int): Dimension of the input data.
+        dropout (float, optional): Dropout rate. Defaults to 0.1.
+        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
+    """
+
     def __init__(self, input_dim: int, dropout: float = 0.1, max_len: int = 5000):
         super().__init__()
         self.input_dim = input_dim
@@ -79,6 +103,23 @@ class PositionalEncoding(nn.Module):
 
 
 class IntSequenceTransformerEncoder(nn.Module):
+    """
+    Transformer encoder for integer sequence data.
+
+    Args:
+        n_values (int): Number of unique values in the input.
+        output_dim (int): Dimension of the output data.
+        embed_dim (int): Dimension of the embedding layer.
+        n_heads (int): Number of attention heads.
+        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
+        dropout (float, optional): Dropout rate. Defaults to 0.1.
+        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
+        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
+        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
+        n_layers (int, optional): Number of encoder layers. Defaults to 6.
+        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
+    """
+
     def __init__(
         self,
         n_values: int,
@@ -130,6 +171,24 @@ class IntSequenceTransformerEncoder(nn.Module):
 
 
 class IntSequenceTransformerDecoder(nn.Module):
+    """
+    Transformer decoder for generating integer sequences.
+
+    Args:
+        input_dim (int): Dimension of the input data.
+        length (int): Length of the generated sequence.
+        n_values (int): Number of unique values in the output.
+        embed_dim (int): Dimension of the embedding layer.
+        n_heads (int): Number of attention heads.
+        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
+        dropout (float, optional): Dropout rate. Defaults to 0.1.
+        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
+        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
+        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
+        n_layers (int, optional): Number of encoder layers. Defaults to 6.
+        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
+    """
+
     def __init__(
         self,
         input_dim: int,
