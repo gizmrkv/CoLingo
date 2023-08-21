@@ -9,7 +9,7 @@ use_tqdm = true
 
 lr = 0.001
 length = 2
-n_values = 50
+values = 50
 
 metrics_interval = 5
 

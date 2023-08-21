@@ -19,7 +19,7 @@ class ConfigRNN:
 
     lr: float
     length: int
-    n_values: int
+    values: int
 
     metrics_interval: int
 
@@ -38,7 +38,7 @@ def train_rnn(config: Mapping[str, Any]) -> None:
     cfg = ConfigRNN(**{k: config[k] for k in ConfigRNN.__dataclass_fields__})
     encoder = Encoder(
         IntSequenceRNNEncoder(
-            n_values=cfg.n_values,
+            vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.encoder_embed_dim,
             hidden_dim=cfg.encoder_hidden_dim,
@@ -49,8 +49,8 @@ def train_rnn(config: Mapping[str, Any]) -> None:
     decoder = Decoder(
         IntSequenceRNNDecoder(
             input_dim=cfg.latent_dim,
-            length=cfg.length,
-            n_values=cfg.n_values,
+            max_len=cfg.length,
+            vocab_size=cfg.values,
             embed_dim=cfg.decoder_embed_dim,
             hidden_dim=cfg.decoder_hidden_dim,
             rnn_type=cfg.decoder_rnn_type,

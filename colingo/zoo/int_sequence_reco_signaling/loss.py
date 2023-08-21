@@ -13,9 +13,9 @@ class Loss:
     def __init__(
         self,
         object_length: int,
-        object_n_values: int,
-        message_length: int,
-        message_n_values: int,
+        object_values: int,
+        message_max_len: int,
+        message_vocab_size: int,
         entropy_weight: float = 0.0,
         length_weight: float = 0.0,
         baseline: Callable[[TensorType[..., float]], TensorType[..., float]]
@@ -25,16 +25,16 @@ class Loss:
     ) -> None:
         super().__init__()
         self.object_length = object_length
-        self.object_n_values = object_n_values
-        self.message_length = message_length
-        self.message_n_values = message_n_values
+        self.object_values = object_values
+        self.message_max_len = message_max_len
+        self.message_vocab_size = message_vocab_size
         self.entropy_weight = entropy_weight
         self.length_weight = length_weight
         self.baseline = baseline
         self.length_baseline = length_baseline
 
         self.reinforce_loss = ReinforceLoss(
-            max_len=message_length,
+            max_len=message_max_len,
             entropy_weight=entropy_weight,
             length_weight=length_weight,
             baseline=baseline,
@@ -52,7 +52,7 @@ class Loss:
     ) -> TensorType[..., float]:
         return (
             F.cross_entropy(
-                result.decoder_aux.view(-1, self.object_n_values),
+                result.decoder_aux.view(-1, self.object_values),
                 result.input.view(-1),
                 reduction="none",
             )

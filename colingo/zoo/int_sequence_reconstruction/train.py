@@ -40,7 +40,7 @@ class Config:
 
     lr: float
     length: int
-    n_values: int
+    values: int
 
     metrics_interval: int
 
@@ -75,7 +75,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
         model.apply(init_weights)
 
     dataset = (
-        torch.Tensor(list(product(torch.arange(cfg.n_values), repeat=cfg.length)))
+        torch.Tensor(list(product(torch.arange(cfg.values), repeat=cfg.length)))
         .long()
         .to(cfg.device)
     )

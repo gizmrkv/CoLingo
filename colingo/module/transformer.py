@@ -32,7 +32,6 @@ class TransformerEncoder(nn.Module):
         layer_norm_eps: float = 1e-5,
         norm_first: bool = False,
         n_layers: int = 6,
-        max_len: int = 5000,
     ) -> None:
         super().__init__()
         self.input_dim = input_dim
@@ -43,9 +42,8 @@ class TransformerEncoder(nn.Module):
         self.layer_norm_eps = layer_norm_eps
         self.norm_first = norm_first
         self.n_layers = n_layers
-        self.max_len = max_len
 
-        self.pos_encoder = PositionalEncoding(input_dim, dropout, max_len)
+        self.pos_encoder = PositionalEncoding(input_dim, dropout)
         activations = {
             "relu": nn.ReLU,
             "elu": nn.ELU,
@@ -103,26 +101,9 @@ class PositionalEncoding(nn.Module):
 
 
 class IntSequenceTransformerEncoder(nn.Module):
-    """
-    Transformer encoder for integer sequence data.
-
-    Args:
-        n_values (int): Number of unique values in the input.
-        output_dim (int): Dimension of the output data.
-        embed_dim (int): Dimension of the embedding layer.
-        n_heads (int): Number of attention heads.
-        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
-        dropout (float, optional): Dropout rate. Defaults to 0.1.
-        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
-        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
-        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
-        n_layers (int, optional): Number of encoder layers. Defaults to 6.
-        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
-    """
-
     def __init__(
         self,
-        n_values: int,
+        vocab_size: int,
         output_dim: int,
         embed_dim: int,
         n_heads: int,
@@ -132,10 +113,9 @@ class IntSequenceTransformerEncoder(nn.Module):
         layer_norm_eps: float = 1e-5,
         norm_first: bool = False,
         n_layers: int = 6,
-        max_len: int = 5000,
     ) -> None:
         super().__init__()
-        self.n_values = n_values
+        self.vocab_size = vocab_size
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.n_heads = n_heads
@@ -145,9 +125,7 @@ class IntSequenceTransformerEncoder(nn.Module):
         self.layer_norm_eps = layer_norm_eps
         self.norm_first = norm_first
         self.n_layers = n_layers
-        self.max_len = max_len
-
-        self.embed = nn.Embedding(n_values, embed_dim)
+        self.embed = nn.Embedding(vocab_size, embed_dim)
         self.encoder = TransformerEncoder(
             input_dim=embed_dim,
             n_heads=n_heads,
@@ -157,7 +135,6 @@ class IntSequenceTransformerEncoder(nn.Module):
             layer_norm_eps=layer_norm_eps,
             norm_first=norm_first,
             n_layers=n_layers,
-            max_len=max_len,
         )
         self.linear = nn.Linear(embed_dim, output_dim)
 
@@ -171,29 +148,11 @@ class IntSequenceTransformerEncoder(nn.Module):
 
 
 class IntSequenceTransformerDecoder(nn.Module):
-    """
-    Transformer decoder for generating integer sequences.
-
-    Args:
-        input_dim (int): Dimension of the input data.
-        length (int): Length of the generated sequence.
-        n_values (int): Number of unique values in the output.
-        embed_dim (int): Dimension of the embedding layer.
-        n_heads (int): Number of attention heads.
-        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
-        dropout (float, optional): Dropout rate. Defaults to 0.1.
-        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
-        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
-        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
-        n_layers (int, optional): Number of encoder layers. Defaults to 6.
-        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
-    """
-
     def __init__(
         self,
         input_dim: int,
-        length: int,
-        n_values: int,
+        max_len: int,
+        vocab_size: int,
         embed_dim: int,
         n_heads: int,
         ff_dim: int = 2048,
@@ -202,12 +161,11 @@ class IntSequenceTransformerDecoder(nn.Module):
         layer_norm_eps: float = 1e-5,
         norm_first: bool = False,
         n_layers: int = 6,
-        max_len: int = 5000,
     ) -> None:
         super().__init__()
         self.input_dim = input_dim
-        self.length = length
-        self.n_values = n_values
+        self.max_len = max_len
+        self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.n_heads = n_heads
         self.ff_dim = ff_dim
@@ -216,10 +174,9 @@ class IntSequenceTransformerDecoder(nn.Module):
         self.layer_norm_eps = layer_norm_eps
         self.norm_first = norm_first
         self.n_layers = n_layers
-        self.max_len = max_len
 
-        self.pre_linear = nn.Linear(input_dim, length * embed_dim)
-        self.pro_linear = nn.Linear(embed_dim, n_values)
+        self.pre_linear = nn.Linear(input_dim, max_len * embed_dim)
+        self.pro_linear = nn.Linear(embed_dim, vocab_size)
         self.encoder = TransformerEncoder(
             input_dim=embed_dim,
             n_heads=n_heads,
@@ -229,14 +186,13 @@ class IntSequenceTransformerDecoder(nn.Module):
             layer_norm_eps=layer_norm_eps,
             norm_first=norm_first,
             n_layers=n_layers,
-            max_len=max_len,
         )
 
     def forward(
         self, latent: TensorType[..., "input_dim", float]
-    ) -> TensorType[..., "length", "n_values", float]:
+    ) -> TensorType[..., "max_len", "vocab_size", float]:
         embed = self.pre_linear(latent)
-        embed = embed.view(-1, self.length, self.embed_dim)
+        embed = embed.view(-1, self.max_len, self.embed_dim)
         output = self.encoder(embed)
         logits = self.pro_linear(output)
         if self.training:

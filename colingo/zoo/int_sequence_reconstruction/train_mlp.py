@@ -19,7 +19,7 @@ class ConfigMLP:
 
     lr: float
     length: int
-    n_values: int
+    values: int
 
     metrics_interval: int
 
@@ -38,8 +38,8 @@ def train_mlp(config: Mapping[str, Any]) -> None:
     cfg = ConfigMLP(**{k: config[k] for k in ConfigMLP.__dataclass_fields__})
     encoder = Encoder(
         IntSequenceMLPEncoder(
-            length=cfg.length,
-            n_values=cfg.n_values,
+            max_len=cfg.length,
+            vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.encoder_embed_dim,
             hidden_dim=cfg.encoder_hidden_dim,
@@ -50,8 +50,8 @@ def train_mlp(config: Mapping[str, Any]) -> None:
     decoder = Decoder(
         IntSequenceMLPDecoder(
             input_dim=cfg.latent_dim,
-            length=cfg.length,
-            n_values=cfg.n_values,
+            max_len=cfg.length,
+            vocab_size=cfg.values,
             hidden_dim=cfg.decoder_hidden_dim,
             n_layers=cfg.decoder_n_layers,
             activation=cfg.decoder_activation,

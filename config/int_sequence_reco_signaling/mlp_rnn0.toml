@@ -9,9 +9,9 @@ use_tqdm = true
 
 lr = 0.001
 object_length = 2
-object_n_values = 50
-message_length = 8
-message_n_values = 50
+object_values = 50
+message_max_len = 8
+message_vocab_size = 50
 
 entropy_weight = 0.01
 length_weight = 0.0

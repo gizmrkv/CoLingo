@@ -41,9 +41,9 @@ class Config:
 
     lr: float
     object_length: int
-    object_n_values: int
-    message_length: int
-    message_n_values: int
+    object_values: int
+    message_max_len: int
+    message_vocab_size: int
 
     entropy_weight: float
     length_weight: float
@@ -80,7 +80,7 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
 
     dataset = (
         torch.Tensor(
-            list(product(torch.arange(cfg.object_n_values), repeat=cfg.object_length))
+            list(product(torch.arange(cfg.object_values), repeat=cfg.object_length))
         )
         .long()
         .to(cfg.device)
@@ -98,9 +98,9 @@ def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None
 
     loss = Loss(
         object_length=cfg.object_length,
-        object_n_values=cfg.object_n_values,
-        message_length=cfg.message_length,
-        message_n_values=cfg.message_n_values,
+        object_values=cfg.object_values,
+        message_max_len=cfg.message_max_len,
+        message_vocab_size=cfg.message_vocab_size,
         entropy_weight=cfg.entropy_weight,
         length_weight=cfg.length_weight,
         baseline=baseline,

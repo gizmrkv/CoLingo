@@ -24,9 +24,9 @@ class ConfigMLPRNN:
 
     lr: float
     object_length: int
-    object_n_values: int
-    message_length: int
-    message_n_values: int
+    object_values: int
+    message_max_len: int
+    message_vocab_size: int
 
     entropy_weight: float
     length_weight: float
@@ -62,8 +62,8 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
 
     encoder = Encoder(
         object_encoder=IntSequenceMLPEncoder(
-            length=cfg.object_length,
-            n_values=cfg.object_n_values,
+            max_len=cfg.object_length,
+            vocab_size=cfg.object_values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.object_encoder_embed_dim,
             hidden_dim=cfg.object_encoder_hidden_dim,
@@ -72,8 +72,8 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         ),
         message_decoder=IntSequenceRNNDecoder(
             input_dim=cfg.latent_dim,
-            length=cfg.message_length,
-            n_values=cfg.message_n_values,
+            max_len=cfg.message_max_len,
+            vocab_size=cfg.message_vocab_size,
             embed_dim=cfg.message_decoder_embed_dim,
             hidden_dim=cfg.message_decoder_hidden_dim,
             rnn_type=cfg.message_decoder_rnn_type,
@@ -82,7 +82,7 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
     )
     decoder = Decoder(
         message_encoder=IntSequenceRNNEncoder(
-            n_values=cfg.message_n_values,
+            vocab_size=cfg.message_vocab_size,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.message_encoder_embed_dim,
             hidden_dim=cfg.message_encoder_hidden_dim,
@@ -91,8 +91,8 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         ),
         object_decoder=IntSequenceMLPDecoder(
             input_dim=cfg.latent_dim,
-            length=cfg.object_length,
-            n_values=cfg.object_n_values,
+            max_len=cfg.object_length,
+            vocab_size=cfg.object_values,
             hidden_dim=cfg.object_decoder_hidden_dim,
             n_layers=cfg.object_decoder_n_layers,
             activation=cfg.object_decoder_activation,

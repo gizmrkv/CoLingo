@@ -19,7 +19,7 @@ class ConfigTransformer:
 
     lr: float
     length: int
-    n_values: int
+    values: int
 
     metrics_interval: int
 
@@ -48,7 +48,7 @@ def train_transformer(config: Mapping[str, Any]) -> None:
     )
     encoder = Encoder(
         IntSequenceTransformerEncoder(
-            n_values=cfg.n_values,
+            vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.encoder_embed_dim,
             n_heads=cfg.encoder_n_heads,
@@ -58,14 +58,13 @@ def train_transformer(config: Mapping[str, Any]) -> None:
             layer_norm_eps=cfg.encoder_layer_norm_eps,
             norm_first=cfg.encoder_norm_first,
             n_layers=cfg.encoder_n_layers,
-            max_len=cfg.length,
         )
     )
     decoder = Decoder(
         IntSequenceTransformerDecoder(
             input_dim=cfg.latent_dim,
-            length=cfg.length,
-            n_values=cfg.n_values,
+            max_len=cfg.length,
+            vocab_size=cfg.values,
             embed_dim=cfg.decoder_embed_dim,
             n_heads=cfg.decoder_n_heads,
             ff_dim=cfg.decoder_ff_dim,
@@ -74,7 +73,6 @@ def train_transformer(config: Mapping[str, Any]) -> None:
             layer_norm_eps=cfg.decoder_layer_norm_eps,
             norm_first=cfg.decoder_norm_first,
             n_layers=cfg.decoder_n_layers,
-            max_len=cfg.length,
         )
     )
     train(encoder, decoder, cfg.__dict__)

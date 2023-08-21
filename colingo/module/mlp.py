@@ -59,23 +59,10 @@ class MLP(nn.Module):
 
 
 class IntSequenceMLPEncoder(nn.Module):
-    """
-    Encoder module for integer sequence data.
-
-    Args:
-        length (int): Length of the input sequence.
-        n_values (int): Number of unique values in the input sequence.
-        output_dim (int): Dimension of the output.
-        embed_dim (int): Dimension of the embedding.
-        hidden_dim (int): Number of units in hidden layers.
-        n_layers (int): Number of hidden layers.
-        activation (str, optional): Activation function name. Can be 'relu', 'elu', or 'gelu'. Defaults to 'relu'.
-    """
-
     def __init__(
         self,
-        length: int,
-        n_values: int,
+        max_len: int,
+        vocab_size: int,
         output_dim: int,
         embed_dim: int,
         hidden_dim: int,
@@ -83,58 +70,48 @@ class IntSequenceMLPEncoder(nn.Module):
         activation: str = "relu",
     ) -> None:
         super().__init__()
-        self.length = length
-        self.n_values = n_values
+        self.max_len = max_len
+        self.vocab_size = vocab_size
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.activation = activation
 
-        self.embed = nn.Embedding(n_values, embed_dim)
-        self.mlp = MLP(length * embed_dim, output_dim, hidden_dim, n_layers, activation)
+        self.embed = nn.Embedding(vocab_size, embed_dim)
+        self.mlp = MLP(
+            max_len * embed_dim, output_dim, hidden_dim, n_layers, activation
+        )
 
     def forward(
-        self, input: TensorType[..., "length", int]
+        self, input: TensorType[..., "max_len", int]
     ) -> TensorType[..., "output_dim", float]:
-        embed = torch.cat([self.embed(input[:, i]) for i in range(self.length)], dim=1)
+        embed = torch.cat([self.embed(input[:, i]) for i in range(self.max_len)], dim=1)
         output = self.mlp(embed)
         return output
 
 
 class IntSequenceMLPDecoder(nn.Module):
-    """
-    Decoder module for integer sequence data.
-
-    Args:
-        input_dim (int): Dimension of the input.
-        length (int): Length of the output sequence.
-        n_values (int): Number of unique values in the output sequence.
-        hidden_dim (int): Number of units in hidden layers.
-        n_layers (int, optional): Number of hidden layers. Defaults to 1.
-        activation (str, optional): Activation function name. Can be 'relu', 'elu', or 'gelu'. Defaults to 'relu'.
-    """
-
     def __init__(
         self,
         input_dim: int,
-        length: int,
-        n_values: int,
+        max_len: int,
+        vocab_size: int,
         hidden_dim: int,
         n_layers: int = 1,
         activation: str = "relu",
     ):
         super().__init__()
         self.input_dim = input_dim
-        self.length = length
-        self.n_values = n_values
+        self.max_len = max_len
+        self.vocab_size = vocab_size
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.activation = activation
 
         self.mlp = MLP(
             input_dim=input_dim,
-            output_dim=length * n_values,
+            output_dim=max_len * vocab_size,
             hidden_dim=hidden_dim,
             n_layers=n_layers,
             activation=activation,
@@ -142,9 +119,9 @@ class IntSequenceMLPDecoder(nn.Module):
 
     def forward(
         self, latent: TensorType[..., "input_dim", float]
-    ) -> TensorType[..., "length", "n_values", float]:
+    ) -> TensorType[..., "max_len", "vocab_size", float]:
         logits = self.mlp(latent)
-        logits = logits.view(-1, self.length, self.n_values)
+        logits = logits.view(-1, self.max_len, self.vocab_size)
 
         if self.training:
             distr = Categorical(logits=logits)

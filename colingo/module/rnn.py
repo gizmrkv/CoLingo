@@ -5,21 +5,9 @@ from torchtyping import TensorType
 
 
 class IntSequenceRNNEncoder(nn.Module):
-    """
-    RNN-based encoder for integer sequence to latent representation conversion.
-
-    Args:
-        n_values (int): Number of unique integer values.
-        output_dim (int): Dimension of the output.
-        embed_dim (int): Dimension of the embedding.
-        hidden_dim (int): Dimension of the hidden state in the RNN.
-        rnn_type (str, optional): Type of RNN ("rnn", "lstm", "gru"). Defaults to "rnn".
-        n_layers (int, optional): Number of RNN layers. Defaults to 1.
-    """
-
     def __init__(
         self,
-        n_values: int,
+        vocab_size: int,
         output_dim: int,
         embed_dim: int,
         hidden_dim: int,
@@ -27,14 +15,14 @@ class IntSequenceRNNEncoder(nn.Module):
         n_layers: int = 1,
     ):
         super().__init__()
-        self.n_values = n_values
+        self.vocab_size = vocab_size
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
         self.rnn_type = rnn_type
         self.n_layers = n_layers
 
-        self.embed = nn.Embedding(n_values, embed_dim)
+        self.embed = nn.Embedding(vocab_size, embed_dim)
 
         self.rnn = {"rnn": nn.RNN, "lstm": nn.LSTM, "gru": nn.GRU}[rnn_type.lower()](
             embed_dim, hidden_dim, n_layers, batch_first=True
@@ -56,24 +44,11 @@ class IntSequenceRNNEncoder(nn.Module):
 
 
 class IntSequenceRNNDecoder(nn.Module):
-    """
-    RNN-based decoder for generating integer sequences from latent representations.
-
-    Args:
-        input_dim (int): Dimension of the input.
-        length (int): Length of the generated sequence.
-        n_values (int): Number of unique integer values.
-        embed_dim (int): Dimension of the embedding.
-        hidden_dim (int): Dimension of the hidden state in the RNN.
-        rnn_type (str, optional): Type of RNN ("rnn", "lstm", "gru"). Defaults to "rnn".
-        n_layers (int, optional): Number of RNN layers. Defaults to 2.
-    """
-
     def __init__(
         self,
         input_dim: int,
-        length: int,
-        n_values: int,
+        max_len: int,
+        vocab_size: int,
         embed_dim: int,
         hidden_dim: int,
         rnn_type: str = "rnn",
@@ -81,16 +56,16 @@ class IntSequenceRNNDecoder(nn.Module):
     ):
         super().__init__()
         self.input_dim = input_dim
-        self.length = length
-        self.n_values = n_values
+        self.max_len = max_len
+        self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
         self.rnn_type = rnn_type
         self.n_layers = n_layers
 
-        self.embed = nn.Embedding(n_values, embed_dim)
+        self.embed = nn.Embedding(vocab_size, embed_dim)
         self.pre_linear = nn.Linear(input_dim, hidden_dim)
-        self.pro_linear = nn.Linear(hidden_dim, n_values)
+        self.pro_linear = nn.Linear(hidden_dim, vocab_size)
 
         self.rnn = {"rnn": nn.RNN, "lstm": nn.LSTM, "gru": nn.GRU}[rnn_type.lower()](
             embed_dim, hidden_dim, n_layers, batch_first=True
@@ -101,7 +76,7 @@ class IntSequenceRNNDecoder(nn.Module):
     def forward(
         self,
         latent: TensorType[..., "input_dim", float],
-    ) -> TensorType[..., "length", "n_values", float]:
+    ) -> TensorType[..., "max_len", "vocab_size", float]:
         # Adjust the dimension of the input, put it in hidden, and duplicate it
         hidden = self.pre_linear(latent)
         hidden = hidden.repeat(self.n_layers, 1, 1)
@@ -110,7 +85,7 @@ class IntSequenceRNNDecoder(nn.Module):
 
         logits_seq = []
         input = self.sos_embed.repeat(latent.shape[0], 1, 1)
-        for _ in range(self.length):
+        for _ in range(self.max_len):
             logits, hidden = self.rnn(input, hidden)
             logits = self.pro_linear(logits)
 

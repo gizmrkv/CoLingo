@@ -15,9 +15,9 @@ from ...game import IDecoder, IEncoder
 @dataclass
 class MessageAuxiliary:
     max_len: int
-    n_values: int
+    vocab_size: int
     message: TensorType[..., "max_len", int]
-    logits: TensorType[..., "max_len", "n_values", float]
+    logits: TensorType[..., "max_len", "vocab_size", float]
     log_prob: TensorType[..., "max_len", float]
     entropy: TensorType[..., "max_len", float]
     length: TensorType[..., int]
@@ -59,7 +59,7 @@ class Encoder(
 
         return message, MessageAuxiliary(
             max_len=message.shape[1],
-            n_values=logits.shape[-1],
+            vocab_size=logits.shape[-1],
             message=message,
             logits=logits,
             log_prob=log_prob,
