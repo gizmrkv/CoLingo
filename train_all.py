@@ -24,4 +24,5 @@ if __name__ == "__main__":
                     else:
                         raise ValueError(f"Unknown file extension: {path}")
 
+                print(f"Training {path}")
                 train(config)

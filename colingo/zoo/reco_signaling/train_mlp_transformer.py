@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from ...module import (
-    IntSequenceMLPDecoder,
-    IntSequenceMLPEncoder,
     IntSequenceTransformerDecoder,
     IntSequenceTransformerEncoder,
+    MLPDecoder,
+    MLPEncoder,
 )
 from .agent import Decoder, Encoder
 from .train import train
@@ -71,7 +71,7 @@ def train_mlp_transformer(config: Mapping[str, Any]) -> None:
     )
 
     encoder = Encoder(
-        object_encoder=IntSequenceMLPEncoder(
+        object_encoder=MLPEncoder(
             max_len=cfg.object_length,
             vocab_size=cfg.object_values,
             output_dim=cfg.latent_dim,
@@ -107,7 +107,7 @@ def train_mlp_transformer(config: Mapping[str, Any]) -> None:
             norm_first=cfg.message_encoder_norm_first,
             n_layers=cfg.message_encoder_n_layers,
         ),
-        object_decoder=IntSequenceMLPDecoder(
+        object_decoder=MLPDecoder(
             input_dim=cfg.latent_dim,
             max_len=cfg.object_length,
             vocab_size=cfg.object_values,

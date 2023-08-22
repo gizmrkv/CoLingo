@@ -1,5 +1,5 @@
-from .mlp import MLP, IntSequenceMLPDecoder, IntSequenceMLPEncoder
-from .rnn import IntSequenceRNNDecoder, IntSequenceRNNEncoder
+from .mlp import MLP, MLPDecoder, MLPEncoder
+from .rnn import RNNDecoder, RNNEncoder
 from .transformer import (
     IntSequenceTransformerDecoder,
     IntSequenceTransformerEncoder,
@@ -9,10 +9,10 @@ from .transformer import (
 
 __all__ = [
     "MLP",
-    "IntSequenceMLPDecoder",
-    "IntSequenceMLPEncoder",
-    "IntSequenceRNNDecoder",
-    "IntSequenceRNNEncoder",
+    "MLPDecoder",
+    "MLPEncoder",
+    "RNNDecoder",
+    "RNNEncoder",
     "IntSequenceTransformerDecoder",
     "IntSequenceTransformerEncoder",
     "PositionalEncoding",

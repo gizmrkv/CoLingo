@@ -18,7 +18,7 @@ def train(config: Mapping[str, Any]) -> None:
         train_mlp_rnn(config)
     elif target == "reco_signaling_mlp_transformer":
         train_mlp_transformer(config)
-    elif target == "reco_net_signaling_mlp_rnn":
+    elif target == "reco_network_mlp_rnn":
         train_mlp_rnn_net(config)
     else:
         raise ValueError(f"Unknown target: {target}")

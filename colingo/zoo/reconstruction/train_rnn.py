@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from ...module import IntSequenceRNNDecoder, IntSequenceRNNEncoder
+from ...module import RNNDecoder, RNNEncoder
 from .agent import Decoder, Encoder
 from .train import train
 
@@ -37,7 +37,7 @@ class ConfigRNN:
 def train_rnn(config: Mapping[str, Any]) -> None:
     cfg = ConfigRNN(**{k: config[k] for k in ConfigRNN.__dataclass_fields__})
     encoder = Encoder(
-        IntSequenceRNNEncoder(
+        RNNEncoder(
             vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.encoder_embed_dim,
@@ -47,7 +47,7 @@ def train_rnn(config: Mapping[str, Any]) -> None:
         )
     )
     decoder = Decoder(
-        IntSequenceRNNDecoder(
+        RNNDecoder(
             input_dim=cfg.latent_dim,
             max_len=cfg.length,
             vocab_size=cfg.values,

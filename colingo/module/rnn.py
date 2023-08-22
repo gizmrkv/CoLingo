@@ -4,7 +4,7 @@ from torch.distributions import Categorical
 from torchtyping import TensorType
 
 
-class IntSequenceRNNEncoder(nn.Module):
+class RNNEncoder(nn.Module):
     def __init__(
         self,
         vocab_size: int,
@@ -43,7 +43,7 @@ class IntSequenceRNNEncoder(nn.Module):
         return output
 
 
-class IntSequenceRNNDecoder(nn.Module):
+class RNNDecoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
@@ -83,24 +83,24 @@ class IntSequenceRNNDecoder(nn.Module):
         if isinstance(self.rnn, nn.LSTM):
             hidden = (hidden, torch.zeros_like(hidden))
 
-        logits_seq = []
         input = self.sos_embed.repeat(latent.shape[0], 1, 1)
+        symbols_list = []
+        logits_list = []
         for _ in range(self.max_len):
-            logits, hidden = self.rnn(input, hidden)
-            logits = self.pro_linear(logits)
+            logits_step, hidden = self.rnn(input, hidden)
+            logits_step = self.pro_linear(logits_step)
 
             if self.training:
-                distr = Categorical(logits=logits)
+                distr = Categorical(logits=logits_step)
                 output = distr.sample()
             else:
-                output = logits.argmax(dim=-1)
+                output = logits_step.argmax(dim=-1)
 
             input = self.embed(output)
-            logits_seq.append(logits)
 
-        logits = torch.cat(logits_seq, dim=1)
-        if self.training:
-            distr = Categorical(logits=logits)
-            return distr.sample(), logits
-        else:
-            return logits.argmax(dim=-1), logits
+            symbols_list.append(output)
+            logits_list.append(logits_step)
+
+        symbols = torch.cat(symbols_list, dim=1)
+        logits = torch.cat(logits_list, dim=1)
+        return symbols, logits

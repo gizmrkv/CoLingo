@@ -1,10 +1,10 @@
-zoo = "reco_net_signaling_mlp_rnn"
+zoo = "reco_network_mlp_rnn"
 
 n_epochs = 11
 batch_size = 100000
 device = "cuda"
 seed = 42
-wandb_project = "reco_net_signaling"
+wandb_project = "reco_network"
 use_tqdm = true
 
 lr = 0.001

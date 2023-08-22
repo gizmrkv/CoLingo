@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from ...module import IntSequenceMLPDecoder, IntSequenceMLPEncoder
+from ...module import MLPDecoder, MLPEncoder
 from .agent import Decoder, Encoder
 from .train import train
 
@@ -37,7 +37,7 @@ class ConfigMLP:
 def train_mlp(config: Mapping[str, Any]) -> None:
     cfg = ConfigMLP(**{k: config[k] for k in ConfigMLP.__dataclass_fields__})
     encoder = Encoder(
-        IntSequenceMLPEncoder(
+        MLPEncoder(
             max_len=cfg.length,
             vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
@@ -48,7 +48,7 @@ def train_mlp(config: Mapping[str, Any]) -> None:
         )
     )
     decoder = Decoder(
-        IntSequenceMLPDecoder(
+        MLPDecoder(
             input_dim=cfg.latent_dim,
             max_len=cfg.length,
             vocab_size=cfg.values,

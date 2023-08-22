@@ -58,7 +58,7 @@ class MLP(nn.Module):
         return x
 
 
-class IntSequenceMLPEncoder(nn.Module):
+class MLPEncoder(nn.Module):
     def __init__(
         self,
         max_len: int,
@@ -91,7 +91,7 @@ class IntSequenceMLPEncoder(nn.Module):
         return output
 
 
-class IntSequenceMLPDecoder(nn.Module):
+class MLPDecoder(nn.Module):
     def __init__(
         self,
         input_dim: int,

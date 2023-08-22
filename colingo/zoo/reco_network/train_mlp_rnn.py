@@ -3,12 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Set
 
 from ...game import ReconstructionNetworkGame
-from ...module import (
-    IntSequenceMLPDecoder,
-    IntSequenceMLPEncoder,
-    IntSequenceRNNDecoder,
-    IntSequenceRNNEncoder,
-)
+from ...module import MLPDecoder, MLPEncoder, RNNDecoder, RNNEncoder
 from .agent import Agent
 from .train import train
 
@@ -69,7 +64,7 @@ class ConfigMLPRNN:
 def train_mlp_rnn(config: Mapping[str, Any]) -> None:
     cfg = ConfigMLPRNN(**{k: config[k] for k in ConfigMLPRNN.__dataclass_fields__})
 
-    object_encoder = IntSequenceMLPEncoder(
+    object_encoder = MLPEncoder(
         max_len=cfg.object_length,
         vocab_size=cfg.object_values,
         output_dim=cfg.latent_dim,
@@ -78,7 +73,7 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         n_layers=cfg.object_encoder_n_layers,
         activation=cfg.object_encoder_activation,
     )
-    object_decoder = IntSequenceMLPDecoder(
+    object_decoder = MLPDecoder(
         input_dim=cfg.latent_dim,
         max_len=cfg.object_length,
         vocab_size=cfg.object_values,
@@ -86,7 +81,7 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         n_layers=cfg.object_decoder_n_layers,
         activation=cfg.object_decoder_activation,
     )
-    message_encoder = IntSequenceRNNEncoder(
+    message_encoder = RNNEncoder(
         vocab_size=cfg.message_vocab_size,
         output_dim=cfg.latent_dim,
         embed_dim=cfg.message_encoder_embed_dim,
@@ -94,7 +89,7 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
         rnn_type=cfg.message_encoder_rnn_type,
         n_layers=cfg.message_encoder_n_layers,
     )
-    message_decoder = IntSequenceRNNDecoder(
+    message_decoder = RNNDecoder(
         input_dim=cfg.latent_dim,
         max_len=cfg.message_max_len,
         vocab_size=cfg.message_vocab_size,
