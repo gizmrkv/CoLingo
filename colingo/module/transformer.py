@@ -2,70 +2,9 @@ import math
 
 import torch
 import torch.nn as nn
+from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
-
-
-class TransformerEncoder(nn.Module):
-    """
-    Implementation of a Transformer encoder.
-
-    Args:
-        input_dim (int): Dimension of the input data.
-        n_heads (int): Number of attention heads.
-        ff_dim (int, optional): Dimension of the feed-forward network. Defaults to 2048.
-        dropout (float, optional): Dropout rate. Defaults to 0.1.
-        activation (str, optional): Activation function for feed-forward network. Defaults to "relu".
-        layer_norm_eps (float, optional): Epsilon value for layer normalization. Defaults to 1e-5.
-        norm_first (bool, optional): Apply layer normalization before attention in encoder layers. Defaults to False.
-        n_layers (int, optional): Number of encoder layers. Defaults to 6.
-        max_len (int, optional): Maximum positional encoding length. Defaults to 5000.
-    """
-
-    def __init__(
-        self,
-        input_dim: int,
-        n_heads: int,
-        ff_dim: int = 2048,
-        dropout: float = 0.1,
-        activation: str = "relu",
-        layer_norm_eps: float = 1e-5,
-        norm_first: bool = False,
-        n_layers: int = 6,
-    ) -> None:
-        super().__init__()
-        self.input_dim = input_dim
-        self.n_heads = n_heads
-        self.ff_dim = ff_dim
-        self.dropout = dropout
-        self.activation = activation
-        self.layer_norm_eps = layer_norm_eps
-        self.norm_first = norm_first
-        self.n_layers = n_layers
-
-        self.pos_encoder = PositionalEncoding(input_dim, dropout)
-        activations = {
-            "relu": nn.ReLU,
-            "elu": nn.ELU,
-            "gelu": nn.GELU,
-        }
-        layer = nn.TransformerEncoderLayer(
-            d_model=input_dim,
-            nhead=n_heads,
-            dim_feedforward=ff_dim,
-            dropout=dropout,
-            activation=activations[activation](),
-            layer_norm_eps=layer_norm_eps,
-            norm_first=norm_first,
-            batch_first=True,
-        )
-        self.encoder = nn.TransformerEncoder(layer, num_layers=n_layers)
-
-    def forward(
-        self, x: TensorType[..., "input_dim", float]
-    ) -> TensorType[..., "input_dim", float]:
-        x = self.pos_encoder(x)
-        return self.encoder(x)
 
 
 class PositionalEncoding(nn.Module):
@@ -100,19 +39,20 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-class IntSequenceTransformerEncoder(nn.Module):
+class TransformerEncoder(nn.Module):
     def __init__(
         self,
         vocab_size: int,
         output_dim: int,
         embed_dim: int,
-        n_heads: int,
+        n_heads: int = 1,
         ff_dim: int = 2048,
         dropout: float = 0.1,
         activation: str = "relu",
         layer_norm_eps: float = 1e-5,
         norm_first: bool = False,
         n_layers: int = 6,
+        is_causal: bool = False,
     ) -> None:
         super().__init__()
         self.vocab_size = vocab_size
@@ -125,43 +65,50 @@ class IntSequenceTransformerEncoder(nn.Module):
         self.layer_norm_eps = layer_norm_eps
         self.norm_first = norm_first
         self.n_layers = n_layers
+        self.is_causal = is_causal
+
         self.embed = nn.Embedding(vocab_size, embed_dim)
-        self.encoder = TransformerEncoder(
-            input_dim=embed_dim,
-            n_heads=n_heads,
-            ff_dim=ff_dim,
+        self.pos_encoder = PositionalEncoding(embed_dim, dropout)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=n_heads,
+            dim_feedforward=ff_dim,
             dropout=dropout,
             activation=activation,
             layer_norm_eps=layer_norm_eps,
             norm_first=norm_first,
-            n_layers=n_layers,
+            batch_first=True,
         )
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
         self.linear = nn.Linear(embed_dim, output_dim)
 
     def forward(
         self, input: TensorType[..., int]
-    ) -> TensorType[..., "embed_dim", float]:
-        embed = self.embed(input)
-        output = self.encoder(embed)
-        output = self.linear(output.sum(dim=1))
+    ) -> TensorType[..., "output_dim", float]:
+        embed = self.embed(input) * math.sqrt(self.embed_dim)
+        embed = self.pos_encoder(embed)
+        output = self.encoder(embed, is_causal=self.is_causal)
+        # As the input to the agent, we take the embedding for the first symbol
+        # which is always the special <sos> one.
+        output = self.linear(output[:, 0, :])
         return output
 
 
-class IntSequenceTransformerDecoder(nn.Module):
+class TransformerDecoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
         max_len: int,
         vocab_size: int,
         embed_dim: int,
-        n_heads: int,
+        n_heads: int = 1,
         ff_dim: int = 2048,
         dropout: float = 0.1,
         activation: str = "relu",
         layer_norm_eps: float = 1e-5,
         norm_first: bool = False,
         n_layers: int = 6,
-    ) -> None:
+    ):
         super().__init__()
         self.input_dim = input_dim
         self.max_len = max_len
@@ -175,28 +122,54 @@ class IntSequenceTransformerDecoder(nn.Module):
         self.norm_first = norm_first
         self.n_layers = n_layers
 
-        self.pre_linear = nn.Linear(input_dim, max_len * embed_dim)
-        self.pro_linear = nn.Linear(embed_dim, vocab_size)
-        self.encoder = TransformerEncoder(
-            input_dim=embed_dim,
-            n_heads=n_heads,
-            ff_dim=ff_dim,
+        self.embed = nn.Embedding(vocab_size, embed_dim)
+        self.pos_encoder = PositionalEncoding(embed_dim, dropout)
+        self.proj1 = nn.Linear(input_dim, embed_dim)
+        self.proj2 = nn.Linear(embed_dim, vocab_size)
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=embed_dim,
+            nhead=n_heads,
+            dim_feedforward=ff_dim,
             dropout=dropout,
             activation=activation,
             layer_norm_eps=layer_norm_eps,
             norm_first=norm_first,
-            n_layers=n_layers,
+            batch_first=True,
         )
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=n_layers)
+        self.sos_embed = nn.Parameter(torch.randn(embed_dim))
+
+    def decode_standard(
+        self,
+        latent: TensorType[..., "input_dim", float],
+    ) -> TensorType[..., "max_len", "vocab_size", float]:
+        memory = self.proj1(latent)
+        memory = memory.unsqueeze(1)
+        input = self.sos_embed.repeat(latent.shape[0], 1, 1)
+        symbols_list = []
+        logits_list = []
+        for _ in range(self.max_len):
+            logits_step = self.decoder(self.pos_encoder(input), memory)
+            logits_step = self.proj2(logits_step[:, -1, :])
+
+            if self.training:
+                distr = Categorical(logits=logits_step)
+                output = distr.sample()
+            else:
+                output = logits_step.argmax(dim=-1)
+
+            embed = self.embed(output) * math.sqrt(self.embed_dim)
+            input = torch.cat([input, embed.unsqueeze(1)], dim=1)
+
+            symbols_list.append(output)
+            logits_list.append(logits_step)
+
+        symbols = torch.stack(symbols_list, dim=1)
+        logits = torch.stack(logits_list, dim=1)
+        return symbols, logits
 
     def forward(
-        self, latent: TensorType[..., "input_dim", float]
+        self,
+        latent: TensorType[..., "input_dim", float],
     ) -> TensorType[..., "max_len", "vocab_size", float]:
-        embed = self.pre_linear(latent)
-        embed = embed.view(-1, self.max_len, self.embed_dim)
-        output = self.encoder(embed)
-        logits = self.pro_linear(output)
-        if self.training:
-            distr = Categorical(logits=logits)
-            return distr.sample(), logits
-        else:
-            return logits.argmax(dim=-1), logits
+        return self.decode_standard(latent)

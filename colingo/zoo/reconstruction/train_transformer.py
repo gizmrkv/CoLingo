@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from ...module import IntSequenceTransformerDecoder, IntSequenceTransformerEncoder
+from ...module import TransformerDecoder, TransformerEncoder
 from .agent import Decoder, Encoder
 from .train import train
 
@@ -32,6 +32,7 @@ class ConfigTransformer:
     encoder_layer_norm_eps: float
     encoder_norm_first: bool
     encoder_n_layers: int
+    encoder_is_causal: bool
     decoder_embed_dim: int
     decoder_n_heads: int
     decoder_ff_dim: int
@@ -47,7 +48,7 @@ def train_transformer(config: Mapping[str, Any]) -> None:
         **{k: config[k] for k in ConfigTransformer.__dataclass_fields__}
     )
     encoder = Encoder(
-        IntSequenceTransformerEncoder(
+        TransformerEncoder(
             vocab_size=cfg.values,
             output_dim=cfg.latent_dim,
             embed_dim=cfg.encoder_embed_dim,
@@ -61,7 +62,7 @@ def train_transformer(config: Mapping[str, Any]) -> None:
         )
     )
     decoder = Decoder(
-        IntSequenceTransformerDecoder(
+        TransformerDecoder(
             input_dim=cfg.latent_dim,
             max_len=cfg.length,
             vocab_size=cfg.values,

@@ -64,8 +64,8 @@ class RNNDecoder(nn.Module):
         self.n_layers = n_layers
 
         self.embed = nn.Embedding(vocab_size, embed_dim)
-        self.pre_linear = nn.Linear(input_dim, hidden_dim)
-        self.pro_linear = nn.Linear(hidden_dim, vocab_size)
+        self.proj1 = nn.Linear(input_dim, hidden_dim)
+        self.proj2 = nn.Linear(hidden_dim, vocab_size)
 
         self.rnn = {"rnn": nn.RNN, "lstm": nn.LSTM, "gru": nn.GRU}[rnn_type.lower()](
             embed_dim, hidden_dim, n_layers, batch_first=True
@@ -78,7 +78,7 @@ class RNNDecoder(nn.Module):
         latent: TensorType[..., "input_dim", float],
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         # Adjust the dimension of the input, put it in hidden, and duplicate it
-        hidden = self.pre_linear(latent)
+        hidden = self.proj1(latent)
         hidden = hidden.repeat(self.n_layers, 1, 1)
         if isinstance(self.rnn, nn.LSTM):
             hidden = (hidden, torch.zeros_like(hidden))
@@ -88,7 +88,7 @@ class RNNDecoder(nn.Module):
         logits_list = []
         for _ in range(self.max_len):
             logits_step, hidden = self.rnn(input, hidden)
-            logits_step = self.pro_linear(logits_step)
+            logits_step = self.proj2(logits_step)
 
             if self.training:
                 distr = Categorical(logits=logits_step)

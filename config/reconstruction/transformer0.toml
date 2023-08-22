@@ -22,6 +22,7 @@ encoder_activation = "gelu"
 encoder_layer_norm_eps = 1e-5
 encoder_norm_first = false
 encoder_n_layers = 1
+encoder_is_causal = false
 decoder_embed_dim = 64
 decoder_n_heads = 1
 decoder_ff_dim = 128
