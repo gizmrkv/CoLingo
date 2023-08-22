@@ -5,9 +5,9 @@ CoLingo is a framework for studying language emergence in multi-agent environmen
 
 ## List of implemented games
 List of example and tutorial games
- * `colingo/zoo/int_sequence_reconstruction`: Int Sequence Reconstruction;
- * `colingo/zoo/int_sequence_reco_signaling`: Int Sequence Reconstruction with Signaling
- * `colingo/zoo/int_sequence_reco_net_signaling`: Int Sequence Reconstruction with Signaling and Network
+ * `colingo/zoo/reconstruction`: Int Sequence Reconstruction;
+ * `colingo/zoo/reco_signaling`: Int Sequence Reconstruction with Signaling
+ * `colingo/zoo/reco_net_signaling`: Int Sequence Reconstruction with Signaling and Network
 
 ## Installing
 ```

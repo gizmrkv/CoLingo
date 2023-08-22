@@ -1,10 +1,10 @@
-zoo = "int_sequence_reco_signaling_mlp_transformer"
+zoo = "reco_signaling_mlp_transformer"
 
 n_epochs = 2001
 batch_size = 100000
 device = "cuda"
 seed = 42
-wandb_project = "int_sequence_reco_signaling"
+wandb_project = "reco_signaling"
 use_tqdm = true
 
 lr = 0.001

@@ -1,10 +1,10 @@
-zoo = "int_sequence_reco_net_signaling_mlp_rnn"
+zoo = "reco_signaling_mlp_rnn"
 
-n_epochs = 11
+n_epochs = 2001
 batch_size = 100000
 device = "cuda"
 seed = 42
-wandb_project = "int_sequence_reco_net_signaling"
+wandb_project = "reco_signaling"
 use_tqdm = true
 
 lr = 0.001
@@ -19,30 +19,24 @@ length_weight = 0.0
 metrics_interval = 10
 topsim_interval = 100
 language_log_interval = 100
-acc_heatmap_interval = 100
-lansim_interval = 100
 
-decoder_ae = true
-
-n_agents = 6
-network_type = "oneway"
 latent_dim = 64
 
 object_encoder_embed_dim = 8
-object_encoder_hidden_dim = 150
+object_encoder_hidden_dim = 64
 object_encoder_n_layers = 2
 object_encoder_activation = "gelu"
 
-message_decoder_hidden_dim = 150
+message_decoder_hidden_dim = 128
 message_decoder_embed_dim = 8
 message_decoder_rnn_type = "gru"
 message_decoder_n_layers = 2
 
-message_encoder_hidden_dim = 150
+message_encoder_hidden_dim = 128
 message_encoder_embed_dim = 8
 message_encoder_rnn_type = "gru"
 message_encoder_n_layers = 2
 
-object_decoder_hidden_dim = 150
+object_decoder_hidden_dim = 64
 object_decoder_n_layers = 2
 object_decoder_activation = "gelu"
