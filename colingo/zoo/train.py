@@ -1,6 +1,6 @@
 from typing import Any, Mapping
 
-from .reco_net_signaling import train_mlp_rnn as train_mlp_rnn_net
+from .reco_network import train_mlp_rnn as train_mlp_rnn_net
 from .reco_signaling import train_mlp_rnn, train_mlp_transformer
 from .reconstruction import train_mlp, train_rnn, train_transformer
 
