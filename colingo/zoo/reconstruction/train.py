@@ -47,7 +47,12 @@ class Config:
     seed: int | None = None
 
 
-def train(encoder: Encoder, decoder: Decoder, config: Mapping[str, Any]) -> None:
+def train(
+    encoder: Encoder,
+    decoder: Decoder,
+    config: Mapping[str, Any],
+    log_dir: str | None = None,
+) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
 
     if cfg.device == "cuda" and not torch.cuda.is_available():

@@ -9,25 +9,25 @@ use_tqdm = true
 
 lr = 0.001
 length = 2
-values = 50
+values = 40
 
 metrics_interval = 5
 
 latent_dim = 64
 encoder_embed_dim = 64
-encoder_n_heads = 1
+encoder_n_heads = 4
 encoder_ff_dim = 128
 encoder_dropout = 0.0
 encoder_activation = "gelu"
 encoder_layer_norm_eps = 1e-5
 encoder_norm_first = false
-encoder_n_layers = 1
+encoder_n_layers = 2
 encoder_is_causal = false
 decoder_embed_dim = 64
-decoder_n_heads = 1
+decoder_n_heads = 4
 decoder_ff_dim = 128
 decoder_dropout = 0.0
 decoder_activation = "gelu"
 decoder_layer_norm_eps = 1e-5
 decoder_norm_first = false
-decoder_n_layers = 1
+decoder_n_layers = 2

@@ -81,11 +81,14 @@ class TransformerEncoder(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
         self.linear = nn.Linear(embed_dim, output_dim)
+        self.sos_embed = nn.Parameter(torch.randn(embed_dim))
 
     def forward(
         self, input: TensorType[..., int]
     ) -> TensorType[..., "output_dim", float]:
-        embed = self.embed(input) * math.sqrt(self.embed_dim)
+        embed = self.embed(input)
+        embed = torch.cat([self.sos_embed.expand(embed.shape[0], 1, -1), embed], dim=1)
+        embed = embed * math.sqrt(self.embed_dim)
         embed = self.pos_encoder(embed)
         output = self.encoder(embed, is_causal=self.is_causal)
         # As the input to the agent, we take the embedding for the first symbol
@@ -145,7 +148,7 @@ class TransformerDecoder(nn.Module):
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         memory = self.proj1(latent)
         memory = memory.unsqueeze(1)
-        input = self.sos_embed.repeat(latent.shape[0], 1, 1)
+        input = self.sos_embed.expand(latent.shape[0], 1, -1)
         symbols_list = []
         logits_list = []
         for _ in range(self.max_len):
