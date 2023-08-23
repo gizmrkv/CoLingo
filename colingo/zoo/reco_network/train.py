@@ -245,5 +245,5 @@ def train(
     if game_editor is not None:
         runner_callbacks = [game_editor] + runner_callbacks
     # runner_callbacks = [Timer(runner_callbacks)]
-    runner = Runner(runner_callbacks)
+    runner = Runner(runner_callbacks, use_tqdm=cfg.use_tqdm)
     runner.run(cfg.n_epochs)

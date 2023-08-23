@@ -154,5 +154,5 @@ def train(
         duplicate_checker,
     ]
     # runner_callbacks = [Timer(runner_callbacks)]
-    runner = Runner(runner_callbacks, stopper=early_stopper)
+    runner = Runner(runner_callbacks, stopper=early_stopper, use_tqdm=cfg.use_tqdm)
     runner.run(cfg.n_epochs)
