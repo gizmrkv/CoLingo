@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, Dict, Iterable
 
 import numpy as np
@@ -106,7 +107,7 @@ class TopographicSimilarityMetrics:
 
 
 class LanguageLogger:
-    def __init__(self, save_dir: str) -> None:
+    def __init__(self, save_dir: Path) -> None:
         self.logger = IntSequenceLanguageLogger(save_dir)
 
     def __call__(

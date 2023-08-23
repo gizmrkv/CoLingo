@@ -4,13 +4,15 @@ import os
 import uuid
 from dataclasses import dataclass
 from itertools import product
+from pathlib import Path
 from typing import Any, Dict, Mapping, Set
 
 import torch
 import torch.optim as optim
-import wandb
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
+
+import wandb
 
 from ...core import Evaluator, Runner, RunnerCallback, Trainer
 from ...game import ReconstructionNetworkGame
@@ -62,8 +64,6 @@ class Config:
 
     decoder_ae: bool
 
-    seed: int | None = None
-
 
 def train(
     agents: Mapping[str, Agent],
@@ -74,22 +74,10 @@ def train(
         TensorType[..., float],
     ],
     config: Mapping[str, Any],
+    log_dir: Path,
     game_editor: RunnerCallback | None = None,
 ) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
-
-    now = datetime.datetime.now()
-    run_id = str(uuid.uuid4())[-4:]
-    run_name = f"{now.date()}_{now.strftime('%H%M%S')}_{run_id}"
-    log_dir = f"log/{run_name}_{cfg.zoo}"
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    with open(f"{log_dir}/config.json", "w") as f:
-        json.dump(config, f, indent=4)
-
-    if cfg.seed is not None:
-        fix_seed(cfg.seed)
 
     optimizers = {
         name: optim.Adam(agent.parameters(), lr=cfg.lr)
@@ -137,7 +125,7 @@ def train(
         optimizers=optimizers.values(),
     )
 
-    wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
+    wandb_logger = WandbLogger(project=cfg.wandb_project)
     duplicate_checker = DuplicateChecker()
 
     adj_comp: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
@@ -162,8 +150,8 @@ def train(
         def __init__(self, name: str) -> None:
             self.name = name
 
-        def __call__(self, path: str) -> None:
-            wandb_logger({f"{self.name}": wandb.Video(path)})
+        def __call__(self, path: Path) -> None:
+            wandb_logger({f"{self.name}": wandb.Video(path.as_posix())})
 
     evaluators = []
     heatmap_loggers = []
@@ -179,14 +167,14 @@ def train(
         )
 
         acc_comp_heatmap = HeatmapLogger(
-            save_dir=os.path.join(log_dir, f"{name}_acc_comp"),
+            save_dir=log_dir.joinpath(f"{name}_acc_comp"),
             heatmap_option=heatmap_option,
             callbacks=[
                 WandbHeatmapLogger(f"{name}.acc_comp"),
             ],
         )
         acc_part_heatmap = HeatmapLogger(
-            save_dir=os.path.join(log_dir, f"{name}_acc_part"),
+            save_dir=log_dir.joinpath(f"{name}_acc_part"),
             heatmap_option=heatmap_option,
             callbacks=[
                 WandbHeatmapLogger(f"{name}.acc_part"),
@@ -199,7 +187,7 @@ def train(
         heatmap_loggers.extend([acc_comp_heatmap, acc_part_heatmap])
 
         lansim_heatmap = HeatmapLogger(
-            save_dir=os.path.join(log_dir, f"{name}_lansim"),
+            save_dir=log_dir.joinpath(f"{name}_lansim"),
             heatmap_option=heatmap_option,
             callbacks=[
                 WandbHeatmapLogger(f"{name}.lansim"),
@@ -235,7 +223,7 @@ def train(
         TensorType[..., float],
     ] = ReconstructionNetworkGame(agents, adj_none)
 
-    language_logger = LanguageLogger(os.path.join(log_dir, "lang"), agents)
+    language_logger = LanguageLogger(log_dir.joinpath("lang"), agents)
     evaluators.append(
         Evaluator(
             agents=agents.values(),

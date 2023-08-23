@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
 from ...module import MLPDecoder, MLPEncoder, TransformerDecoder, TransformerEncoder
@@ -13,7 +14,6 @@ class ConfigMLPTransformer:
     n_epochs: int
     batch_size: int
     device: str
-    seed: int
     wandb_project: str
     use_tqdm: bool
 
@@ -61,7 +61,7 @@ class ConfigMLPTransformer:
     object_decoder_activation: str
 
 
-def train_mlp_transformer(config: Mapping[str, Any]) -> None:
+def train_mlp_transformer(config: Mapping[str, Any], log_dir: Path) -> None:
     cfg = ConfigMLPTransformer(
         **{k: config[k] for k in ConfigMLPTransformer.__dataclass_fields__}
     )
@@ -112,4 +112,4 @@ def train_mlp_transformer(config: Mapping[str, Any]) -> None:
             activation=cfg.object_decoder_activation,
         ),
     )
-    train(encoder, decoder, cfg.__dict__)
+    train(encoder, decoder, cfg.__dict__, log_dir)

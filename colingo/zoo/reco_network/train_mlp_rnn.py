@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Mapping, Set
 
 from ...game import ReconstructionNetworkGame
@@ -15,7 +16,6 @@ class ConfigMLPRNN:
     n_epochs: int
     batch_size: int
     device: str
-    seed: int
     wandb_project: str
     use_tqdm: bool
 
@@ -61,7 +61,7 @@ class ConfigMLPRNN:
     message_decoder_n_layers: int
 
 
-def train_mlp_rnn(config: Mapping[str, Any]) -> None:
+def train_mlp_rnn(config: Mapping[str, Any], log_dir: Path) -> None:
     cfg = ConfigMLPRNN(**{k: config[k] for k in ConfigMLPRNN.__dataclass_fields__})
 
     object_encoder = MLPEncoder(
@@ -127,4 +127,4 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
 
     game = ReconstructionNetworkGame(agents, adj)
 
-    train(agents, game, cfg.__dict__)
+    train(agents, game, cfg.__dict__, log_dir)

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from statistics import fmean
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple
 
@@ -107,9 +108,9 @@ class TopographicSimilarityMetrics:
 
 
 class LanguageLogger:
-    def __init__(self, save_dir: str, agent_names: Iterable[str]) -> None:
+    def __init__(self, save_dir: Path, agent_names: Iterable[str]) -> None:
         self.loggers = {
-            name: IntSequenceLanguageLogger(os.path.join(save_dir, name))
+            name: IntSequenceLanguageLogger(save_dir.joinpath(name))
             for name in agent_names
         }
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
 from ...module import MLPDecoder, MLPEncoder, RNNDecoder, RNNEncoder
@@ -13,7 +14,6 @@ class ConfigMLPRNN:
     n_epochs: int
     batch_size: int
     device: str
-    seed: int
     wandb_project: str
     use_tqdm: bool
 
@@ -52,7 +52,7 @@ class ConfigMLPRNN:
     object_decoder_activation: str
 
 
-def train_mlp_rnn(config: Mapping[str, Any]) -> None:
+def train_mlp_rnn(config: Mapping[str, Any], log_dir: Path) -> None:
     cfg = ConfigMLPRNN(**{k: config[k] for k in ConfigMLPRNN.__dataclass_fields__})
 
     encoder = Encoder(
@@ -93,4 +93,4 @@ def train_mlp_rnn(config: Mapping[str, Any]) -> None:
             activation=cfg.object_decoder_activation,
         ),
     )
-    train(encoder, decoder, cfg.__dict__)
+    train(encoder, decoder, cfg.__dict__, log_dir)

@@ -13,7 +13,6 @@ class ConfigRNN:
     n_epochs: int
     batch_size: int
     device: str
-    seed: int
     wandb_project: str
     use_tqdm: bool
 

@@ -44,33 +44,13 @@ class Config:
 
     metrics_interval: int
 
-    seed: int | None = None
-
 
 def train(
     encoder: Encoder,
     decoder: Decoder,
     config: Mapping[str, Any],
-    log_dir: str | None = None,
 ) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
-
-    if cfg.device == "cuda" and not torch.cuda.is_available():
-        print("CUDA is not available. Use CPU instead.")
-        cfg.device = "cpu"
-
-    now = datetime.datetime.now()
-    run_id = str(uuid.uuid4())[-4:]
-    run_name = f"{now.date()}_{now.strftime('%H%M%S')}_{run_id}"
-    log_dir = f"log/{run_name}_{cfg.zoo}"
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    with open(f"{log_dir}/config.json", "w") as f:
-        json.dump(config, f, indent=4)
-
-    if cfg.seed is not None:
-        fix_seed(cfg.seed)
 
     models: List[nn.Module] = [encoder, decoder]
     optimizers = [optim.Adam(model.parameters(), lr=cfg.lr) for model in models]
@@ -99,7 +79,7 @@ def train(
         optimizers=optimizers,
     )
 
-    wandb_logger = WandbLogger(project=cfg.wandb_project, name=run_name)
+    wandb_logger = WandbLogger(project=cfg.wandb_project)
     duplicate_checker = DuplicateChecker()
     early_stopper = MetricsEarlyStopper(
         lambda metrics: metrics["test.acc_comp"] > 0.99

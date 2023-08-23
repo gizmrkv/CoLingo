@@ -1,6 +1,7 @@
 import os
 import shutil
 from glob import glob
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Mapping
 
 import matplotlib
@@ -62,10 +63,10 @@ class HeatmapLogger(RunnerCallback):
 
     def __init__(
         self,
-        save_dir: str,
+        save_dir: Path,
         cleanup: bool = False,
         heatmap_option: Mapping[str, Any] | None = None,
-        callbacks: Iterable[Callable[[str], None]] | None = None,
+        callbacks: Iterable[Callable[[Path], None]] | None = None,
     ) -> None:
         """
         Initialize the HeatmapLogger.
@@ -82,7 +83,7 @@ class HeatmapLogger(RunnerCallback):
         self.heatmap_option = heatmap_option or {}
         self.callbacks = callbacks or []
 
-        os.makedirs(self.save_dir, exist_ok=True)
+        save_dir.mkdir(parents=True, exist_ok=True)
 
     def __call__(self, step: int, data: NDArray[np.float32]) -> None:
         """
@@ -95,18 +96,19 @@ class HeatmapLogger(RunnerCallback):
 
         sns.heatmap(data, **self.heatmap_option)
         plt.title(f"step: {step}")
-        plt.savefig(f"{self.save_dir}/{step:0>8}.png")
+        plt.savefig(self.save_dir.joinpath(f"{step:0>8}.png"))
         plt.clf()
 
     def on_end(self) -> None:
         # Generates a video from the saved heatmap frames.
-        frames = sorted(glob(f"{self.save_dir}/*.png"))
-        name = f"{self.save_dir}/video.mp4"
+        pngs = self.save_dir.glob("*.png")
+        frames = sorted([p.as_posix() for p in pngs])
+        path = self.save_dir.joinpath("video.mp4").as_posix()
         clip = ImageSequenceClip(frames, fps=10)
-        clip.write_videofile(name)
+        clip.write_videofile(path)
 
         for callback in self.callbacks:
-            callback(name)
+            callback(Path(path))
 
         if self.cleanup:
             # Delete the frames
@@ -118,16 +120,16 @@ class IntSequenceLanguageLogger:
     Callback to log integer sequences and corresponding language messages.
     """
 
-    def __init__(self, save_dir: str) -> None:
+    def __init__(self, save_dir: Path) -> None:
         """
         Initialize the IntSequenceLanguageLogger.
 
         Args:
-            save_dir (str): Directory to save log files.
+            save_dir (Path): Directory to save log files.
         """
 
         self.save_dir = save_dir
-        os.makedirs(f"{self.save_dir}", exist_ok=True)
+        save_dir.mkdir(parents=True, exist_ok=True)
 
     def __call__(
         self, step: int, sequence: TensorType[..., int], message: TensorType[..., int]
@@ -152,5 +154,5 @@ class IntSequenceLanguageLogger:
 
         lang = "".join(lines)
 
-        with open(f"{self.save_dir}/{step}.txt", "w") as f:
+        with self.save_dir.joinpath(f"{step}.txt").open("w") as f:
             f.write(lang)
