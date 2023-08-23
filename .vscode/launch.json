@@ -13,7 +13,8 @@
             "justMyCode": true,
             "args": [
                 "-p",
-                "config/reco_network"
+                "config/reconstruction/sweep/transformer_bayes0.toml",
+                "-s"
             ]
         }
     ]
