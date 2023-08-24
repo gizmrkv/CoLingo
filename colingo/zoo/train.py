@@ -24,8 +24,6 @@ def train(config: Mapping[str, Any]) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     with log_dir.joinpath("config.json").open("w") as f:
-        print(type(config))
-        print(config)
         json.dump({k: v for k, v in config.items()}, f, indent=4)
 
     if seed is not None:

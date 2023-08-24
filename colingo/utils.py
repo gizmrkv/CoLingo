@@ -159,6 +159,21 @@ class StepCounter(RunnerCallback):
             callback({self.name: step})
 
 
+class Stopwatch(RunnerCallback):
+    def __init__(
+        self, name: str, callbacks: Iterable[Callable[[Dict[str, float]], None]]
+    ) -> None:
+        super().__init__()
+        self.name = name
+        self.callbacks = callbacks
+        self.start_time = time.time()
+
+    def on_update(self, step: int) -> None:
+        elapsed_time = time.time() - self.start_time
+        for callback in self.callbacks:
+            callback({self.name: elapsed_time})
+
+
 class Timer(RunnerCallback):
     """
     Callback to measure execution time of other callbacks.
