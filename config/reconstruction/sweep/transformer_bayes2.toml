@@ -1,0 +1,96 @@
+method = "bayes"
+name = "reconstruction_transformer_bayes"
+project = "reconstruction"
+
+[metric]
+name = "step"
+goal = "minimize"
+
+[parameters.zoo]
+value = "reconstruction_transformer"
+
+[parameters.n_epochs]
+value = 1001
+
+[parameters.batch_size]
+value = 100000
+
+[parameters.device]
+value = "cuda"
+
+# [parameters.seed]
+# value = 42
+
+[parameters.wandb_project]
+value = "reconstruction"
+
+[parameters.use_tqdm]
+value = false
+
+[parameters.lr]
+value = 0.001
+
+[parameters.length]
+value = 2
+
+[parameters.values]
+value = 50
+
+[parameters.metrics_interval]
+value = 5
+
+[parameters.latent_dim]
+value = 128
+
+[parameters.encoder_embed_dim]
+value = 64
+
+[parameters.encoder_n_heads]
+value = 4
+
+[parameters.encoder_ff_dim]
+value = 128
+
+[parameters.encoder_dropout]
+value = 0.01
+
+[parameters.encoder_activation]
+values = ["relu", "gelu"]
+
+[parameters.encoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.encoder_norm_first]
+values = [false, true]
+
+[parameters.encoder_n_layers]
+min = 1
+max = 6
+
+[parameters.encoder_is_causal]
+values = [false, true]
+
+[parameters.decoder_embed_dim]
+value = 64
+
+[parameters.decoder_n_heads]
+value = 4
+
+[parameters.decoder_ff_dim]
+value = 128
+
+[parameters.decoder_dropout]
+value = 0.01
+
+[parameters.decoder_activation]
+values = ["relu", "gelu"]
+
+[parameters.decoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.decoder_norm_first]
+values = [false, true]
+
+[parameters.decoder_n_layers]
+min = 1
+max = 6

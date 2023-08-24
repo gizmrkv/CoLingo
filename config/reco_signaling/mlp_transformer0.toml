@@ -20,7 +20,7 @@ metrics_interval = 10
 topsim_interval = 100
 language_log_interval = 100
 
-latent_dim = 64
+latent_dim = 128
 
 object_encoder_embed_dim = 8
 object_encoder_hidden_dim = 64
@@ -28,22 +28,22 @@ object_encoder_n_layers = 2
 object_encoder_activation = "gelu"
 
 message_decoder_embed_dim = 64
-message_decoder_n_heads = 1
-message_decoder_ff_dim = 128
-message_decoder_dropout = 0.0
+message_decoder_n_heads = 8
+message_decoder_ff_dim = 64
+message_decoder_dropout = 0.01
 message_decoder_activation = "gelu"
 message_decoder_layer_norm_eps = 1e-5
 message_decoder_norm_first = false
-message_decoder_n_layers = 1
+message_decoder_n_layers = 2
 
 message_encoder_embed_dim = 64
-message_encoder_n_heads = 1
-message_encoder_ff_dim = 128
-message_encoder_dropout = 0.0
+message_encoder_n_heads = 8
+message_encoder_ff_dim = 64
+message_encoder_dropout = 0.01
 message_encoder_activation = "gelu"
 message_encoder_layer_norm_eps = 1e-5
 message_encoder_norm_first = false
-message_encoder_n_layers = 1
+message_encoder_n_layers = 2
 message_encoder_is_causal = false
 
 object_decoder_hidden_dim = 64

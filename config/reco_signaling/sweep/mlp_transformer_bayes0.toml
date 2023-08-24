@@ -1,0 +1,133 @@
+method = "bayes"
+name = "reco_signaling_mlp_transformer_bayes"
+project = "reco_signaling"
+
+[metric]
+name = "test.acc_part"
+goal = "maximize"
+
+[parameters.zoo]
+value = "reco_signaling_mlp_transformer"
+
+[parameters.n_epochs]
+value = 2001
+
+[parameters.batch_size]
+value = 100000
+
+[parameters.device]
+value = "cuda"
+
+# [parameters.seed]
+# value = 42
+
+[parameters.wandb_project]
+value = "reco_signaling"
+
+[parameters.use_tqdm]
+value = false
+
+[parameters.lr]
+value = 0.001
+
+[parameters.object_length]
+value = 2
+
+[parameters.object_values]
+value = 50
+
+[parameters.message_max_len]
+value = 8
+
+[parameters.message_vocab_size]
+value = 50
+
+[parameters.entropy_weight]
+value = 0.01
+
+[parameters.length_weight]
+value = 0.0
+
+[parameters.metrics_interval]
+value = 10
+
+[parameters.topsim_interval]
+value = 100
+
+[parameters.language_log_interval]
+value = 100
+
+[parameters.latent_dim]
+values = [32, 64, 128]
+
+[parameters.object_encoder_embed_dim]
+value = 8
+
+[parameters.object_encoder_hidden_dim]
+value = 64
+
+[parameters.object_encoder_n_layers]
+value = 2
+
+[parameters.object_encoder_activation]
+value = "gelu"
+
+[parameters.message_decoder_embed_dim]
+value = 64
+
+[parameters.message_decoder_n_heads]
+values = [1, 2, 4, 8, 16]
+
+[parameters.message_decoder_ff_dim]
+value = 128
+
+[parameters.message_decoder_dropout]
+value = 0.01
+
+[parameters.message_decoder_activation]
+value = "gelu"
+
+[parameters.message_decoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.message_decoder_norm_first]
+values = [false, true]
+
+[parameters.message_decoder_n_layers]
+value = 2
+
+[parameters.message_encoder_embed_dim]
+value = 64
+
+[parameters.message_encoder_n_heads]
+values = [1, 2, 4, 8, 16]
+
+[parameters.message_encoder_ff_dim]
+value = 128
+
+[parameters.message_encoder_dropout]
+value = 0.01
+
+[parameters.message_encoder_activation]
+value = "gelu"
+
+[parameters.message_encoder_layer_norm_eps]
+value = 1e-5
+
+[parameters.message_encoder_norm_first]
+values = [false, true]
+
+[parameters.message_encoder_n_layers]
+value = 2
+
+[parameters.message_encoder_is_causal]
+value = false
+
+[parameters.object_decoder_hidden_dim]
+value = 64
+
+[parameters.object_decoder_n_layers]
+value = 2
+
+[parameters.object_decoder_activation]
+value = "gelu"
