@@ -70,9 +70,12 @@ def train(
     agents: Mapping[str, Agent],
     game: ReconstructionNetworkGame[
         TensorType[..., int],
-        TensorType[..., int],
-        MessageAuxiliary,
         TensorType[..., float],
+        TensorType[..., int],
+        None,
+        TensorType[..., float],
+        None,
+        MessageAuxiliary,
     ],
     config: Mapping[str, Any],
     log_dir: Path,
@@ -130,12 +133,7 @@ def train(
     duplicate_checker = DuplicateChecker()
 
     adj_comp: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
-    game_comp: ReconstructionNetworkGame[
-        TensorType[..., int],
-        TensorType[..., int],
-        MessageAuxiliary,
-        TensorType[..., float],
-    ] = ReconstructionNetworkGame(agents, adj_comp)
+    game_comp = ReconstructionNetworkGame(agents, adj_comp)
 
     heatmap_option = {
         "vmin": 0,
@@ -217,12 +215,7 @@ def train(
         )
 
     adj_none: Dict[str, Set[str]] = {s: set() for s in agents}
-    game_none: ReconstructionNetworkGame[
-        TensorType[..., int],
-        TensorType[..., int],
-        MessageAuxiliary,
-        TensorType[..., float],
-    ] = ReconstructionNetworkGame(agents, adj_none)
+    game_none = ReconstructionNetworkGame(agents, adj_none)
 
     language_logger = LanguageLogger(log_dir.joinpath("lang"), agents)
     evaluators.append(

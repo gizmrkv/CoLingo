@@ -4,13 +4,13 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Set
 
 from ...game import ReconstructionNetworkGame
-from ...module import MLPDecoder, MLPEncoder, RNNDecoder, RNNEncoder
+from ...module import MLPDecoder, MLPEncoder, TransformerDecoder, TransformerEncoder
 from .agent import Agent
 from .train import train
 
 
 @dataclass
-class ConfigMLPRNN:
+class ConfigMLPTransformer:
     zoo: str
 
     n_epochs: int
@@ -50,19 +50,30 @@ class ConfigMLPRNN:
     object_decoder_n_layers: int
     object_decoder_activation: str
 
-    message_encoder_hidden_dim: int
     message_encoder_embed_dim: int
-    message_encoder_rnn_type: str
+    message_encoder_n_heads: int
+    message_encoder_ff_dim: int
+    message_encoder_dropout: float
+    message_encoder_activation: str
+    message_encoder_layer_norm_eps: float
+    message_encoder_norm_first: bool
     message_encoder_n_layers: int
+    message_encoder_is_causal: bool
 
-    message_decoder_hidden_dim: int
     message_decoder_embed_dim: int
-    message_decoder_rnn_type: str
+    message_decoder_n_heads: int
+    message_decoder_ff_dim: int
+    message_decoder_dropout: float
+    message_decoder_activation: str
+    message_decoder_layer_norm_eps: float
+    message_decoder_norm_first: bool
     message_decoder_n_layers: int
 
 
-def train_mlp_rnn(config: Mapping[str, Any], log_dir: Path) -> None:
-    cfg = ConfigMLPRNN(**{k: config[k] for k in ConfigMLPRNN.__dataclass_fields__})
+def train_mlp_transformer(config: Mapping[str, Any], log_dir: Path) -> None:
+    cfg = ConfigMLPTransformer(
+        **{k: config[k] for k in ConfigMLPTransformer.__dataclass_fields__}
+    )
 
     object_encoder = MLPEncoder(
         max_len=cfg.object_length,
@@ -81,21 +92,30 @@ def train_mlp_rnn(config: Mapping[str, Any], log_dir: Path) -> None:
         n_layers=cfg.object_decoder_n_layers,
         activation=cfg.object_decoder_activation,
     )
-    message_encoder = RNNEncoder(
+    message_encoder = TransformerEncoder(
         vocab_size=cfg.message_vocab_size,
         output_dim=cfg.latent_dim,
         embed_dim=cfg.message_encoder_embed_dim,
-        hidden_dim=cfg.message_encoder_hidden_dim,
-        rnn_type=cfg.message_encoder_rnn_type,
+        n_heads=cfg.message_encoder_n_heads,
+        ff_dim=cfg.message_encoder_ff_dim,
+        dropout=cfg.message_encoder_dropout,
+        activation=cfg.message_encoder_activation,
+        layer_norm_eps=cfg.message_encoder_layer_norm_eps,
+        norm_first=cfg.message_encoder_norm_first,
         n_layers=cfg.message_encoder_n_layers,
+        is_causal=cfg.message_encoder_is_causal,
     )
-    message_decoder = RNNDecoder(
+    message_decoder = TransformerDecoder(
         input_dim=cfg.latent_dim,
         max_len=cfg.message_max_len,
         vocab_size=cfg.message_vocab_size,
         embed_dim=cfg.message_decoder_embed_dim,
-        hidden_dim=cfg.message_decoder_hidden_dim,
-        rnn_type=cfg.message_decoder_rnn_type,
+        n_heads=cfg.message_decoder_n_heads,
+        ff_dim=cfg.message_decoder_ff_dim,
+        dropout=cfg.message_decoder_dropout,
+        activation=cfg.message_decoder_activation,
+        layer_norm_eps=cfg.message_decoder_layer_norm_eps,
+        norm_first=cfg.message_decoder_norm_first,
         n_layers=cfg.message_decoder_n_layers,
     )
 

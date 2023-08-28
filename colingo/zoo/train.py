@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from ..utils import fix_seed
 from .reco_network import train_mlp_rnn as train_mlp_rnn_net
+from .reco_network import train_mlp_transformer as train_mlp_transformer_net
 from .reco_signaling import train_mlp_rnn, train_mlp_transformer
 from .reconstruction import train_mlp, train_rnn, train_transformer
 
@@ -41,5 +42,7 @@ def train(config: Mapping[str, Any]) -> None:
         train_mlp_transformer(config, log_dir)
     elif target == "reco_network_mlp_rnn":
         train_mlp_rnn_net(config, log_dir)
+    elif target == "reco_network_mlp_transformer":
+        train_mlp_transformer_net(config, log_dir)
     else:
         raise ValueError(f"Unknown target: {target}")

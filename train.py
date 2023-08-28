@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import toml
-import wandb
 import yaml
 
+import wandb
 from colingo.zoo import train
 
 
@@ -29,7 +29,7 @@ def main() -> None:
         if path is None:
             raise ValueError("Path to sweep file is not specified.")
 
-        p = Path(args.path)
+        p = Path(path)
         if p.is_dir():
             for file in p.glob("*"):
                 print(f"Training {file}")

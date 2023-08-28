@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from ...game import IEncoderDecoder
+from ...game import INetworkAgent
 
 
 @dataclass
@@ -22,11 +22,14 @@ class MessageAuxiliary:
 
 class Agent(
     nn.Module,
-    IEncoderDecoder[
+    INetworkAgent[
         TensorType[..., int],
-        TensorType[..., int],
-        MessageAuxiliary,
         TensorType[..., float],
+        TensorType[..., int],
+        None,
+        TensorType[..., float],
+        None,
+        MessageAuxiliary,
     ],
 ):
     def __init__(
@@ -44,10 +47,30 @@ class Agent(
         self.message_decoder = message_decoder
         self.eos = eos
 
-    def encode(
+    def encode_object(
         self, input: TensorType[..., int]
+    ) -> Tuple[TensorType[..., float], None]:
+        return self.object_encoder(input), None
+
+    def encode_message(
+        self, message: TensorType[..., int]
+    ) -> Tuple[TensorType[..., float], None]:
+        return self.message_encoder(message), None
+
+    def decode_object(
+        self,
+        latent: TensorType[..., float],
+        input: TensorType[..., int] | None = None,
+        message: TensorType[..., int] | None = None,
+    ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
+        return self.object_decoder(latent)
+
+    def decode_message(
+        self,
+        latent: TensorType[..., float],
+        input: TensorType[..., int] | None = None,
+        message: TensorType[..., int] | None = None,
     ) -> Tuple[TensorType[..., int], MessageAuxiliary]:
-        latent = self.object_encoder(input)
         message, logits = self.message_decoder(latent)
 
         distr = Categorical(logits=logits)
@@ -75,10 +98,3 @@ class Agent(
             entropy=entropy,
             length=length,
         )
-
-    def decode(
-        self, latent: TensorType[..., float]
-    ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
-        latent = self.message_encoder(latent)
-        output, aux = self.object_decoder(latent)
-        return output, aux

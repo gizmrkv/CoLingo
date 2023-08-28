@@ -118,7 +118,10 @@ class MLPDecoder(nn.Module):
         )
 
     def forward(
-        self, latent: TensorType[..., "input_dim", float]
+        self,
+        latent: TensorType[..., "input_dim", float],
+        input: TensorType[..., "max_len", int] | None = None,
+        message: TensorType[..., int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         logits = self.mlp(latent)
         logits = logits.view(-1, self.max_len, self.vocab_size)

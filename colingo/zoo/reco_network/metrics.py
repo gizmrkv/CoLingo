@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from torchtyping import TensorType
 
 from ...analysis import language_similarity, topographic_similarity
-from ...game import ReconstructionNetworkSubGameResult
+from ...game import ReconstructionNetworkGameResult, ReconstructionNetworkSubGameResult
 from ...loggers import HeatmapLogger, IntSequenceLanguageLogger
 from .agent import MessageAuxiliary
 from .loss import Loss
@@ -31,14 +31,14 @@ class Metrics:
         step: int,
         input: TensorType[..., int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., int],
-                    TensorType[..., int],
-                    MessageAuxiliary,
-                    TensorType[..., float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., int],
+                TensorType[..., float],
+                TensorType[..., int],
+                None,
+                TensorType[..., float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> None:
@@ -46,7 +46,7 @@ class Metrics:
 
         result = next(iter(outputs))
 
-        for name_e, result_e in result.items():
+        for name_e, result_e in result.subgame_results.items():
             acc_comps, acc_parts = zip(
                 *[
                     acc_comp_part(output_d, result_e.input)
@@ -80,24 +80,24 @@ class TopographicSimilarityMetrics:
         step: int,
         input: TensorType[..., int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., int],
-                    TensorType[..., int],
-                    MessageAuxiliary,
-                    TensorType[..., float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., int],
+                TensorType[..., float],
+                TensorType[..., int],
+                None,
+                TensorType[..., float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> None:
         output = next(iter(outputs))
         metrics: Dict[str, float] = {}
-        for name_e, result_e in output.items():
+        for name, result in output.subgame_results.items():
             metrics |= {
-                f"{self.name}.{name_e}.topsim": topographic_similarity(
-                    result_e.input.cpu().numpy(),
-                    result_e.latent.cpu().numpy(),
+                f"{self.name}.{name}.topsim": topographic_similarity(
+                    result.input.cpu().numpy(),
+                    result.message.cpu().numpy(),
                     y_processor=drop_padding,  # type: ignore
                 )
             }
@@ -119,20 +119,20 @@ class LanguageLogger:
         step: int,
         input: TensorType[..., int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., int],
-                    TensorType[..., int],
-                    MessageAuxiliary,
-                    TensorType[..., float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., int],
+                TensorType[..., float],
+                TensorType[..., int],
+                None,
+                TensorType[..., float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> None:
         output = next(iter(outputs))
-        for name_e, result_e in output.items():
-            self.loggers[name_e](step, result_e.input, result_e.latent)
+        for name, result in output.subgame_results.items():
+            self.loggers[name](step, result.input, result.message)
 
 
 class AccuracyHeatmapLogger:
@@ -149,26 +149,26 @@ class AccuracyHeatmapLogger:
         step: int,
         input: TensorType[..., int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., int],
-                    TensorType[..., int],
-                    MessageAuxiliary,
-                    TensorType[..., float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., int],
+                TensorType[..., float],
+                TensorType[..., int],
+                None,
+                TensorType[..., float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> None:
         output = next(iter(outputs))
-        names = list(output.keys())
+        names = list(output.agents)
         matrix_comp: List[List[float]] = []
         matrix_part: List[List[float]] = []
-        for name_e in names:
+        for name_s in names:
             comps, parts = [], []
-            for name_d in names:
+            for name_r in names:
                 acc_comp, acc_part = acc_comp_part(
-                    output[name_e].outputs[name_d], input
+                    output.subgame_results[name_s].outputs[name_r], input
                 )
                 comps.append(acc_comp)
                 parts.append(acc_part)
@@ -200,23 +200,23 @@ class LanguageSimilarityMetrics:
         step: int,
         input: TensorType[..., int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., int],
-                    TensorType[..., int],
-                    MessageAuxiliary,
-                    TensorType[..., float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., int],
+                TensorType[..., float],
+                TensorType[..., int],
+                None,
+                TensorType[..., float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> None:
         output = next(iter(outputs))
-        names = list(output.keys())
+        names = list(output.agents)
 
         langs = []
         for name in names:
-            langs.append(output[name].latent.cpu().numpy())
+            langs.append(output.subgame_results[name].message.cpu().numpy())
 
         matrix: List[List[float]] = []
         for _ in names:

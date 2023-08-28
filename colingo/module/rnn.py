@@ -76,6 +76,8 @@ class RNNDecoder(nn.Module):
     def forward(
         self,
         latent: TensorType[..., "input_dim", float],
+        input: TensorType[..., int] | None = None,
+        message: TensorType[..., "max_len", int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         # Adjust the dimension of the input, put it in hidden, and duplicate it
         hidden = self.proj1(latent)
@@ -83,24 +85,37 @@ class RNNDecoder(nn.Module):
         if isinstance(self.rnn, nn.LSTM):
             hidden = (hidden, torch.zeros_like(hidden))
 
-        input = self.sos_embed.repeat(latent.shape[0], 1, 1)
-        symbols_list = []
-        logits_list = []
-        for _ in range(self.max_len):
-            logits_step, hidden = self.rnn(input, hidden)
-            logits_step = self.proj2(logits_step)
+        if message is None:
+            input = self.sos_embed.repeat(latent.shape[0], 1, 1)
+            symbols_list = []
+            logits_list = []
+            for _ in range(self.max_len):
+                logits_step, hidden = self.rnn(input, hidden)
+                logits_step = self.proj2(logits_step)
+
+                if self.training:
+                    distr = Categorical(logits=logits_step)
+                    output = distr.sample()
+                else:
+                    output = logits_step.argmax(dim=-1)
+
+                input = self.embed(output)
+
+                symbols_list.append(output)
+                logits_list.append(logits_step)
+
+            symbols = torch.cat(symbols_list, dim=1)
+            logits = torch.cat(logits_list, dim=1)
+            return symbols, logits
+
+        else:
+            embed = self.embed(message)
+            logits, _ = self.rnn(embed, hidden)
 
             if self.training:
-                distr = Categorical(logits=logits_step)
+                distr = Categorical(logits=logits)
                 output = distr.sample()
             else:
-                output = logits_step.argmax(dim=-1)
+                output = logits.argmax(dim=-1)
 
-            input = self.embed(output)
-
-            symbols_list.append(output)
-            logits_list.append(logits_step)
-
-        symbols = torch.cat(symbols_list, dim=1)
-        logits = torch.cat(logits_list, dim=1)
-        return symbols, logits
+            return output, logits

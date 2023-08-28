@@ -1,96 +1,124 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Generic, Mapping, Set, TypeVar
-
-from .reconstruction import IDecoder, IEncoder, IEncoderDecoder
+from typing import Dict, Generic, Mapping, Set, Tuple, TypeVar
 
 T = TypeVar("T")
-U = TypeVar("U")
-A = TypeVar("A")
-AE = TypeVar("AE")
-AD = TypeVar("AD")
+L = TypeVar("L")
+M = TypeVar("M")
+AOE = TypeVar("AOE")
+AOD = TypeVar("AOD")
+AME = TypeVar("AME")
+AMD = TypeVar("AMD")
+
+
+class IObjectEncoder(ABC, Generic[T, L, AOE]):
+    @abstractmethod
+    def encode_object(self, input: T) -> Tuple[L, AOE]:
+        ...
+
+
+class IObjectDecoder(ABC, Generic[L, T, M, AOD]):
+    @abstractmethod
+    def decode_object(
+        self, latent: L, input: T | None = None, message: M | None = None
+    ) -> Tuple[T, AOD]:
+        ...
+
+
+class IMessageEncoder(ABC, Generic[M, L, AME]):
+    @abstractmethod
+    def encode_message(self, message: M) -> Tuple[L, AME]:
+        ...
+
+
+class IMessageDecoder(ABC, Generic[L, M, T, AMD]):
+    @abstractmethod
+    def decode_message(
+        self, latent: L, input: T | None = None, message: M | None = None
+    ) -> Tuple[M, AMD]:
+        ...
+
+
+class INetworkAgent(
+    IObjectEncoder[T, L, AOE],
+    IObjectDecoder[L, T, M, AOD],
+    IMessageEncoder[M, L, AME],
+    IMessageDecoder[L, M, T, AMD],
+    Generic[T, L, M, AOE, AOD, AME, AMD],
+):
+    ...
 
 
 @dataclass
-class ReconstructionNetworkSubGameResult(Generic[T, U, AE, AD]):
-    """
-    The result of a sub-game within a ReconstructionNetworkGame.
-
-    Attributes:
-        encoder (IEncoder[T, U, AE]): The encoder used in the sub-game.
-        decoders (Dict[str, IDecoder[U, T, AD]]): The decoders used in the sub-game.
-        input (T): The input data to the sub-game.
-        latent (U): The latent representation obtained from encoding the input.
-        outputs (Dict[str, T]): The decoded outputs from different decoders.
-        encoder_aux (AE): Auxiliary data obtained during encoding.
-        decoders_aux (Dict[str, AD]): Auxiliary data obtained during decoding.
-    """
-
-    encoder: IEncoder[T, U, AE]
-    decoders: Dict[str, IDecoder[U, T, AD]]
+class ReconstructionNetworkSubGameResult(Generic[T, L, M, AOE, AOD, AME, AMD]):
+    sender: INetworkAgent[T, L, M, AOE, AOD, AME, AMD]
+    receivers: Mapping[str, INetworkAgent[T, L, M, AOE, AOD, AME, AMD]]
     input: T
-    latent: U
-    outputs: Dict[str, T]
-    encoder_aux: AE
-    decoders_aux: Dict[str, AD]
+    object_latent: L
+    object_latent_aux: AOE
+    message: M
+    message_aux: AMD
+    message_latents: Mapping[str, L]
+    message_latents_aux: Mapping[str, AME]
+    outputs: Mapping[str, T]
+    outputs_aux: Mapping[str, AOD]
 
 
-class ReconstructionNetworkSubGame(Generic[T, U, AE, AD]):
-    """
-    A sub-game within the ReconstructionNetworkGame.
-
-    Args:
-        encoder (IEncoder[T, U, AE]): The encoder used in the sub-game.
-        decoders (Dict[str, IDecoder[U, T, AD]]): The decoders used in the sub-game.
-    """
-
+class ReconstructionNetworkSubGame(Generic[T, L, M, AOE, AOD, AME, AMD]):
     def __init__(
-        self, encoder: IEncoder[T, U, AE], decoders: Dict[str, IDecoder[U, T, AD]]
+        self,
+        sender: INetworkAgent[T, L, M, AOE, AOD, AME, AMD],
+        receivers: Mapping[str, INetworkAgent[T, L, M, AOE, AOD, AME, AMD]],
     ) -> None:
-        self.encoder = encoder
-        self.decoders = decoders
+        self.sender = sender
+        self.receivers = receivers
 
-    def __call__(self, input: T) -> ReconstructionNetworkSubGameResult[T, U, AE, AD]:
-        """
-        Execute the sub-game on the given input data.
-
-        Args:
-            input (T): The input data.
-
-        Returns:
-            ReconstructionNetworkSubGameResult[T, U, AE, AD]: The result of the sub-game.
-        """
-        latent, enc_aux = self.encoder.encode(input)
+    def __call__(
+        self, input: T
+    ) -> ReconstructionNetworkSubGameResult[T, L, M, AOE, AOD, AME, AMD]:
+        object_latent, object_latent_aux = self.sender.encode_object(input)
+        message, message_aux = self.sender.decode_message(object_latent, input=input)
+        message_latents = {}
+        message_latents_aux = {}
         outputs = {}
-        decs_aux = {}
-        for name, decoder in self.decoders.items():
-            output, dec_aux = decoder.decode(latent)
+        outputs_aux = {}
+        for name, receiver in self.receivers.items():
+            message_latent, message_latent_aux = receiver.encode_message(message)
+            output, output_aux = receiver.decode_object(message_latent, message=message)
+            message_latents[name] = message_latent
+            message_latents_aux[name] = message_latent_aux
             outputs[name] = output
-            decs_aux[name] = dec_aux
+            outputs_aux[name] = output_aux
 
         return ReconstructionNetworkSubGameResult(
-            encoder=self.encoder,
-            decoders=self.decoders,
+            sender=self.sender,
+            receivers=self.receivers,
             input=input,
-            latent=latent,
+            object_latent=object_latent,
+            object_latent_aux=object_latent_aux,
+            message=message,
+            message_aux=message_aux,
+            message_latents=message_latents,
+            message_latents_aux=message_latents_aux,
             outputs=outputs,
-            encoder_aux=enc_aux,
-            decoders_aux=decs_aux,
+            outputs_aux=outputs_aux,
         )
 
 
-class ReconstructionNetworkGame(Generic[T, U, AE, AD]):
-    """
-    A reconstruction network game composed of multiple sub-games.
+@dataclass
+class ReconstructionNetworkGameResult(Generic[T, L, M, AOE, AOD, AME, AMD]):
+    agents: Mapping[str, INetworkAgent[T, L, M, AOE, AOD, AME, AMD]]
+    input: T
+    subgame_results: Mapping[
+        str, ReconstructionNetworkSubGameResult[T, L, M, AOE, AOD, AME, AMD]
+    ]
 
-    Args:
-        agents (Mapping[str, IEncoderDecoder[T, U, AE, AD]]): A mapping of agent names to their respective IEncoderDecoder instances.
-        adjacency (Dict[str, Set[str]] | None, optional): A dictionary representing the adjacency relationship between agents. Defaults to None.
-    """
 
+class ReconstructionNetworkGame(Generic[T, L, M, AOE, AOD, AME, AMD]):
     def __init__(
         self,
-        agents: Mapping[str, IEncoderDecoder[T, U, AE, AD]],
-        adjacency: Dict[str, Set[str]] | None = None,
+        agents: Mapping[str, INetworkAgent[T, L, M, AOE, AOD, AME, AMD]],
+        adjacency: Mapping[str, Set[str]] | None = None,
     ) -> None:
         self.agents = agents
         self.adjacency = adjacency or {}
@@ -109,6 +137,15 @@ class ReconstructionNetworkGame(Generic[T, U, AE, AD]):
             )
             for name_e, agent_e in agents.items()
         }
+
+    def __call__(
+        self, input: T
+    ) -> ReconstructionNetworkGameResult[T, L, M, AOE, AOD, AME, AMD]:
+        return ReconstructionNetworkGameResult(
+            agents=self.agents,
+            input=input,
+            subgame_results={name: game(input) for name, game in self.games.items()},
+        )
 
     def add_edge(self, source: str, target: str) -> None:
         """
@@ -129,17 +166,3 @@ class ReconstructionNetworkGame(Generic[T, U, AE, AD]):
             target (str): The target agent's name.
         """
         self.adjacency[source].remove(target)
-
-    def __call__(
-        self, input: T
-    ) -> Dict[str, ReconstructionNetworkSubGameResult[T, U, AE, AD]]:
-        """
-        Execute the reconstruction network game on the given input data.
-
-        Args:
-            input (T): The input data.
-
-        Returns:
-            Dict[str, ReconstructionNetworkSubGameResult[T, U, AE, AD]]: A dictionary of sub-game results, keyed by agent names.
-        """
-        return {name: game(input) for name, game in self.games.items()}

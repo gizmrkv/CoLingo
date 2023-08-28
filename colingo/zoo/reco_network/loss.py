@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torchtyping import TensorType
 
-from ...game import ReconstructionNetworkSubGameResult
+from ...game import ReconstructionNetworkGameResult, ReconstructionNetworkSubGameResult
 from ...loss import ReinforceLoss
 from .agent import Agent, MessageAuxiliary
 
@@ -50,14 +50,14 @@ class Loss:
         step: int,
         input: TensorType[..., "object_length", int],
         outputs: Iterable[
-            Dict[
-                str,
-                ReconstructionNetworkSubGameResult[
-                    TensorType[..., "object_length", int],
-                    TensorType[..., "message_max_len", int],
-                    MessageAuxiliary,
-                    TensorType[..., "object_length", "object_values", float],
-                ],
+            ReconstructionNetworkGameResult[
+                TensorType[..., "object_length", int],
+                TensorType[..., float],
+                TensorType[..., "message_max_len", int],
+                None,
+                TensorType[..., "object_length", "object_values", float],
+                None,
+                MessageAuxiliary,
             ]
         ],
     ) -> TensorType[1, float]:
@@ -67,9 +67,12 @@ class Loss:
         self,
         result: ReconstructionNetworkSubGameResult[
             TensorType[..., "object_length", int],
+            TensorType[..., float],
             TensorType[..., "message_max_len", int],
-            MessageAuxiliary,
+            None,
             TensorType[..., "object_length", "object_values", float],
+            None,
+            MessageAuxiliary,
         ],
     ) -> Dict[str, TensorType[..., float]]:
         return {
@@ -80,36 +83,42 @@ class Loss:
             )
             .view(-1, self.object_length)
             .mean(dim=-1)
-            for name, logits in result.decoders_aux.items()
+            for name, logits in result.outputs_aux.items()
         }
 
     def encoder_loss(
         self,
         result: ReconstructionNetworkSubGameResult[
             TensorType[..., "object_length", int],
+            TensorType[..., float],
             TensorType[..., "message_max_len", int],
-            MessageAuxiliary,
+            None,
             TensorType[..., "object_length", "object_values", float],
+            None,
+            MessageAuxiliary,
         ],
         decoder_loss: TensorType[..., float],
     ) -> TensorType[..., float]:
         return self.reinforce_loss(
             reward=-decoder_loss.detach(),
-            log_prob=result.encoder_aux.log_prob,
-            entropy=result.encoder_aux.entropy,
-            length=result.encoder_aux.length,
+            log_prob=result.message_aux.log_prob,
+            entropy=result.message_aux.entropy,
+            length=result.message_aux.length,
         )
 
     def sub_loss(
         self,
         result: ReconstructionNetworkSubGameResult[
             TensorType[..., "object_length", int],
+            TensorType[..., float],
             TensorType[..., "message_max_len", int],
-            MessageAuxiliary,
+            None,
             TensorType[..., "object_length", "object_values", float],
+            None,
+            MessageAuxiliary,
         ],
     ) -> TensorType[..., float]:
-        if len(result.decoders) == 0:
+        if len(result.receivers) == 0:
             return torch.zeros(
                 result.input.size(0), device=result.input.device, dtype=torch.float32
             )
@@ -126,32 +135,40 @@ class Loss:
 
     def total_loss(
         self,
-        output: Dict[
-            str,
-            ReconstructionNetworkSubGameResult[
-                TensorType[..., "object_length", int],
-                TensorType[..., "message_max_len", int],
-                MessageAuxiliary,
-                TensorType[..., "object_length", "object_values", float],
-            ],
+        output: ReconstructionNetworkGameResult[
+            TensorType[..., "object_length", int],
+            TensorType[..., float],
+            TensorType[..., "message_max_len", int],
+            None,
+            TensorType[..., "object_length", "object_values", float],
+            None,
+            MessageAuxiliary,
         ],
     ) -> TensorType[..., float]:
         return torch.stack(
-            [self.sub_loss(result) for result in output.values()], dim=-1
+            [self.sub_loss(result) for result in output.subgame_results.values()],
+            dim=-1,
         ).mean(dim=-1)
 
     def decoder_ae_loss(
         self,
         result: ReconstructionNetworkSubGameResult[
             TensorType[..., "object_length", int],
+            TensorType[..., float],
             TensorType[..., "message_max_len", int],
-            MessageAuxiliary,
+            None,
             TensorType[..., "object_length", "object_values", float],
+            None,
+            MessageAuxiliary,
         ],
     ) -> TensorType[..., float]:
-        agents = {k: self.agents[k] for k in result.decoders}
-        logits = {
-            k: agent.encode(result.outputs[k])[1].logits for k, agent in agents.items()
+        agents = {k: self.agents[k] for k in result.receivers}
+        latents = {
+            k: agent.encode_object(result.outputs[k])[0] for k, agent in agents.items()
+        }
+        output_logits = {
+            k: agent.decode_message(latents[k], message=result.message)[1].logits
+            for k, agent in agents.items()
         }
         masks = {
             k: (output == result.input).all(dim=-1).float()
@@ -161,11 +178,11 @@ class Loss:
             mask
             * F.cross_entropy(
                 logit.view(-1, self.message_vocab_size),
-                result.latent.view(-1),
+                result.message.view(-1),
                 reduction="none",
             )
             .view(-1, self.message_max_len)
             .mean(dim=-1)
-            for logit, mask in zip(logits.values(), masks.values())
+            for logit, mask in zip(output_logits.values(), masks.values())
         ]
         return torch.stack(losses, dim=-1).mean(dim=-1)

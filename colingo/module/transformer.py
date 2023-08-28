@@ -145,13 +145,15 @@ class TransformerDecoder(nn.Module):
     def decode_standard(
         self,
         latent: TensorType[..., "input_dim", float],
+        input: TensorType[..., int] | None = None,
+        message: TensorType[..., "max_len", int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         memory = self.proj1(latent)
         memory = memory.unsqueeze(1)
         input = self.sos_embed.expand(latent.shape[0], 1, -1)
         symbols_list = []
         logits_list = []
-        for _ in range(self.max_len):
+        for i in range(self.max_len):
             logits_step = self.decoder(self.pos_encoder(input), memory)
             logits_step = self.proj2(logits_step[:, -1, :])
 
@@ -161,7 +163,9 @@ class TransformerDecoder(nn.Module):
             else:
                 output = logits_step.argmax(dim=-1)
 
-            embed = self.embed(output) * math.sqrt(self.embed_dim)
+            embed = math.sqrt(self.embed_dim) * self.embed(
+                output if message is None else message[:, 0]
+            )
             input = torch.cat([input, embed.unsqueeze(1)], dim=1)
 
             symbols_list.append(output)
@@ -174,5 +178,7 @@ class TransformerDecoder(nn.Module):
     def forward(
         self,
         latent: TensorType[..., "input_dim", float],
+        input: TensorType[..., int] | None = None,
+        message: TensorType[..., "max_len", int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
-        return self.decode_standard(latent)
+        return self.decode_standard(latent, input, message)
