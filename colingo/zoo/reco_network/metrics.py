@@ -10,7 +10,7 @@ from torchtyping import TensorType
 
 from ...analysis import language_similarity, topographic_similarity
 from ...game import ReconstructionNetworkGameResult, ReconstructionNetworkSubGameResult
-from ...loggers import HeatmapLogger, IntSequenceLanguageLogger
+from ...loggers import HeatmapLogger, LanguageLogger
 from .agent import MessageAuxiliary
 from .loss import Loss
 
@@ -110,8 +110,7 @@ class TopographicSimilarityMetrics:
 class LanguageLogger:
     def __init__(self, save_dir: Path, agent_names: Iterable[str]) -> None:
         self.loggers = {
-            name: IntSequenceLanguageLogger(save_dir.joinpath(name))
-            for name in agent_names
+            name: LanguageLogger(save_dir.joinpath(name)) for name in agent_names
         }
 
     def __call__(
