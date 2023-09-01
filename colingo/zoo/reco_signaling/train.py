@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
-from typing import Any, List, Mapping
+from typing import Any, Iterable, List, Mapping
 
 import torch
 import torch.nn as nn
@@ -13,7 +13,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from ...core import Evaluator, Runner, Trainer
+from ...core import Evaluator, Runner, RunnerCallback, Trainer
 from ...game import ReconstructionGame
 from ...loggers import WandbLogger
 from ...utils import (
@@ -56,7 +56,11 @@ class Config:
 
 
 def train(
-    encoder: Encoder, decoder: Decoder, config: Mapping[str, Any], log_dir: Path
+    encoder: Encoder,
+    decoder: Decoder,
+    config: Mapping[str, Any],
+    log_dir: Path,
+    additions: Iterable[RunnerCallback] | None = None,
 ) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
 
@@ -147,6 +151,7 @@ def train(
     )
 
     runner_callbacks = [
+        *(additions or []),
         trainer,
         *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),

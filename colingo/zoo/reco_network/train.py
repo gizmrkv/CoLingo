@@ -5,14 +5,13 @@ import uuid
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Mapping, Set
+from typing import Any, Dict, Iterable, Mapping, Set
 
 import torch
 import torch.optim as optim
+import wandb
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
-
-import wandb
 
 from ...core import Evaluator, Runner, RunnerCallback, Trainer
 from ...game import ReconstructionNetworkGame
@@ -79,7 +78,7 @@ def train(
     ],
     config: Mapping[str, Any],
     log_dir: Path,
-    game_editor: RunnerCallback | None = None,
+    additions: Iterable[RunnerCallback] | None = None,
 ) -> None:
     cfg = Config(**{k: config[k] for k in Config.__dataclass_fields__})
 
@@ -229,6 +228,7 @@ def train(
     )
 
     runner_callbacks = [
+        *(additions or []),
         trainer,
         *evaluators,
         StepCounter("step", [wandb_logger, duplicate_checker]),
@@ -237,8 +237,6 @@ def train(
         wandb_logger,
         duplicate_checker,
     ]
-    if game_editor is not None:
-        runner_callbacks = [game_editor] + runner_callbacks
     # runner_callbacks = [Timer(runner_callbacks)]
     runner = Runner(runner_callbacks, use_tqdm=cfg.use_tqdm)
     runner.run(cfg.n_epochs)

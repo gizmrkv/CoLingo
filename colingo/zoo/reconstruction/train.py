@@ -4,7 +4,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, List, Mapping, Iterable
+from typing import Any, Iterable, List, Mapping
 
 import torch
 import torch.nn as nn
