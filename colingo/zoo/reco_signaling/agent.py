@@ -23,23 +23,21 @@ class MessageAuxiliary:
     length: TensorType[..., int]
 
 
-class Encoder(
+class Sender(
     nn.Module,
     IEncoder[TensorType[..., int], TensorType[..., int], MessageAuxiliary],
 ):
-    def __init__(
-        self, object_encoder: nn.Module, message_decoder: nn.Module, eos: int = 0
-    ):
+    def __init__(self, encoder: nn.Module, decoder: nn.Module, eos: int = 0):
         super().__init__()
-        self.object_encoder = object_encoder
-        self.message_decoder = message_decoder
+        self.encoder = encoder
+        self.decoder = decoder
         self.eos = eos
 
     def encode(
         self, input: TensorType[..., int]
     ) -> Tuple[TensorType[..., int], MessageAuxiliary]:
-        latent = self.object_encoder(input)
-        message, logits = self.message_decoder(latent)
+        latent = self.encoder(input)
+        message, logits = self.decoder(latent)
 
         distr = Categorical(logits=logits)
         log_prob = distr.log_prob(message)
@@ -68,18 +66,18 @@ class Encoder(
         )
 
 
-class Decoder(
+class Receiver(
     nn.Module,
     IDecoder[TensorType[..., int], TensorType[..., int], TensorType[..., float]],
 ):
-    def __init__(self, message_encoder: nn.Module, object_decoder: nn.Module):
+    def __init__(self, encoder: nn.Module, decoder: nn.Module):
         super().__init__()
-        self.message_encoder = message_encoder
-        self.object_decoder = object_decoder
+        self.encoder = encoder
+        self.decoder = decoder
 
     def decode(
         self, latent: TensorType[..., float]
     ) -> Tuple[TensorType[..., int], TensorType[..., float]]:
-        latent = self.message_encoder(latent)
-        output, aux = self.object_decoder(latent)
+        latent = self.encoder(latent)
+        output, aux = self.decoder(latent)
         return output, aux

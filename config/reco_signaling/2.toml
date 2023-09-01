@@ -1,0 +1,57 @@
+zoo = "reco_signaling"
+seed = 42
+
+object_length = 2
+object_values = 50
+message_max_len = 8
+message_vocab_size = 50
+entropy_weight = 0.01
+length_weight = 0.0
+n_epochs = 2001
+batch_size = 100000
+lr = 0.001
+device = "cuda"
+wandb_project = "reco_signaling"
+use_tqdm = true
+metrics_interval = 10
+topsim_interval = 100
+language_log_interval = 100
+
+sender_latent_dim = 64
+sender_encoder_type = "mlp"
+sender_decoder_type = "transformer"
+receiver_latent_dim = 64
+receiver_encoder_type = "transformer"
+receiver_decoder_type = "mlp"
+
+[sender_encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[sender_decoder_params]
+embed_dim = 64
+n_heads = 8
+ff_dim = 64
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = false
+n_layers = 2
+
+[receiver_encoder_params]
+embed_dim = 64
+n_heads = 8
+ff_dim = 64
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = false
+n_layers = 2
+is_causal = false
+
+[receiver_decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"

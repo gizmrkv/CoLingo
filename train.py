@@ -13,7 +13,7 @@ import wandb
 from colingo.utils import fix_seed
 from colingo.zoo.reco_network import train_mlp_rnn as train_mlp_rnn_net
 from colingo.zoo.reco_network import train_mlp_transformer as train_mlp_transformer_net
-from colingo.zoo.reco_signaling import train_mlp_rnn, train_mlp_transformer
+from colingo.zoo.reco_signaling import train_reco_signaling_from_config
 from colingo.zoo.reconstruction import train_reconstruction_from_config
 
 
@@ -66,10 +66,8 @@ def train(config: Mapping[str, Any]) -> None:
 
     if target == "reconstruction":
         train_reconstruction_from_config(config)
-    elif target == "reco_signaling_mlp_rnn":
-        train_mlp_rnn(config, log_dir)
-    elif target == "reco_signaling_mlp_transformer":
-        train_mlp_transformer(config, log_dir)
+    elif target == "reco_signaling":
+        train_reco_signaling_from_config(config, log_dir)
     elif target == "reco_network_mlp_rnn":
         train_mlp_rnn_net(config, log_dir)
     elif target == "reco_network_mlp_transformer":

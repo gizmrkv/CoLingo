@@ -1,7 +1,5 @@
-from .train_mlp_rnn import train_mlp_rnn
-from .train_mlp_transformer import train_mlp_transformer
+from .train import train_reco_signaling_from_config
 
 __all__ = [
-    "train_mlp_rnn",
-    "train_mlp_transformer",
+    "train_reco_signaling_from_config",
 ]
