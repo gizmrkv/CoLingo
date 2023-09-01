@@ -1,6 +1,4 @@
-import os
 import shutil
-from glob import glob
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Mapping
 
@@ -115,7 +113,7 @@ class HeatmapLogger(RunnerCallback):
             shutil.rmtree(self.save_dir)
 
 
-class IntSequenceLanguageLogger:
+class LanguageLogger:
     """
     Callback to log integer sequences and corresponding language messages.
     """

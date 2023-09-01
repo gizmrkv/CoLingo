@@ -31,6 +31,7 @@ __all__ = [
     "ReconstructionBroadcastGame",
     "ReconstructionBroadcastGameResult",
     "ReconstructionNetworkGame",
+    "ReconstructionNetworkGameResult",
     "ReconstructionNetworkSubGame",
     "ReconstructionNetworkSubGameResult",
 ]
