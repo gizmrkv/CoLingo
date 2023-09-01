@@ -1,7 +1,7 @@
 # CoLingo: Cooperation, Communication and Consensus Language Emergence
 
 ## Introduction
-CoLingo is a framework for studying language emergence in multi-agent environments. 
+CoLingo is a framework for studying language emergence in multi-agent environments.
 
 ## List of implemented games
 List of example and tutorial games
@@ -15,7 +15,7 @@ git clone git@github.com:gizmrkv/CoLingo.git
 cd CoLingo
 pyenv local 3.10.12
 pip install -U pip
-pip install PyYAML gym isort matplotlib moviepy mypy numpy pandas plotly rapidfuzz scipy seaborn toml torch torchtyping tqdm types-PyYAML types-toml types-tqdm typing-extensions wandb
+pip install black gym isort matplotlib moviepy mypy numpy pandas plotly PyYAML rapidfuzz scipy seaborn toml torch torchtyping tqdm types-PyYAML types-toml types-tqdm typing-extensions wandb
 ```
 
 ## Structure
@@ -33,7 +33,7 @@ The repo is organized as follows:
 Run one experiment:
 ```
 python -m train_one CONFIG_FILE
-``` 
+```
 
 Run all experiments in the config directory:
 ```

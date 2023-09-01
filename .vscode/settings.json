@@ -8,10 +8,14 @@
         "--config-file=.vscode/mypy.ini",
     ],
     "cSpell.words": [
+        "annot",
         "arange",
+        "cbar",
+        "cmap",
         "colingo",
         "gizmrkv",
         "isort",
+        "lansim",
         "matplotlib",
         "moviepy",
         "mypy",
@@ -24,6 +28,9 @@
         "seaborn",
         "topsim",
         "tqdm",
+        "viridis",
+        "vmax",
+        "vmin",
         "Wandb"
     ]
 }
