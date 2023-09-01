@@ -139,7 +139,7 @@ def train(
             )
         )
 
-    language_logger = LanguageLogger(log_dir.joinpath("lang"))
+    language_logger = LangLogger(log_dir.joinpath("lang"))
     evaluators.append(
         Evaluator(
             agents=models,

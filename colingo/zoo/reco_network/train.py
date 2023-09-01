@@ -9,9 +9,10 @@ from typing import Any, Dict, Iterable, Mapping, Set
 
 import torch
 import torch.optim as optim
-import wandb
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
+
+import wandb
 
 from ...core import Evaluator, Runner, RunnerCallback, Trainer
 from ...game import ReconstructionNetworkGame
@@ -30,7 +31,7 @@ from .agent import Agent, MessageAuxiliary
 from .loss import Loss
 from .metrics import (
     AccuracyHeatmapLogger,
-    LanguageLogger,
+    LangLogger,
     LanguageSimilarityMetrics,
     Metrics,
     TopographicSimilarityMetrics,
@@ -216,7 +217,7 @@ def train(
     adj_none: Dict[str, Set[str]] = {s: set() for s in agents}
     game_none = ReconstructionNetworkGame(agents, adj_none)
 
-    language_logger = LanguageLogger(log_dir.joinpath("lang"), agents)
+    language_logger = LangLogger(log_dir.joinpath("lang"), agents)
     evaluators.append(
         Evaluator(
             agents=agents.values(),

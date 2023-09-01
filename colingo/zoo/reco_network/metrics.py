@@ -107,7 +107,7 @@ class TopographicSimilarityMetrics:
             callback(metrics)
 
 
-class LanguageLogger:
+class LangLogger:
     def __init__(self, save_dir: Path, agent_names: Iterable[str]) -> None:
         self.loggers = {
             name: LanguageLogger(save_dir.joinpath(name)) for name in agent_names
