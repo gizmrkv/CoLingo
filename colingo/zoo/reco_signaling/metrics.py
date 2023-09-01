@@ -106,7 +106,7 @@ class TopographicSimilarityMetrics:
             callback(metrics)
 
 
-class LanguageLogger:
+class LangLogger:
     def __init__(self, save_dir: Path) -> None:
         self.logger = LanguageLogger(save_dir)
 

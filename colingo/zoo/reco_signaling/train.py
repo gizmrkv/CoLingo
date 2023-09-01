@@ -28,7 +28,7 @@ from ...utils import (
 )
 from .agent import Decoder, Encoder
 from .loss import Loss
-from .metrics import LanguageLogger, Metrics, TopographicSimilarityMetrics
+from .metrics import LangLogger, Metrics, TopographicSimilarityMetrics
 
 
 @dataclass
