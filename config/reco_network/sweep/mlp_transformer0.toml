@@ -67,10 +67,10 @@ value = 100
 values = [0, 1]
 
 [parameters.n_agents]
-value = 4
+value = 3
 
 [parameters.network_window]
-values = [1, 2, 3, 4]
+values = [1, 2, 3]
 
 [parameters.latent_dim]
 value = 64
