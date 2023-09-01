@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
@@ -66,8 +68,8 @@ class MLPEncoder(nn.Module):
         output_dim: int,
         embed_dim: int,
         hidden_dim: int,
+        activation: Literal["relu", "gelu"],
         n_layers: int,
-        activation: str = "relu",
     ) -> None:
         super().__init__()
         self.max_len = max_len
@@ -98,16 +100,16 @@ class MLPDecoder(nn.Module):
         max_len: int,
         vocab_size: int,
         hidden_dim: int,
+        activation: Literal["relu", "gelu"],
         n_layers: int = 1,
-        activation: str = "relu",
     ):
         super().__init__()
         self.input_dim = input_dim
         self.max_len = max_len
         self.vocab_size = vocab_size
         self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
         self.activation = activation
+        self.n_layers = n_layers
 
         self.mlp = MLP(
             input_dim=input_dim,

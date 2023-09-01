@@ -1,0 +1,28 @@
+zoo = "reconstruction"
+seed = 42
+
+length = 2
+values = 50
+n_epochs = 1001
+batch_size = 100000
+lr = 0.001
+device = "cuda"
+wandb_project = "reconstruction"
+use_tqdm = true
+metrics_interval = 5
+
+latent_dim = 64
+encoder_type = "rnn"
+decoder_type = "rnn"
+
+[encoder_params]
+embed_dim = 8
+hidden_dim = 128
+n_layers = 2
+rnn_type = "lstm"
+
+[decoder_params]
+embed_dim = 8
+hidden_dim = 128
+n_layers = 2
+rnn_type = "lstm"

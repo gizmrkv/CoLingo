@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import toml
-import wandb
 import yaml
 
+import wandb
 from colingo.utils import fix_seed
 from colingo.zoo.reco_network import train_mlp_rnn as train_mlp_rnn_net
 from colingo.zoo.reco_network import train_mlp_transformer as train_mlp_transformer_net
 from colingo.zoo.reco_signaling import train_mlp_rnn, train_mlp_transformer
-from colingo.zoo.reconstruction import train_mlp, train_rnn, train_transformer
+from colingo.zoo.reconstruction import train_reconstruction_from_config
 
 
 def main() -> None:
@@ -64,12 +64,8 @@ def train(config: Mapping[str, Any]) -> None:
     if seed is not None:
         fix_seed(seed)
 
-    if target == "reconstruction_mlp":
-        train_mlp(config)
-    elif target == "reconstruction_rnn":
-        train_rnn(config)
-    elif target == "reconstruction_transformer":
-        train_transformer(config)
+    if target == "reconstruction":
+        train_reconstruction_from_config(config)
     elif target == "reco_signaling_mlp_rnn":
         train_mlp_rnn(config, log_dir)
     elif target == "reco_signaling_mlp_transformer":

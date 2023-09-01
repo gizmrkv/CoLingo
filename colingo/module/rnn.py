@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 from torch import nn
 from torch.distributions import Categorical
@@ -11,16 +13,16 @@ class RNNEncoder(nn.Module):
         output_dim: int,
         embed_dim: int,
         hidden_dim: int,
-        rnn_type: str = "rnn",
-        n_layers: int = 1,
+        n_layers: int,
+        rnn_type: Literal["rnn", "lstm", "gru"],
     ):
         super().__init__()
         self.vocab_size = vocab_size
         self.output_dim = output_dim
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
-        self.rnn_type = rnn_type
         self.n_layers = n_layers
+        self.rnn_type = rnn_type
 
         self.embed = nn.Embedding(vocab_size, embed_dim)
 
@@ -51,8 +53,8 @@ class RNNDecoder(nn.Module):
         vocab_size: int,
         embed_dim: int,
         hidden_dim: int,
-        rnn_type: str = "rnn",
-        n_layers: int = 2,
+        n_layers: int,
+        rnn_type: Literal["rnn", "lstm", "gru"],
     ):
         super().__init__()
         self.input_dim = input_dim

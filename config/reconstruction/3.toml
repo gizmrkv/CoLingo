@@ -1,0 +1,37 @@
+zoo = "reconstruction"
+seed = 42
+
+length = 2
+values = 50
+n_epochs = 1001
+batch_size = 100000
+lr = 0.001
+device = "cuda"
+wandb_project = "reconstruction"
+use_tqdm = true
+metrics_interval = 5
+
+latent_dim = 64
+encoder_type = "transformer"
+decoder_type = "transformer"
+
+[encoder_params]
+embed_dim = 64
+n_heads = 4
+ff_dim = 128
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = true
+n_layers = 3
+is_causal = false
+
+[decoder_params]
+embed_dim = 64
+n_heads = 4
+ff_dim = 128
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = false
+n_layers = 3
