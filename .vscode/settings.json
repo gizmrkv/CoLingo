@@ -8,6 +8,22 @@
         "--config-file=.vscode/mypy.ini",
     ],
     "cSpell.words": [
-        "colingo"
+        "arange",
+        "colingo",
+        "gizmrkv",
+        "isort",
+        "matplotlib",
+        "moviepy",
+        "mypy",
+        "numpy",
+        "plotly",
+        "pyenv",
+        "rapidfuzz",
+        "reco",
+        "scipy",
+        "seaborn",
+        "topsim",
+        "tqdm",
+        "Wandb"
     ]
 }
