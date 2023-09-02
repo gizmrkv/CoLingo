@@ -1,11 +1,10 @@
-from . import analysis, core, game, loggers, loss, module, utils, zoo
+from . import analysis, core, game, loggers, module, utils, zoo
 
 __all__ = [
     "analysis",
     "core",
     "game",
     "loggers",
-    "loss",
     "module",
     "utils",
     "zoo",

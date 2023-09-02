@@ -9,17 +9,16 @@ from typing import Any, Dict, Iterable, Mapping, Set
 
 import torch
 import torch.optim as optim
+import wandb
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-import wandb
-
-from ...core import Evaluator, Runner, RunnerCallback, Trainer
+from ...core import Evaluator, RunnerCallback, TaskRunner, Trainer
 from ...game import ReconstructionNetworkGame
 from ...loggers import HeatmapLogger, WandbLogger
 from ...utils import (
-    DuplicateChecker,
     EarlyStopper,
+    KeyChecker,
     StepCounter,
     Stopwatch,
     Timer,
@@ -130,7 +129,7 @@ def train(
     )
 
     wandb_logger = WandbLogger(project=cfg.wandb_project)
-    duplicate_checker = DuplicateChecker()
+    duplicate_checker = KeyChecker()
 
     adj_comp: Dict[str, Set[str]] = {s: {t for t in agents} for s in agents}
     game_comp = ReconstructionNetworkGame(agents, adj_comp)
@@ -239,5 +238,5 @@ def train(
         duplicate_checker,
     ]
     # runner_callbacks = [Timer(runner_callbacks)]
-    runner = Runner(runner_callbacks, use_tqdm=cfg.use_tqdm)
+    runner = TaskRunner(runner_callbacks, use_tqdm=cfg.use_tqdm)
     runner.run(cfg.n_epochs)

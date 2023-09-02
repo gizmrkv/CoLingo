@@ -1,42 +1,31 @@
-from typing import Callable, Collection, Generic, Iterable, TypeVar
+from typing import Any, Callable, Collection, Generic, Iterable, TypeVar
 
 import torch
 import torch.nn as nn
 
-from .runner import RunnerCallback
+from .abstract import Computable, Playable, Task
 
 T = TypeVar("T")
 U = TypeVar("U")
 
 
-class Evaluator(RunnerCallback, Generic[T, U]):
-    """
-    Class for evaluating models and managing evaluation callbacks during a Runner's execution.
-
-    Args:
-        agents (Iterable[nn.Module]): List of neural network models to evaluate.
-        input (Iterable[T]): List of input data for evaluation.
-        games (Iterable[Callable[[T], U]]): List of evaluation functions (games) for each model and input.
-        callbacks (Collection[Callable[[int, T, Iterable[U]], None]]): List of callbacks for handling evaluation results.
-        intervals (Collection[int] | None, optional): List of intervals at which to perform evaluation. Defaults to None.
-    """
-
+class Evaluator(Task, Generic[T, U]):
     def __init__(
         self,
         agents: Iterable[nn.Module],
         input: Iterable[T],
-        games: Iterable[Callable[[T], U]],
-        callbacks: Collection[Callable[[int, T, Iterable[U]], None]],
+        game: Playable[T, U],
+        metrics: Collection[Computable[T, U, Any]],
         intervals: Collection[int] | None = None,
     ) -> None:
         super().__init__()
         self.agents = agents
         self.input = input
-        self.games = games
-        self.callbacks = callbacks
-        self.intervals = intervals or ([1] * len(self.callbacks))
+        self.game = game
+        self.metrics = metrics
+        self.intervals = intervals or ([1] * len(self.metrics))
 
-        if len(self.intervals) != len(self.callbacks):
+        if len(self.intervals) != len(self.metrics):
             raise ValueError(
                 "The number of intervals must be the same as the number of callbacks."
             )
@@ -52,8 +41,8 @@ class Evaluator(RunnerCallback, Generic[T, U]):
 
         input = next(iter(self.input))
         with torch.no_grad():
-            outputs = [game(input) for game in self.games]
+            output = self.game.play(input, step=step)
 
-            for flag, callback in zip(flags, self.callbacks):
+            for flag, metric in zip(flags, self.metrics):
                 if flag:
-                    callback(step, input, outputs)
+                    metric.compute(input, output, step=step)

@@ -5,32 +5,19 @@ import torch
 import torch.nn as nn
 from torchtyping import TensorType
 
-from .runner import RunnerCallback
+from .abstract import Computable, Playable, Task
 
 T = TypeVar("T")
 U = TypeVar("U")
 
 
-class Trainer(RunnerCallback, Generic[T, U]):
-    """
-    Class for managing the training process using agents, input data, games, loss function, and optimizers.
-
-    Args:
-        agents (Iterable[nn.Module]): List of agent (model) instances to be trained.
-        input (Iterable[T]): List of input data for training.
-        games (Iterable[Callable[[T], U]]): List of game (function) instances to be played with input data.
-        loss (Callable[[int, T, Iterable[U]], TensorType[1, float]]): Loss function to compute training loss.
-        optimizers (Iterable[torch.optim.Optimizer]): List of optimizer instances for each agent.
-        device (str, optional): Device to perform training on ("cuda" or "cpu"). Defaults to "cuda".
-        use_amp (bool, optional): Whether to use Automatic Mixed Precision (AMP). Defaults to False.
-    """
-
+class Trainer(Task, Generic[T, U]):
     def __init__(
         self,
         agents: Iterable[nn.Module],
         input: Iterable[T],
-        games: Iterable[Callable[[T], U]],
-        loss: Callable[[int, T, Iterable[U]], TensorType[1, float]],
+        game: Playable[T, U],
+        loss: Computable[T, U, TensorType[1, float]],
         optimizers: Iterable[torch.optim.Optimizer],
         device: str = "cuda",
         use_amp: bool = False,
@@ -38,7 +25,7 @@ class Trainer(RunnerCallback, Generic[T, U]):
         super().__init__()
         self.agents = agents
         self.input = input
-        self.games = games
+        self.game = game
         self.loss = loss
         self.optimizers = optimizers
         self.device = device
@@ -56,8 +43,8 @@ class Trainer(RunnerCallback, Generic[T, U]):
 
         for input in self.input:
             with self.amp.autocast(enabled=self.use_amp, dtype=torch.float16):
-                outputs = [game(input) for game in self.games]
-                loss = self.loss(step, input, outputs)
+                output = self.game.play(input, step=step)
+                loss = self.loss.compute(input, output, step=step)
 
             self.scaler.scale(loss).backward()
 

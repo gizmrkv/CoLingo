@@ -1,8 +1,10 @@
 zoo = "reco_signaling"
 seed = 42
 
-object_length = 2
-object_values = 50
+concept_length = 2
+concept_values = 50
+train_proportion = 0.8
+valid_proportion = 0.2
 message_max_len = 8
 message_vocab_size = 50
 entropy_weight = 0.01

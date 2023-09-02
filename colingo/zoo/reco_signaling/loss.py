@@ -1,19 +1,20 @@
-from typing import Callable, Iterable
+from typing import Callable
 
-import torch
 import torch.nn.functional as F
 from torchtyping import TensorType
 
-from ...game import ReconstructionGameResult
-from ...loss import ReinforceLoss
-from .agent import MessageAuxiliary
+from ...core import Computable
+from ...module.reinforce_loss import ReinforceLoss
+from .game import RecoSignalingGameResult
 
 
-class Loss:
+class Loss(
+    Computable[TensorType[..., int], RecoSignalingGameResult, TensorType[1, float]]
+):
     def __init__(
         self,
-        object_length: int,
-        object_values: int,
+        concept_length: int,
+        concept_values: int,
         message_max_len: int,
         message_vocab_size: int,
         entropy_weight: float = 0.0,
@@ -24,8 +25,8 @@ class Loss:
         | None = None,
     ) -> None:
         super().__init__()
-        self.object_length = object_length
-        self.object_values = object_values
+        self.concept_length = concept_length
+        self.concept_values = concept_values
         self.message_max_len = message_max_len
         self.message_vocab_size = message_vocab_size
         self.entropy_weight = entropy_weight
@@ -41,66 +42,39 @@ class Loss:
             length_baseline=baseline,
         )
 
-    def decoder_loss(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            MessageAuxiliary,
-            TensorType[..., float],
-        ],
-    ) -> TensorType[..., float]:
+    def receiver_loss(self, result: RecoSignalingGameResult) -> TensorType[..., float]:
         return (
             F.cross_entropy(
-                result.decoder_aux.view(-1, self.object_values),
+                result.output_logits.view(-1, self.concept_values),
                 result.input.view(-1),
                 reduction="none",
             )
-            .view(-1, self.object_length)
+            .view(-1, self.concept_length)
             .mean(dim=-1)
         )
 
-    def encoder_loss(
-        self,
-        result: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            MessageAuxiliary,
-            TensorType[..., float],
-        ],
-        decoder_loss: TensorType[..., float],
+    def sender_loss(
+        self, result: RecoSignalingGameResult, receiver_loss: TensorType[..., float]
     ) -> TensorType[..., float]:
         return self.reinforce_loss(
-            reward=-decoder_loss.detach(),
-            log_prob=result.encoder_aux.log_prob,
-            entropy=result.encoder_aux.entropy,
-            length=result.encoder_aux.length,
+            reward=-receiver_loss.detach(),
+            log_prob=result.message_log_prob,
+            entropy=result.message_entropy,
+            length=result.message_length,
         )
 
-    def total_loss(
-        self,
-        output: ReconstructionGameResult[
-            TensorType[..., int],
-            TensorType[..., int],
-            MessageAuxiliary,
-            TensorType[..., float],
-        ],
-    ) -> TensorType[..., float]:
-        decoder_loss = self.decoder_loss(output)
-        encoder_loss = self.encoder_loss(output, decoder_loss)
-        return decoder_loss + encoder_loss
+    def total_loss(self, result: RecoSignalingGameResult) -> TensorType[..., float]:
+        loss_r = self.receiver_loss(result)
+        loss_s = self.sender_loss(result, loss_r)
+        return loss_r + loss_s
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionGameResult[
-                TensorType[..., int],
-                TensorType[..., int],
-                MessageAuxiliary,
-                TensorType[..., float],
-            ]
-        ],
+        output: RecoSignalingGameResult,
+        step: int | None = None,
     ) -> TensorType[1, float]:
-        return torch.stack([self.total_loss(output) for output in outputs]).mean()
+        loss_r = self.receiver_loss(output)
+        loss_s = self.sender_loss(output, loss_r)
+        loss_total = loss_r + loss_s
+        return loss_total.mean()

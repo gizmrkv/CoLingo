@@ -3,6 +3,8 @@ seed = 42
 
 length = 2
 values = 50
+train_proportion = 0.8
+valid_proportion = 0.2
 n_epochs = 1001
 batch_size = 100000
 lr = 0.001

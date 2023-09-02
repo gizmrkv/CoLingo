@@ -11,8 +11,9 @@ import yaml
 
 import wandb
 from colingo.utils import fix_seed
-from colingo.zoo.reco_network import train_mlp_rnn as train_mlp_rnn_net
-from colingo.zoo.reco_network import train_mlp_transformer as train_mlp_transformer_net
+
+# from colingo.zoo.reco_network import train_mlp_rnn as train_mlp_rnn_net
+# from colingo.zoo.reco_network import train_mlp_transformer as train_mlp_transformer_net
 from colingo.zoo.reco_signaling import train_reco_signaling_from_config
 from colingo.zoo.reconstruction import train_reconstruction_from_config
 

@@ -1,47 +1,50 @@
 import shutil
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Mapping
+from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
+import wandb
 from moviepy.editor import ImageSequenceClip
 from numpy.typing import NDArray
 from torchtyping import TensorType
 
-import wandb
-
-from .core import RunnerCallback
+from .core import Loggable, Task
 
 matplotlib.use("Agg")
 
 
-class WandbLogger(RunnerCallback):
-    """
-    Callback to log metrics using WandB (Weights and Biases) platform.
-    """
+class Namer(Loggable[Mapping[str, Any]]):
+    def __init__(
+        self,
+        name: str,
+        loggers: Iterable[Loggable[Mapping[str, Any]]],
+        joiner: str = ".",
+    ) -> None:
+        self.name = name
+        self.loggers = loggers
+        self.joiner = joiner
 
+    def log(self, input: Mapping[str, Any]) -> None:
+        input = {f"{self.name}{self.joiner}{k}": v for k, v in input.items()}
+        for logger in self.loggers:
+            logger.log(input)
+
+
+class WandbLogger(Task, Loggable[Mapping[str, Any]]):
     def __init__(self, project: str, name: str | None = None) -> None:
         wandb.init(project=project, name=name)
-        self.metrics: Dict[str, float] = {}
+        self.inputs: Dict[str, float] = {}
 
-    def __call__(self, metrics: Mapping[str, Any]) -> None:
-        """
-        Log metrics to the internal metrics dictionary.
-
-        Args:
-            metrics (Mapping[str, Any]): Metrics to log.
-        """
-        self.metrics.update(metrics)
+    def log(self, input: Mapping[str, Any]) -> None:
+        self.inputs.update(input)
 
     def flush(self) -> None:
-        """
-        Log the metrics to WandB and clear the internal metrics dictionary.
-        """
-        wandb.log(self.metrics)
-        self.metrics.clear()
+        wandb.log(self.inputs)
+        self.inputs.clear()
 
     def on_begin(self) -> None:
         self.flush()
@@ -54,44 +57,23 @@ class WandbLogger(RunnerCallback):
         wandb.finish()
 
 
-class HeatmapLogger(RunnerCallback):
-    """
-    Callback to log heatmap frames and generate a video.
-    """
-
+class HeatmapLogger(Task, Loggable[Tuple[int, NDArray[np.float32]]]):
     def __init__(
         self,
         save_dir: Path,
         cleanup: bool = False,
         heatmap_option: Mapping[str, Any] | None = None,
-        callbacks: Iterable[Callable[[Path], None]] | None = None,
+        loggers: Iterable[Loggable[Path]] | None = None,
     ) -> None:
-        """
-        Initialize the HeatmapLogger.
-
-        Args:
-            save_dir (str): Directory to save heatmap images and video.
-            cleanup (bool, optional): Whether to delete heatmap frames and the video after generating the video. Defaults to False.
-            heatmap_option (Mapping[str, Any], optional): Options for creating the heatmap using seaborn. Defaults to None.
-            callbacks (Iterable[Callable[[str], None]], optional): List of callbacks to be called with the video file name. Defaults to None.
-        """
-
         self.save_dir = save_dir
         self.cleanup = cleanup
         self.heatmap_option = heatmap_option or {}
-        self.callbacks = callbacks or []
+        self.loggers = loggers or []
 
         save_dir.mkdir(parents=True, exist_ok=True)
 
-    def __call__(self, step: int, data: NDArray[np.float32]) -> None:
-        """
-        Log a heatmap frame.
-
-        Args:
-            step (int): Current step number.
-            data (NDArray[np.float32]): Heatmap data.
-        """
-
+    def log(self, input: Tuple[int, NDArray[np.float32]]) -> None:
+        step, data = input
         sns.heatmap(data, **self.heatmap_option)
         plt.title(f"step: {step}")
         plt.savefig(self.save_dir.joinpath(f"{step:0>8}.png"))
@@ -99,48 +81,29 @@ class HeatmapLogger(RunnerCallback):
 
     def on_end(self) -> None:
         # Generates a video from the saved heatmap frames.
-        pngs = self.save_dir.glob("*.png")
-        frames = sorted([p.as_posix() for p in pngs])
+        frames_path = list(self.save_dir.glob("*.png"))
+        frames = sorted([f.as_posix() for f in frames_path])
         path = self.save_dir.joinpath("video.mp4").as_posix()
         clip = ImageSequenceClip(frames, fps=10)
         clip.write_videofile(path)
 
-        for callback in self.callbacks:
-            callback(Path(path))
+        for logger in self.loggers:
+            logger.log(Path(path))
 
         if self.cleanup:
             # Delete the frames
             shutil.rmtree(self.save_dir)
 
 
-class LanguageLogger:
-    """
-    Callback to log integer sequences and corresponding language messages.
-    """
-
+class LanguageLogger(Loggable[Tuple[int, TensorType[..., int], TensorType[..., int]]]):
     def __init__(self, save_dir: Path) -> None:
-        """
-        Initialize the IntSequenceLanguageLogger.
-
-        Args:
-            save_dir (Path): Directory to save log files.
-        """
-
         self.save_dir = save_dir
         save_dir.mkdir(parents=True, exist_ok=True)
 
-    def __call__(
-        self, step: int, sequence: TensorType[..., int], message: TensorType[..., int]
+    def log(
+        self, input: Tuple[int, TensorType[..., int], TensorType[..., int]]
     ) -> None:
-        """
-        Log integer sequences and corresponding language messages.
-
-        Args:
-            step (int): Current step number.
-            sequence (TensorType[..., int]): Integer sequences.
-            message (TensorType[..., int]): Corresponding language messages.
-        """
-
+        step, sequence, message = input
         lines = []
         for seq, msg in zip(sequence, message):
             i = torch.argwhere(msg == 0)

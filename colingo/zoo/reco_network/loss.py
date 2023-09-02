@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torchtyping import TensorType
 
 from ...game import ReconstructionNetworkGameResult, ReconstructionNetworkSubGameResult
-from ...loss import ReinforceLoss
+from ...module.reinforce_loss import ReinforceLoss
 from .agent import Agent, MessageAuxiliary
 
 
