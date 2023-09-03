@@ -25,7 +25,7 @@ class ReconstructionGame(Playable[TensorType[..., int], ReconstructionGameResult
         self, input: TensorType[..., int], step: int | None = None
     ) -> ReconstructionGameResult:
         latent = self.encoder(input)
-        output, logits = self.decoder(latent)
+        output, logits = self.decoder(latent, concept=input)
         return ReconstructionGameResult(
             encoder=self.encoder,
             decoder=self.decoder,

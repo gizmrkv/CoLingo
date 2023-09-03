@@ -93,4 +93,4 @@ class LanguageLoggerWrapper(
         output: RecoSignalingGameResult,
         step: int | None = None,
     ) -> None:
-        self.logger.log((step if step is not None else -1, input, output.message))
+        self.logger.log((step or 0, input, output.message))

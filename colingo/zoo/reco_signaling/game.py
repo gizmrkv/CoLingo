@@ -43,7 +43,7 @@ class RecoSignalingGame(Playable[TensorType[..., int], RecoSignalingGameResult])
         self, input: TensorType[..., int], step: int | None = None
     ) -> RecoSignalingGameResult:
         input_feature = self.concept_encoder(input)
-        message, message_logits = self.message_decoder(input_feature)
+        message, message_logits = self.message_decoder(input_feature, concept=input)
 
         distr = Categorical(logits=message_logits)
         log_prob = distr.log_prob(message)
@@ -62,7 +62,7 @@ class RecoSignalingGame(Playable[TensorType[..., int], RecoSignalingGameResult])
         entropy = entropy * mask
 
         message_feature = self.message_encoder(message)
-        output, output_logits = self.concept_decoder(message_feature)
+        output, output_logits = self.concept_decoder(message_feature, message=message)
 
         return RecoSignalingGameResult(
             concept_encoder=self.concept_encoder,

@@ -23,6 +23,8 @@ class Loss(
         | None = None,
         length_baseline: Callable[[TensorType[..., float]], TensorType[..., float]]
         | None = None,
+        receiver_loss_weight: float = 1.0,
+        sender_loss_weight: float = 1.0,
     ) -> None:
         super().__init__()
         self.concept_length = concept_length
@@ -33,6 +35,8 @@ class Loss(
         self.length_weight = length_weight
         self.baseline = baseline
         self.length_baseline = length_baseline
+        self.receiver_loss_weight = receiver_loss_weight
+        self.sender_loss_weight = sender_loss_weight
 
         self.reinforce_loss = ReinforceLoss(
             max_len=message_max_len,
@@ -66,7 +70,7 @@ class Loss(
     def total_loss(self, result: RecoSignalingGameResult) -> TensorType[..., float]:
         loss_r = self.receiver_loss(result)
         loss_s = self.sender_loss(result, loss_r)
-        return loss_r + loss_s
+        return self.receiver_loss_weight * loss_r + self.sender_loss_weight * loss_s
 
     def compute(
         self,

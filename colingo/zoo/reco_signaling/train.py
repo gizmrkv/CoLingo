@@ -40,6 +40,8 @@ def train_reco_signaling(
     message_vocab_size: int,
     entropy_weight: float,
     length_weight: float,
+    receiver_loss_weight: float,
+    sender_loss_weight: float,
     n_epochs: int,
     batch_size: int,
     lr: float,
@@ -50,7 +52,7 @@ def train_reco_signaling(
     topsim_interval: int,
     lang_log_interval: int,
     log_dir: Path,
-    additions: Iterable[Task] | None = None,
+    additional_tasks: Iterable[Task] | None = None,
 ) -> None:
     models: List[nn.Module] = [
         concept_encoder,
@@ -93,6 +95,8 @@ def train_reco_signaling(
         length_weight=length_weight,
         baseline=baseline,
         length_baseline=baseline,
+        receiver_loss_weight=receiver_loss_weight,
+        sender_loss_weight=sender_loss_weight,
     )
 
     trainer = Trainer(
@@ -145,7 +149,7 @@ def train_reco_signaling(
     )
 
     runner_callbacks = [
-        *(additions or []),
+        *(additional_tasks or []),
         trainer,
         *evaluators,
         StepCounter(loggers),
@@ -154,7 +158,7 @@ def train_reco_signaling(
         early_stopper,
         key_checker,
     ]
-    # runner_callbacks = [Timer(runner_callbacks)]
+    # runner_callbacks = [TimeDebugger(runner_callbacks)]
     runner = TaskRunner(runner_callbacks, stopper=early_stopper, use_tqdm=use_tqdm)
     runner.run(n_epochs)
 
@@ -169,6 +173,8 @@ class RecoSignalingConfig:
     message_vocab_size: int
     entropy_weight: float
     length_weight: float
+    receiver_loss_weight: float
+    sender_loss_weight: float
     n_epochs: int
     batch_size: int
     lr: float
@@ -195,7 +201,7 @@ class RecoSignalingConfig:
 def train_reco_signaling_from_config(
     config: Mapping[str, Any],
     log_dir: Path,
-    additions: Iterable[Task] | None = None,
+    additional_tasks: Iterable[Task] | None = None,
 ) -> None:
     fields = RecoSignalingConfig.__dataclass_fields__
     config = {k: v for k, v in config.items() if k in fields}
@@ -298,6 +304,8 @@ def train_reco_signaling_from_config(
         message_vocab_size=cfg.message_vocab_size,
         entropy_weight=cfg.entropy_weight,
         length_weight=cfg.length_weight,
+        receiver_loss_weight=cfg.receiver_loss_weight,
+        sender_loss_weight=cfg.sender_loss_weight,
         n_epochs=cfg.n_epochs,
         batch_size=cfg.batch_size,
         lr=cfg.lr,
@@ -308,5 +316,5 @@ def train_reco_signaling_from_config(
         topsim_interval=cfg.topsim_interval,
         lang_log_interval=cfg.language_log_interval,
         log_dir=log_dir,
-        additions=additions,
+        additional_tasks=additional_tasks,
     )

@@ -5,161 +5,138 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple
 
 import numpy as np
 import pandas as pd
+import torch
 from numpy.typing import NDArray
 from torchtyping import TensorType
 
 from ...analysis import language_similarity, topographic_similarity
-from ...game import ReconstructionNetworkGameResult, ReconstructionNetworkSubGameResult
+from ...core import Computable, Loggable
 from ...loggers import HeatmapLogger, LanguageLogger
-from .agent import MessageAuxiliary
+from .game import RecoNetworkAgent, RecoNetworkGameResult, RecoNetworkSubGameResult
 from .loss import Loss
 
 
-class Metrics:
+class Metrics(Computable[TensorType[..., int], RecoNetworkGameResult, None]):
     def __init__(
         self,
-        name: str,
         loss: Loss,
-        callbacks: Iterable[Callable[[Dict[str, float]], None]],
+        loggers: Iterable[Loggable[Mapping[str, float]]],
     ) -> None:
-        self.name = name
         self.loss = loss
-        self.callbacks = callbacks
+        self.loggers = loggers
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionNetworkGameResult[
-                TensorType[..., int],
-                TensorType[..., float],
-                TensorType[..., int],
-                None,
-                TensorType[..., float],
-                None,
-                MessageAuxiliary,
-            ]
-        ],
+        output: RecoNetworkGameResult,
+        step: int | None = None,
     ) -> None:
-        metrics: Dict[str, float] = {}
+        agent_metrics: Dict[str, Dict[str, float]] = {}
 
-        result = next(iter(outputs))
-
-        for name_e, result_e in result.subgame_results.items():
+        for name_s, result_s in output.sub_results.items():
             acc_comps, acc_parts = zip(
                 *[
-                    acc_comp_part(output_d, result_e.input)
-                    for output_d in result_e.outputs.values()
+                    acc_comp_part(output_r, result_s.input)
+                    for output_r in result_s.outputs.values()
                 ]
             )
-            acc_comp_mean = fmean(acc_comps)
-            acc_part_mean = fmean(acc_parts)
-            acc_comp_max = max(acc_comps)
-            acc_part_max = max(acc_parts)
-            metrics |= {
-                f"{self.name}.{name_e}.acc_comp.mean": acc_comp_mean,
-                f"{self.name}.{name_e}.acc_part.mean": acc_part_mean,
-                f"{self.name}.{name_e}.acc_comp.max": acc_comp_max,
-                f"{self.name}.{name_e}.acc_part.max": acc_part_max,
+            loss_rs = self.loss.receivers_loss(result_s)
+            loss_r = torch.stack(list(loss_rs.values()), dim=-1).mean(dim=-1)
+            loss_s = self.loss.sender_loss(result_s, loss_r)
+            loss_ris = self.loss.receiver_imitation_loss(result_s)
+            loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
+            total_loss = loss_r + loss_s + loss_ri
+            agent_metrics[name_s] = {
+                f"acc_comp_mean": fmean(acc_comps),
+                f"acc_part_mean": fmean(acc_parts),
+                f"acc_comp_max": max(acc_comps),
+                f"acc_part_max": max(acc_parts),
+                f"acc_comp_min": min(acc_comps),
+                f"acc_part_min": min(acc_parts),
+                f"receiver_loss": loss_r.mean().item(),
+                f"sender_loss": loss_s.mean().item(),
+                f"receiver_imitation_loss": loss_ri.mean().item(),
+                f"total_loss": total_loss.mean().item(),
+                f"entropy": result_s.message_entropy.mean().item(),
+                f"length": result_s.message_length.float().mean().item(),
+                f"unique": result_s.message.unique(dim=0).shape[0]
+                / result_s.message.shape[0],
             }
 
-        for callback in self.callbacks:
-            callback(metrics)
+        metrics = {
+            f"{name}.{k}": v for name, m in agent_metrics.items() for k, v in m.items()
+        }
+        keys = next(iter(agent_metrics.values())).keys()
+        metrics |= {
+            f"{k}_mean": fmean([m[k] for m in agent_metrics.values()]) for k in keys
+        }
+
+        for logger in self.loggers:
+            logger.log(metrics)
 
 
-class TopographicSimilarityMetrics:
-    def __init__(
-        self, name: str, callbacks: Iterable[Callable[[Dict[str, float]], None]]
-    ) -> None:
-        self.name = name
-        self.callbacks = callbacks
+class TopographicSimilarityMetrics(
+    Computable[TensorType[..., int], RecoNetworkGameResult, None]
+):
+    def __init__(self, loggers: Iterable[Loggable[Mapping[str, float]]]) -> None:
+        self.loggers = loggers
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionNetworkGameResult[
-                TensorType[..., int],
-                TensorType[..., float],
-                TensorType[..., int],
-                None,
-                TensorType[..., float],
-                None,
-                MessageAuxiliary,
-            ]
-        ],
+        output: RecoNetworkGameResult,
+        step: int | None = None,
     ) -> None:
-        output = next(iter(outputs))
         metrics: Dict[str, float] = {}
-        for name, result in output.subgame_results.items():
+        for name, result in output.sub_results.items():
             metrics |= {
-                f"{self.name}.{name}.topsim": topographic_similarity(
+                f"{name}.topsim": topographic_similarity(
                     result.input.cpu().numpy(),
                     result.message.cpu().numpy(),
                     y_processor=drop_padding,  # type: ignore
                 )
             }
 
-        metrics[f"{self.name}.topsim.mean"] = fmean(metrics.values())
-        for callback in self.callbacks:
-            callback(metrics)
+        metrics[f".topsim.mean"] = fmean(metrics.values())
+        for logger in self.loggers:
+            logger.log(metrics)
 
 
-class LangLogger:
-    def __init__(self, save_dir: Path, agent_names: Iterable[str]) -> None:
+class LanguageLoggerWrapper(
+    Computable[TensorType[..., int], RecoNetworkGameResult, None]
+):
+    def __init__(self, save_dir: Path, agents: Iterable[str]) -> None:
         self.loggers = {
-            name: LanguageLogger(save_dir.joinpath(name)) for name in agent_names
+            name: LanguageLogger(save_dir.joinpath(name)) for name in agents
         }
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionNetworkGameResult[
-                TensorType[..., int],
-                TensorType[..., float],
-                TensorType[..., int],
-                None,
-                TensorType[..., float],
-                None,
-                MessageAuxiliary,
-            ]
-        ],
+        output: RecoNetworkGameResult,
+        step: int | None = None,
     ) -> None:
-        output = next(iter(outputs))
-        for name, result in output.subgame_results.items():
-            self.loggers[name](step, result.input, result.message)
+        for name, result in output.sub_results.items():
+            self.loggers[name].log((step or 0, result.input, result.message))
 
 
-class AccuracyHeatmapLogger:
+class AccuracyHeatmapMetrics(
+    Computable[TensorType[..., int], RecoNetworkGameResult, None]
+):
     def __init__(
         self,
-        acc_comp_logger: HeatmapLogger,
-        acc_part_logger: HeatmapLogger,
+        acc_comp_heatmap_logger: HeatmapLogger,
+        acc_part_heatmap_logger: HeatmapLogger,
     ) -> None:
-        self.acc_comp_logger = acc_comp_logger
-        self.acc_part_logger = acc_part_logger
+        self.acc_comp_heatmap_logger = acc_comp_heatmap_logger
+        self.acc_part_heatmap_logger = acc_part_heatmap_logger
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionNetworkGameResult[
-                TensorType[..., int],
-                TensorType[..., float],
-                TensorType[..., int],
-                None,
-                TensorType[..., float],
-                None,
-                MessageAuxiliary,
-            ]
-        ],
+        output: RecoNetworkGameResult,
+        step: int | None = None,
     ) -> None:
-        output = next(iter(outputs))
         names = list(output.agents)
         matrix_comp: List[List[float]] = []
         matrix_part: List[List[float]] = []
@@ -167,7 +144,7 @@ class AccuracyHeatmapLogger:
             comps, parts = [], []
             for name_r in names:
                 acc_comp, acc_part = acc_comp_part(
-                    output.subgame_results[name_s].outputs[name_r], input
+                    output.sub_results[name_s].outputs[name_r], input
                 )
                 comps.append(acc_comp)
                 parts.append(acc_part)
@@ -176,46 +153,35 @@ class AccuracyHeatmapLogger:
             matrix_part.append(parts)
 
         for matrix, logger in [
-            (matrix_comp, self.acc_comp_logger),
-            (matrix_part, self.acc_part_logger),
+            (matrix_comp, self.acc_comp_heatmap_logger),
+            (matrix_part, self.acc_part_heatmap_logger),
         ]:
             df = pd.DataFrame(matrix, columns=names, index=names)
-            logger(step, df)
+            logger.log((step or 0, df))
 
 
-class LanguageSimilarityMetrics:
+class LanguageSimilarityMetrics(
+    Computable[TensorType[..., int], RecoNetworkGameResult, None]
+):
     def __init__(
         self,
-        name: str,
-        callbacks: Iterable[Callable[[Dict[str, float]], None]],
+        loggers: Iterable[Loggable[Mapping[str, float]]],
         heatmap_logger: HeatmapLogger | None = None,
     ) -> None:
-        self.name = name
-        self.callbacks = callbacks
+        self.loggers = loggers
         self.heatmap_logger = heatmap_logger
 
-    def __call__(
+    def compute(
         self,
-        step: int,
         input: TensorType[..., int],
-        outputs: Iterable[
-            ReconstructionNetworkGameResult[
-                TensorType[..., int],
-                TensorType[..., float],
-                TensorType[..., int],
-                None,
-                TensorType[..., float],
-                None,
-                MessageAuxiliary,
-            ]
-        ],
+        output: RecoNetworkGameResult,
+        step: int | None = None,
     ) -> None:
-        output = next(iter(outputs))
         names = list(output.agents)
 
         langs = []
         for name in names:
-            langs.append(output.subgame_results[name].message.cpu().numpy())
+            langs.append(output.sub_results[name].message.cpu().numpy())
 
         matrix: List[List[float]] = []
         for _ in names:
@@ -229,16 +195,16 @@ class LanguageSimilarityMetrics:
 
         if self.heatmap_logger is not None:
             df = pd.DataFrame(matrix, columns=names, index=names)
-            self.heatmap_logger(step, df)
+            self.heatmap_logger.log((step or 0, df))
 
         metrics: Dict[str, float] = {}
         for name, lansims in zip(names, matrix):
-            metrics[f"{self.name}.{name}.lansim.mean"] = fmean(lansims)
+            metrics[f"{name}.lansim.mean"] = fmean(lansims)
 
-        metrics[f"{self.name}.lansim.mean"] = fmean(metrics.values())
+        metrics[f".lansim.mean"] = fmean(metrics.values())
 
-        for callback in self.callbacks:
-            callback(metrics)
+        for logger in self.loggers:
+            logger.log(metrics)
 
 
 def acc_comp_part(
