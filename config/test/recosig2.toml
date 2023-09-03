@@ -9,9 +9,7 @@ message_max_len = 8
 message_vocab_size = 50
 entropy_weight = 0.01
 length_weight = 0.0
-receiver_loss_weight = 1.0
-sender_loss_weight = 1.0
-n_epochs = 2001
+n_epochs = 11
 batch_size = 100000
 lr = 0.001
 device = "cuda"
@@ -23,9 +21,9 @@ language_log_interval = 100
 
 sender_latent_dim = 64
 sender_encoder_type = "mlp"
-sender_decoder_type = "rnn"
+sender_decoder_type = "transformer"
 receiver_latent_dim = 64
-receiver_encoder_type = "rnn"
+receiver_encoder_type = "transformer"
 receiver_decoder_type = "mlp"
 
 [sender_encoder_params]
@@ -35,16 +33,25 @@ n_layers = 2
 activation = "gelu"
 
 [sender_decoder_params]
-hidden_dim = 128
-embed_dim = 8
+embed_dim = 64
+n_heads = 8
+ff_dim = 64
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = false
 n_layers = 2
-rnn_type = "gru"
 
 [receiver_encoder_params]
-hidden_dim = 128
-embed_dim = 8
+embed_dim = 64
+n_heads = 8
+ff_dim = 64
+dropout = 0.01
+activation = "gelu"
+layer_norm_eps = 1e-5
+norm_first = false
 n_layers = 2
-rnn_type = "gru"
+is_causal = false
 
 [receiver_decoder_params]
 hidden_dim = 64

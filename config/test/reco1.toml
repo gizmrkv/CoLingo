@@ -1,0 +1,29 @@
+zoo = "reconstruction"
+seed = 42
+
+length = 2
+values = 50
+train_proportion = 0.8
+valid_proportion = 0.2
+n_epochs = 11
+batch_size = 100000
+lr = 0.001
+device = "cuda"
+wandb_project = "reconstruction"
+use_tqdm = true
+metrics_interval = 5
+
+latent_dim = 64
+encoder_type = "mlp"
+decoder_type = "mlp"
+
+[encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
