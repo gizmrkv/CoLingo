@@ -144,7 +144,7 @@ class TransformerDecoder(nn.Module):
     def decode_standard(
         self,
         latent: TensorType[..., "input_dim", float],
-        input: TensorType[..., int] | None = None,
+        concept: TensorType[..., int] | None = None,
         message: TensorType[..., "max_len", int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
         memory = self.proj1(latent)
@@ -162,9 +162,7 @@ class TransformerDecoder(nn.Module):
             else:
                 output = logits_step.argmax(dim=-1)
 
-            embed = math.sqrt(self.embed_dim) * self.embed(
-                output if message is None else message[:, 0]
-            )
+            embed = math.sqrt(self.embed_dim) * self.embed(output)
             input = torch.cat([input, embed.unsqueeze(1)], dim=1)
 
             symbols_list.append(output)
