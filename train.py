@@ -37,7 +37,7 @@ def main() -> None:
 
         p = Path(path)
         if p.is_dir():
-            for file in p.glob("*"):
+            for file in sorted(list(p.glob("*"))):
                 print(f"Training {file}")
                 train(read_config(file))
 
