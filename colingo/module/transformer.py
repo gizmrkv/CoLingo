@@ -175,7 +175,7 @@ class TransformerDecoder(nn.Module):
     def forward(
         self,
         latent: TensorType[..., "input_dim", float],
-        input: TensorType[..., int] | None = None,
+        concept: TensorType[..., int] | None = None,
         message: TensorType[..., "max_len", int] | None = None,
     ) -> TensorType[..., "max_len", "vocab_size", float]:
-        return self.decode_standard(latent, input, message)
+        return self.decode_standard(latent, concept, message)
