@@ -1,3 +1,4 @@
+import math
 from typing import Callable, Dict, Iterable, Mapping
 
 import torch
@@ -93,7 +94,7 @@ class Loss(
         loss_s = self.sender_loss(result, loss_r)
         loss = self.receiver_loss_weight * loss_r + self.sender_loss_weight * loss_s
 
-        if self.receiver_imitation_loss_weight > 0.0:
+        if not math.isclose(self.receiver_imitation_loss_weight, 0.0):
             loss_ris = self.receiver_imitation_loss(result)
             loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
             loss += self.receiver_imitation_loss_weight * loss_ri
