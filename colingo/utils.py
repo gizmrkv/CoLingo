@@ -71,3 +71,13 @@ def random_split(dataset: TensorType, proportions: Iterable[float]) -> List[Tens
     split_dataset = [dataset[torch.tensor(idx)] for idx in split_indices]
 
     return split_dataset
+
+
+def padding_mask(message: TensorType[..., int]) -> TensorType[..., int]:
+    mask = message == 0
+    indices = torch.argmax(mask.int(), dim=1)
+    no_mask = ~mask.any(dim=1)
+    indices[no_mask] = message.shape[1]
+    mask = torch.arange(message.shape[1]).expand(message.shape).to(message.device)
+    mask = (mask <= indices.unsqueeze(-1)).long()
+    return mask

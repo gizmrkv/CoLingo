@@ -6,6 +6,7 @@ from torch.distributions import Categorical
 from torchtyping import TensorType
 
 from ...core import Playable
+from ...utils import padding_mask
 
 
 @dataclass
@@ -49,12 +50,7 @@ class RecoSignalingGame(Playable[TensorType[..., int], RecoSignalingGameResult])
         log_prob = distr.log_prob(message)
         entropy = distr.entropy()
 
-        mask = message == 0
-        indices = torch.argmax(mask.int(), dim=1)
-        no_mask = ~mask.any(dim=1)
-        indices[no_mask] = message.shape[1]
-        mask = torch.arange(message.shape[1]).expand(message.shape).to(message.device)
-        mask = (mask <= indices.unsqueeze(-1)).long()
+        mask = padding_mask(message)
 
         length = mask.sum(dim=-1)
         message = message * mask

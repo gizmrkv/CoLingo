@@ -8,6 +8,7 @@ from torch.distributions import Categorical
 from torchtyping import TensorType
 
 from ...core import Playable
+from ...utils import padding_mask
 
 
 class RecoNetworkAgent(nn.Module):
@@ -36,6 +37,7 @@ class RecoNetworkSubGameResult:
     message_log_prob: TensorType[..., float]
     message_entropy: TensorType[..., float]
     message_length: TensorType[..., int]
+    message_mask: TensorType[..., int]
     message_features: Mapping[str, TensorType[..., float]]
     outputs: Mapping[str, TensorType[..., int]]
     outputs_logits: Mapping[str, TensorType[..., float]]
@@ -62,12 +64,7 @@ class RecoNetworkSubGame(Playable[TensorType[..., int], RecoNetworkSubGameResult
         log_prob = distr.log_prob(message)
         entropy = distr.entropy()
 
-        mask = message == 0
-        indices = torch.argmax(mask.int(), dim=1)
-        no_mask = ~mask.any(dim=1)
-        indices[no_mask] = message.shape[1]
-        mask = torch.arange(message.shape[1]).expand(message.shape).to(message.device)
-        mask = (mask <= indices.unsqueeze(-1)).long()
+        mask = padding_mask(message)
 
         length = mask.sum(dim=-1)
         message = message * mask
@@ -97,6 +94,7 @@ class RecoNetworkSubGame(Playable[TensorType[..., int], RecoNetworkSubGameResult
             message_log_prob=log_prob,
             message_entropy=entropy,
             message_length=length,
+            message_mask=mask,
             message_features=message_features,
             outputs=outputs,
             outputs_logits=outputs_logits,
