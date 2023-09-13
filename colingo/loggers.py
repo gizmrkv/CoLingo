@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
-import wandb
 from moviepy.editor import ImageSequenceClip
 from numpy.typing import NDArray
 from torchtyping import TensorType
+
+import wandb
 
 from .core import Loggable, Task
 
@@ -103,17 +104,18 @@ class LanguageLogger(Loggable[Tuple[int, TensorType[..., int], TensorType[..., i
     def log(
         self, input: Tuple[int, TensorType[..., int], TensorType[..., int]]
     ) -> None:
-        step, sequence, message = input
+        step, concept, message = input
         lines = []
-        for seq, msg in zip(sequence, message):
+        for cpt, msg in zip(concept, message):
             i = torch.argwhere(msg == 0)
             msg = msg if len(i) == 0 else msg[: i[0, 0]]
 
-            s = str(tuple(seq.tolist()))
-            m = str(msg.tolist())
-            lines.append(f"{s} -> {m}\n")
+            c = ",".join([str(i) for i in cpt.tolist()])
+            m = "-".join([str(i) for i in msg.tolist()])
+
+            lines.append(",".join([c, m]) + "\n")
 
         lang = "".join(lines)
 
-        with self.save_dir.joinpath(f"{step}.txt").open("w") as f:
+        with self.save_dir.joinpath(f"{step}.csv").open("w") as f:
             f.write(lang)
