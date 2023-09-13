@@ -117,11 +117,14 @@ class Loss(
             _, message_logits = receiver.message_decoder(
                 feature, message=result.message
             )
-            loss = correct_mask * F.cross_entropy(
+            # Should I mask the imitation loss?
+            # loss = result.message_mask * F.cross_entropy(
+            loss = F.cross_entropy(
                 message_logits.view(-1, self.message_vocab_size),
                 result.message.view(-1),
                 reduction="none",
-            ).view(-1, self.message_max_len).mean(dim=-1)
+            ).view(-1, self.message_max_len)
+            loss = correct_mask * loss.mean(dim=-1)
             losses[name] = loss
 
         return losses

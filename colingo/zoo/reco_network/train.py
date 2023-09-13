@@ -181,7 +181,7 @@ def train_reco_network(
             ],
         )
         lansim_metrics = LanguageSimilarityMetrics(
-            loggers=[Namer(f"{name}.lansim", loggers)],
+            loggers=[Namer(f"{name}", loggers)],
             heatmap_logger=lansim_heatmap_logger,
         )
 
@@ -309,14 +309,21 @@ def train_reco_network_from_config(
         )
         agents = {f"A{i}": deepcopy(agent) for i in range(cfg.n_agents)}
 
+    agent_keys = list(agents)
     if cfg.network_type == "complete":
         network = nx.complete_graph(agents, nx.DiGraph())
         network.add_edges_from([(a, a) for a in agents])
     elif cfg.network_type == "ring":
         network = nx.DiGraph()
         network.add_nodes_from(agents)
-        for i in range(len(agents)):
-            network.add_edge(f"A{i}", f"A{(i + 1) % len(agents)}")
+        for i in range(len(agent_keys)):
+            network.add_edge(agent_keys[i], agent_keys[(i + 1) % len(agents)])
+    elif cfg.network_type == "line":
+        network = nx.DiGraph()
+        network.add_nodes_from(agents)
+        for i in range(len(agent_keys) - 1):
+            network.add_edge(agent_keys[i], agent_keys[i + 1])
+            network.add_edge(agent_keys[i + 1], agent_keys[i])
 
     train_reco_network(
         agents=agents,

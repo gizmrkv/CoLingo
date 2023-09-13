@@ -47,12 +47,12 @@ class Metrics(Computable[TensorType[..., int], RecoNetworkGameResult, None]):
             loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
             total_loss = loss_r + loss_s + loss_ri
             agent_metrics[name_s] = {
-                f"acc_comp_mean": fmean(acc_comps),
-                f"acc_part_mean": fmean(acc_parts),
-                f"acc_comp_max": max(acc_comps),
-                f"acc_part_max": max(acc_parts),
-                f"acc_comp_min": min(acc_comps),
-                f"acc_part_min": min(acc_parts),
+                f"acc_comp.mean": fmean(acc_comps),
+                f"acc_part.mean": fmean(acc_parts),
+                f"acc_comp.max": max(acc_comps),
+                f"acc_part.max": max(acc_parts),
+                f"acc_comp.min": min(acc_comps),
+                f"acc_part.min": min(acc_parts),
                 f"receiver_loss": loss_r.mean().item(),
                 f"sender_loss": loss_s.mean().item(),
                 f"receiver_imitation_loss": loss_ri.mean().item(),
@@ -68,7 +68,7 @@ class Metrics(Computable[TensorType[..., int], RecoNetworkGameResult, None]):
         }
         keys = next(iter(agent_metrics.values())).keys()
         metrics |= {
-            f"{k}_mean": fmean([m[k] for m in agent_metrics.values()]) for k in keys
+            f"{k}.mean": fmean([m[k] for m in agent_metrics.values()]) for k in keys
         }
 
         for logger in self.loggers:
@@ -97,7 +97,7 @@ class TopographicSimilarityMetrics(
                 )
             }
 
-        metrics[f".topsim.mean"] = fmean(metrics.values())
+        metrics[f"topsim.mean"] = fmean(metrics.values())
         for logger in self.loggers:
             logger.log(metrics)
 
@@ -199,9 +199,9 @@ class LanguageSimilarityMetrics(
 
         metrics: Dict[str, float] = {}
         for name, lansims in zip(names, matrix):
-            metrics[f"{name}.lansim.mean"] = fmean(lansims)
+            metrics[f"{name}.lansim.mean"] = fmean(lansims) - 1.0 / len(names)
 
-        metrics[f".lansim.mean"] = fmean(metrics.values())
+        metrics[f"lansim.mean"] = fmean(metrics.values())
 
         for logger in self.loggers:
             logger.log(metrics)
