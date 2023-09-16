@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, Mapping, TypeVar
+
+from torchtyping import TensorType
 
 T = TypeVar("T")
 T_co = TypeVar("T_co")
@@ -35,13 +37,17 @@ class Playable(ABC, Generic[T_co, U_co]):
         ...
 
 
-class Computable(ABC, Generic[T_co, U_co, V_co]):
+class Loggable(ABC, Generic[T_contra]):
     @abstractmethod
-    def compute(self, input: T_co, output: U_co, step: int | None = None) -> V_co:
+    def log(self, input: T_contra, step: int | None = None) -> None:
         ...
 
 
-class Loggable(ABC, Generic[T_co]):
+class Language(ABC):
     @abstractmethod
-    def log(self, input: T_co) -> None:
+    def concept(self) -> TensorType[..., int]:
+        ...
+
+    @abstractmethod
+    def messages(self) -> Mapping[str, TensorType[..., int]]:
         ...

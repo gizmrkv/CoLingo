@@ -1,0 +1,119 @@
+zoo = "reco_network"
+seed = 42
+
+concept_length = 2
+concept_values = 50
+train_proportion = 0.8
+valid_proportion = 0.2
+message_max_len = 8
+message_vocab_size = 50
+entropy_weight = 0.01
+length_weight = 0.0
+receiver_loss_weight = 1.0
+sender_loss_weight = 1.0
+receiver_imitation_loss_weight = 0.0
+n_epochs = 5001
+batch_size = 100000
+lr = 0.001
+device = "cuda"
+wandb_project = "reco_network"
+use_tqdm = true
+metrics_interval = 10
+topsim_interval = 100
+lang_log_interval = 100
+acc_heatmap_interval = 100
+lansim_interval = 100
+
+network_type = "complete"
+
+agents_mode = "diverse"
+
+[agent_configs.A0]
+latent_dim = 64
+concept_encoder_type = "mlp"
+concept_decoder_type = "mlp"
+message_encoder_type = "rnn"
+message_decoder_type = "rnn"
+
+[agent_configs.A0.concept_encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A0.concept_decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A0.message_encoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[agent_configs.A0.message_decoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[agent_configs.A1]
+latent_dim = 64
+concept_encoder_type = "mlp"
+concept_decoder_type = "mlp"
+message_encoder_type = "rnn"
+message_decoder_type = "rnn"
+
+[agent_configs.A1.concept_encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A1.concept_decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A1.message_encoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[agent_configs.A1.message_decoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[agent_configs.A2]
+latent_dim = 64
+concept_encoder_type = "mlp"
+concept_decoder_type = "mlp"
+message_encoder_type = "rnn"
+message_decoder_type = "rnn"
+
+[agent_configs.A2.concept_encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A2.concept_decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[agent_configs.A2.message_encoder_params]
+hidden_dim = 32
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[agent_configs.A2.message_decoder_params]
+hidden_dim = 32
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torchtyping import TensorType
 
-from .abstract import Computable, Playable, Task
+from .abstract import Playable, Task
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -17,7 +17,7 @@ class Trainer(Task, Generic[T, U]):
         agents: Iterable[nn.Module],
         input: Iterable[T],
         game: Playable[T, U],
-        loss: Computable[T, U, TensorType[1, float]],
+        loss: Callable[[U], TensorType[1, float]],
         optimizers: Iterable[torch.optim.Optimizer],
         device: str = "cuda",
         use_amp: bool = False,
@@ -44,7 +44,7 @@ class Trainer(Task, Generic[T, U]):
         for input in self.input:
             with self.amp.autocast(enabled=self.use_amp, dtype=torch.float16):
                 output = self.game.play(input, step=step)
-                loss = self.loss.compute(input, output, step=step)
+                loss = self.loss(output)
 
             self.scaler.scale(loss).backward()
 

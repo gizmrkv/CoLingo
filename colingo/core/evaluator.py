@@ -3,10 +3,10 @@ from typing import Any, Callable, Collection, Generic, Iterable, TypeVar
 import torch
 import torch.nn as nn
 
-from .abstract import Computable, Playable, Task
+from .abstract import Loggable, Playable, Task
 
 T = TypeVar("T")
-U = TypeVar("U")
+U = TypeVar("U", contravariant=True)
 
 
 class Evaluator(Task, Generic[T, U]):
@@ -15,17 +15,17 @@ class Evaluator(Task, Generic[T, U]):
         agents: Iterable[nn.Module],
         input: Iterable[T],
         game: Playable[T, U],
-        metrics: Collection[Computable[T, U, Any]],
+        loggers: Collection[Loggable[U]],
         intervals: Collection[int] | None = None,
     ) -> None:
         super().__init__()
         self.agents = agents
         self.input = input
         self.game = game
-        self.metrics = metrics
-        self.intervals = intervals or ([1] * len(self.metrics))
+        self.loggers = loggers
+        self.intervals = intervals or ([1] * len(self.loggers))
 
-        if len(self.intervals) != len(self.metrics):
+        if len(self.intervals) != len(self.loggers):
             raise ValueError(
                 "The number of intervals must be the same as the number of callbacks."
             )
@@ -43,6 +43,6 @@ class Evaluator(Task, Generic[T, U]):
         with torch.no_grad():
             output = self.game.play(input, step=step)
 
-            for flag, metric in zip(flags, self.metrics):
+            for flag, logger in zip(flags, self.loggers):
                 if flag:
-                    metric.compute(input, output, step=step)
+                    logger.log(output, step=step)

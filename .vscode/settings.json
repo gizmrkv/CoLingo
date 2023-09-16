@@ -18,6 +18,8 @@
         "dtype",
         "gizmrkv",
         "isort",
+        "langsim",
+        "langsims",
         "lansim",
         "lansims",
         "Loggable",

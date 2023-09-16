@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 from dataclasses import dataclass
 from itertools import product
 from typing import Any, Iterable, List, Literal, Mapping
@@ -9,7 +10,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from ...core import Evaluator, Loggable, Task, TaskRunner, Trainer
-from ...loggers import Namer, WandbLogger
+from ...loggers import (
+    DictStopper,
+    KeyChecker,
+    KeyPrefix,
+    StepCounter,
+    Stopwatch,
+    TimeDebugger,
+    WandbLogger,
+)
 from ...module import (
     MLPDecoder,
     MLPEncoder,
@@ -18,11 +27,10 @@ from ...module import (
     TransformerDecoder,
     TransformerEncoder,
 )
-from ...tasks import DictStopper, KeyChecker, StepCounter, Stopwatch, TimeDebugger
 from ...utils import init_weights, random_split
 from .game import ReconstructionGame
 from .loss import Loss
-from .metrics import Metrics
+from .metrics import MetricsLogger
 
 
 def train_reconstruction(
@@ -87,12 +95,14 @@ def train_reconstruction(
         ("train", train_dataloader),
         ("valid", valid_dataloader),
     ]:
+        logs = [KeyPrefix(name + ".", loggers)]
+        metrics = MetricsLogger(Loss(), logs)
         evaluators.append(
             Evaluator(
                 agents=models,
                 input=input,
                 game=game,
-                metrics=[Metrics(Loss(), [Namer(name, loggers)])],
+                loggers=[metrics],
                 intervals=[metrics_interval],
             )
         )

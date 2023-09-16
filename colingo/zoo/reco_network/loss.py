@@ -1,18 +1,15 @@
 import math
-from typing import Callable, Dict, Iterable, Mapping
+from typing import Callable, Dict
 
 import torch
 import torch.nn.functional as F
 from torchtyping import TensorType
 
-from ...core import Computable, Loggable
 from ...module.reinforce_loss import ReinforceLoss
-from .game import RecoNetworkAgent, RecoNetworkGameResult, RecoNetworkSubGameResult
+from .game import RecoNetworkGameResult, RecoNetworkSubGameResult
 
 
-class Loss(
-    Computable[TensorType[..., int], RecoNetworkGameResult, TensorType[1, float]]
-):
+class Loss:
     def __init__(
         self,
         concept_length: int,
@@ -50,12 +47,7 @@ class Loss(
             length_baseline=baseline,
         )
 
-    def compute(
-        self,
-        input: TensorType[..., int],
-        output: RecoNetworkGameResult,
-        step: int | None = None,
-    ) -> TensorType[1, float]:
+    def __call__(self, output: RecoNetworkGameResult) -> TensorType[1, float]:
         return self.total_loss(output).mean()
 
     def receivers_loss(

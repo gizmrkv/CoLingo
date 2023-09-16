@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, Mapping, Set
+from typing import Mapping
 
-import torch
 from networkx import DiGraph
 from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from ...core import Playable
+from ...core import Language, Playable
 from ...utils import padding_mask
 
 
@@ -102,11 +101,17 @@ class RecoNetworkSubGame(Playable[TensorType[..., int], RecoNetworkSubGameResult
 
 
 @dataclass
-class RecoNetworkGameResult:
+class RecoNetworkGameResult(Language):
     agents: Mapping[str, RecoNetworkAgent]
     network: DiGraph
     input: TensorType[..., int]
     sub_results: Mapping[str, RecoNetworkSubGameResult]
+
+    def concept(self) -> TensorType[..., int]:
+        return self.input
+
+    def messages(self) -> Mapping[str, TensorType[..., int]]:
+        return {name: result.message for name, result in self.sub_results.items()}
 
 
 class RecoNetworkGame(Playable[TensorType[..., int], RecoNetworkGameResult]):

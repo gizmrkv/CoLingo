@@ -24,10 +24,10 @@ lang_log_interval = 100
 acc_heatmap_interval = 100
 lansim_interval = 100
 
-network_type = "ring"
+network_type = "line"
 
 agents_mode = "uniform"
-n_agents = 3
+n_agents = 4
 
 [agent_config]
 latent_dim = 64

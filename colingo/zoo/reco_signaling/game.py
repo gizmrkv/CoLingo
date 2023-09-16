@@ -1,16 +1,16 @@
 from dataclasses import dataclass
+from typing import Dict
 
-import torch
 from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from ...core import Playable
+from ...core import Language, Playable
 from ...utils import padding_mask
 
 
 @dataclass
-class RecoSignalingGameResult:
+class RecoSignalingGameResult(Language):
     concept_encoder: nn.Module
     message_decoder: nn.Module
     message_encoder: nn.Module
@@ -25,6 +25,12 @@ class RecoSignalingGameResult:
     message_feature: TensorType[..., float]
     output: TensorType[..., int]
     output_logits: TensorType[..., float]
+
+    def concept(self) -> TensorType:
+        return self.input
+
+    def messages(self) -> Dict[str, TensorType[..., int]]:
+        return {"msg": self.message}
 
 
 class RecoSignalingGame(Playable[TensorType[..., int], RecoSignalingGameResult]):

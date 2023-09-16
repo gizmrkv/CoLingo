@@ -2,20 +2,34 @@ from copy import deepcopy
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Literal, Mapping, Set
+from typing import Any, Dict, Iterable, List, Literal, Mapping
 
 import networkx as nx
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 from networkx import DiGraph
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-import wandb
-
-from ...core import Computable, Evaluator, Loggable, Task, TaskRunner, Trainer
-from ...loggers import HeatmapLogger, Namer, WandbLogger
+from ...core import Evaluator, Loggable, Task, TaskRunner, Trainer
+from ...loggers import (
+    HeatmapLogger,
+    ImageToVideoTask,
+    KeyChecker,
+    KeyPrefix,
+    KeySuffix,
+    LambdaLogger,
+    LanguageLogger,
+    LanguageSimilarityLogger,
+    StepCounter,
+    Stopwatch,
+    TimeDebugger,
+    TopographicSimilarityLogger,
+    WandbLogger,
+)
 from ...module import (
     MLPDecoder,
     MLPEncoder,
@@ -24,23 +38,10 @@ from ...module import (
     TransformerDecoder,
     TransformerEncoder,
 )
-from ...tasks import DictStopper, KeyChecker, StepCounter, Stopwatch, TimeDebugger
 from ...utils import init_weights, random_split
-from .game import (
-    RecoNetworkAgent,
-    RecoNetworkGame,
-    RecoNetworkGameResult,
-    RecoNetworkSubGame,
-    RecoNetworkSubGameResult,
-)
+from .game import RecoNetworkAgent, RecoNetworkGame, RecoNetworkGameResult
 from .loss import Loss
-from .metrics import (
-    AccuracyHeatmapMetrics,
-    LanguageLoggerWrapper,
-    LanguageSimilarityMetrics,
-    Metrics,
-    TopographicSimilarityMetrics,
-)
+from .metrics import AccuracyHeatmapLogger, MetricsLogger
 
 
 def train_reco_network(
@@ -136,57 +137,60 @@ def train_reco_network(
         "square": True,
     }
 
-    class WandbHeatmapLogger(Loggable[Path]):
-        def __init__(self, loggers: Iterable[Loggable[Mapping[str, Any]]]) -> None:
-            self.loggers = loggers
-
-        def log(self, path: Path) -> None:
-            for logger in self.loggers:
-                logger.log({"heatmap": wandb.Video(path.as_posix())})
+    def video_to_wandb(p: Path) -> Dict[str, Any]:
+        return {"video": wandb.Video(p.as_posix())}
 
     evaluators = []
-    heatmap_loggers = []
+    video_tasks = []
     for name, input in [
         ("train", train_dataloader),
         ("valid", valid_dataloader),
     ]:
-        metrics = Metrics(loss=loss, loggers=[Namer(name, loggers)])
-        topsim_metrics = TopographicSimilarityMetrics(loggers=[Namer(name, loggers)])
+        logs = [KeyPrefix(name + ".", loggers)]
+        metrics = MetricsLogger(loss, logs)
+        topsim = TopographicSimilarityLogger[RecoNetworkGameResult](logs)
 
+        acc_comp_path = log_dir.joinpath(f"{name}_acc_comp")
         acc_comp_heatmap_logger = HeatmapLogger(
-            save_dir=log_dir.joinpath(f"{name}_acc_comp"),
-            heatmap_option=heatmap_option,
-            loggers=[
-                WandbHeatmapLogger(loggers=[Namer(f"{name}.acc_comp", loggers)]),
-            ],
+            acc_comp_path, heatmap_option=heatmap_option
         )
-        acc_part_heatmap_logger = HeatmapLogger(
-            save_dir=log_dir.joinpath(f"{name}_acc_part"),
-            heatmap_option=heatmap_option,
-            loggers=[
-                WandbHeatmapLogger(loggers=[Namer(f"{name}.acc_part", loggers)]),
-            ],
+        video_tasks.append(
+            ImageToVideoTask(
+                acc_comp_path,
+                loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".acc_comp", logs)])],
+            )
         )
 
-        acc_heatmap_metrics = AccuracyHeatmapMetrics(
+        acc_part_path = log_dir.joinpath(f"{name}_acc_part")
+        acc_part_heatmap_logger = HeatmapLogger(
+            acc_part_path, heatmap_option=heatmap_option
+        )
+        video_tasks.append(
+            ImageToVideoTask(
+                acc_part_path,
+                loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".acc_part", logs)])],
+            )
+        )
+
+        acc_heatmap_logger = AccuracyHeatmapLogger(
             acc_comp_heatmap_logger=acc_comp_heatmap_logger,
             acc_part_heatmap_logger=acc_part_heatmap_logger,
         )
 
-        lansim_heatmap_logger = HeatmapLogger(
-            save_dir=log_dir.joinpath(f"{name}_lansim"),
-            heatmap_option=heatmap_option,
-            loggers=[
-                WandbHeatmapLogger(loggers=[Namer(f"{name}.lansim", loggers)]),
-            ],
+        langsim_path = log_dir.joinpath(f"{name}_langsim")
+        langsim_heatmap_logger = HeatmapLogger(
+            langsim_path, heatmap_option=heatmap_option
         )
-        lansim_metrics = LanguageSimilarityMetrics(
-            loggers=[Namer(f"{name}", loggers)],
-            heatmap_logger=lansim_heatmap_logger,
+        video_tasks.append(
+            ImageToVideoTask(
+                langsim_path,
+                loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".langsim", logs)])],
+            )
         )
-
-        heatmap_loggers.extend(
-            [acc_comp_heatmap_logger, acc_part_heatmap_logger, lansim_heatmap_logger]
+        lansim_logger = LanguageSimilarityLogger[RecoNetworkGameResult](
+            list(agents.keys()),
+            loggers=logs,
+            heatmap_logger=langsim_heatmap_logger,
         )
 
         evaluators.append(
@@ -194,7 +198,7 @@ def train_reco_network(
                 agents=agents.values(),
                 input=input,
                 game=game_comp,
-                metrics=[metrics, topsim_metrics, acc_heatmap_metrics, lansim_metrics],
+                loggers=[metrics, topsim, acc_heatmap_logger, lansim_logger],
                 intervals=[
                     metrics_interval,
                     topsim_interval,
@@ -208,13 +212,18 @@ def train_reco_network(
     net_none.add_nodes_from(agents)
     game_none = RecoNetworkGame(agents, net_none)
 
-    language_logger = LanguageLoggerWrapper(log_dir.joinpath("lang"), agents)
+    def lang_to_wandb(p: Path) -> Dict[str, Any]:
+        return {"lang": wandb.Table(dataframe=pd.read_csv(p))}
+
+    lang_logger = LanguageLogger[RecoNetworkGameResult](
+        log_dir.joinpath("lang"), [LambdaLogger(lang_to_wandb, loggers)]
+    )
     evaluators.append(
         Evaluator(
             agents=agents.values(),
             input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
             game=game_none,
-            metrics=[language_logger],
+            loggers=[lang_logger],
             intervals=[lang_log_interval],
         )
     )
@@ -225,7 +234,7 @@ def train_reco_network(
         *evaluators,
         StepCounter(loggers),
         Stopwatch(loggers),
-        *heatmap_loggers,
+        *video_tasks,
         wandb_logger,
         key_checker,
     ]

@@ -1,0 +1,119 @@
+method = "grid"
+name = "seed_sweep"
+project = "reco_network"
+
+[metric]
+name = "valid.topsim.mean"
+goal = "maximize"
+
+[parameters.zoo]
+value = "reco_network"
+
+[parameters.seed]
+min = 1
+max = 10
+
+[parameters.concept_length]
+value = 2
+
+[parameters.concept_values]
+value = 30
+
+[parameters.train_proportion]
+value = 0.8
+
+[parameters.valid_proportion]
+value = 0.2
+
+[parameters.message_max_len]
+value = 8
+
+[parameters.message_vocab_size]
+value = 50
+
+[parameters.entropy_weight]
+value = 0.01
+
+[parameters.length_weight]
+value = 0.0
+
+[parameters.receiver_loss_weight]
+value = 1.0
+
+[parameters.sender_loss_weight]
+value = 1.0
+
+[parameters.receiver_imitation_loss_weight]
+values = [0.0, 1.0]
+
+[parameters.n_epochs]
+value = 5001
+
+[parameters.batch_size]
+value = 100000
+
+[parameters.lr]
+value = 0.001
+
+[parameters.device]
+value = "cuda"
+
+[parameters.wandb_project]
+value = "reco_network"
+
+[parameters.use_tqdm]
+value = false
+
+[parameters.metrics_interval]
+value = 50
+
+[parameters.topsim_interval]
+value = 100
+
+[parameters.lang_log_interval]
+value = 100
+
+[parameters.acc_heatmap_interval]
+value = 100
+
+[parameters.lansim_interval]
+value = 100
+
+[parameters.network_type]
+value = "line"
+
+[parameters.agents_mode]
+value = "uniform"
+
+[parameters.n_agents]
+value = 4
+
+[parameters.agent_config.value]
+latent_dim = 64
+concept_encoder_type = "mlp"
+concept_decoder_type = "mlp"
+message_encoder_type = "rnn"
+message_decoder_type = "rnn"
+
+[parameters.agent_config.value.concept_encoder_params]
+embed_dim = 8
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[parameters.agent_config.value.concept_decoder_params]
+hidden_dim = 64
+n_layers = 2
+activation = "gelu"
+
+[parameters.agent_config.value.message_encoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"
+
+[parameters.agent_config.value.message_decoder_params]
+hidden_dim = 128
+embed_dim = 8
+n_layers = 2
+rnn_type = "gru"

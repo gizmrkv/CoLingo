@@ -1,11 +1,11 @@
-from .abstract import Computable, Loggable, Playable, Stoppable, Task
+from .abstract import Language, Loggable, Playable, Stoppable, Task
 from .evaluator import Evaluator
 from .runner import TaskRunner
 from .trainer import Trainer
 
 __all__ = [
-    "Computable",
     "Evaluator",
+    "Language",
     "Loggable",
     "Playable",
     "Stoppable",

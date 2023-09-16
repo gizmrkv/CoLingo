@@ -2,16 +2,29 @@ import math
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
-from typing import Any, Iterable, List, Literal, Mapping
+from typing import Any, Dict, Iterable, List, Literal, Mapping
 
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
 from ...core import Evaluator, Loggable, Task, TaskRunner, Trainer
-from ...loggers import Namer, WandbLogger
+from ...loggers import (
+    DictStopper,
+    KeyChecker,
+    KeyPrefix,
+    LambdaLogger,
+    LanguageLogger,
+    StepCounter,
+    Stopwatch,
+    TimeDebugger,
+    TopographicSimilarityLogger,
+    WandbLogger,
+)
 from ...module import (
     MLPDecoder,
     MLPEncoder,
@@ -20,11 +33,10 @@ from ...module import (
     TransformerDecoder,
     TransformerEncoder,
 )
-from ...tasks import DictStopper, KeyChecker, StepCounter, Stopwatch, TimeDebugger
 from ...utils import init_weights, random_split
-from .game import RecoSignalingGame
+from .game import RecoSignalingGame, RecoSignalingGameResult
 from .loss import Loss
-from .metrics import LanguageLoggerWrapper, Metrics, TopographicSimilarityMetrics
+from .metrics import MetricsLogger
 
 
 def train_reco_signaling(
@@ -124,26 +136,33 @@ def train_reco_signaling(
         ("train", train_dataloader),
         ("valid", valid_dataloader),
     ]:
-        metrics = Metrics(loss=loss, loggers=[Namer(name, loggers)])
+        logs = [KeyPrefix(name + ".", loggers)]
+        metrics = MetricsLogger(loss, logs)
+        topsim = TopographicSimilarityLogger[RecoSignalingGameResult](logs)
 
-        topsim = TopographicSimilarityMetrics(loggers=[Namer(name, loggers)])
         evaluators.append(
             Evaluator(
                 agents=models,
                 input=input,
                 game=game,
-                metrics=[metrics, topsim],
+                loggers=[metrics, topsim],
                 intervals=[metrics_interval, topsim_interval],
             )
         )
 
-    language_logger = LanguageLoggerWrapper(log_dir.joinpath("lang"))
+    def lang_to_wandb(p: Path) -> Dict[str, Any]:
+        return {"lang": wandb.Table(dataframe=pd.read_csv(p))}
+
+    lang_logger = LanguageLogger[RecoSignalingGameResult](
+        log_dir.joinpath("lang"),
+        [LambdaLogger(lang_to_wandb, loggers)],
+    )
     evaluators.append(
         Evaluator(
             agents=models,
             input=DataLoader(dataset, batch_size=len(dataset)),  # type: ignore
             game=game,
-            metrics=[language_logger],
+            loggers=[lang_logger],
             intervals=[lang_log_interval],
         )
     )

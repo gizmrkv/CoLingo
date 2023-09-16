@@ -33,7 +33,7 @@ class TaskRunner:
             if self.stopper.stop(step):
                 break
 
-            for task in self.tasks:
+            for i, task in enumerate(self.tasks):
                 task.on_update(step)
 
         for task in self.tasks:

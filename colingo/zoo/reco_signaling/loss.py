@@ -3,14 +3,11 @@ from typing import Callable
 import torch.nn.functional as F
 from torchtyping import TensorType
 
-from ...core import Computable
 from ...module.reinforce_loss import ReinforceLoss
 from .game import RecoSignalingGameResult
 
 
-class Loss(
-    Computable[TensorType[..., int], RecoSignalingGameResult, TensorType[1, float]]
-):
+class Loss:
     def __init__(
         self,
         concept_length: int,
@@ -72,13 +69,11 @@ class Loss(
         loss_s = self.sender_loss(result, loss_r)
         return self.receiver_loss_weight * loss_r + self.sender_loss_weight * loss_s
 
-    def compute(
+    def __call__(
         self,
-        input: TensorType[..., int],
-        output: RecoSignalingGameResult,
-        step: int | None = None,
+        result: RecoSignalingGameResult,
     ) -> TensorType[1, float]:
-        loss_r = self.receiver_loss(output)
-        loss_s = self.sender_loss(output, loss_r)
+        loss_r = self.receiver_loss(result)
+        loss_s = self.sender_loss(result, loss_r)
         loss_total = loss_r + loss_s
         return loss_total.mean()
