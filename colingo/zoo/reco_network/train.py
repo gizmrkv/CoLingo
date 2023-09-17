@@ -9,10 +9,11 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import wandb
 from networkx import DiGraph
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
+
+import wandb
 
 from ...core import Evaluator, Loggable, Task, TaskRunner, Trainer
 from ...loggers import (
@@ -41,7 +42,12 @@ from ...module import (
 from ...utils import init_weights, random_split
 from .game import RecoNetworkAgent, RecoNetworkGame, RecoNetworkGameResult
 from .loss import Loss
-from .metrics import AccuracyHeatmapLogger, MetricsLogger
+from .metrics import (
+    AccuracyHeatmapLogger,
+    AccuracyLogger,
+    LossLogger,
+    MessageMetricsLogger,
+)
 
 
 def train_reco_network(
@@ -132,6 +138,13 @@ def train_reco_network(
     net_comp.add_edges_from([(a, a) for a in agents])
     game_comp = RecoNetworkGame(agents, net_comp)
 
+    net_none = nx.DiGraph()
+    net_none.add_nodes_from(agents)
+    game_none = RecoNetworkGame(agents, net_none)
+
+    net_diff = nx.difference(net_comp, network)
+    game_diff = RecoNetworkGame(agents, net_diff)
+
     heatmap_option = {
         "vmin": 0,
         "vmax": 1,
@@ -152,43 +165,37 @@ def train_reco_network(
         ("valid", valid_dataloader),
     ]:
         logs = [KeyPrefix(name + ".", loggers)]
-        metrics = MetricsLogger(loss, logs)
-        topsim = TopographicSimilarityLogger[RecoNetworkGameResult](logs)
 
-        # acc comp setup
-        acc_comp_path = log_dir.joinpath(f"{name}_acc_comp")
-        acc_comp_heatmap_logger = HeatmapLogger(
-            acc_comp_path, heatmap_option=heatmap_option
-        )
-        video_tasks.append(
-            ImageToVideoTask(
-                acc_comp_path,
-                loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".acc_comp", logs)])],
-            )
-        )
-
-        # acc part setup
-        acc_part_path = log_dir.joinpath(f"{name}_acc_part")
-        acc_part_heatmap_logger = HeatmapLogger(
-            acc_part_path, heatmap_option=heatmap_option
-        )
-        video_tasks.append(
-            ImageToVideoTask(
-                acc_part_path,
-                loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".acc_part", logs)])],
-            )
-        )
-
-        # acc heatmap setup
+        # acc video setup
         acc_heatmap_logger = AccuracyHeatmapLogger(
-            acc_comp_heatmap_logger=acc_comp_heatmap_logger,
-            acc_part_heatmap_logger=acc_part_heatmap_logger,
+            path=log_dir.joinpath(name), heatmap_option=heatmap_option
+        )
+        video_tasks.extend(
+            [
+                ImageToVideoTask(
+                    log_dir.joinpath(name, "acc_comp"),
+                    loggers=[
+                        LambdaLogger(video_to_wandb, [KeySuffix(".acc_comp", logs)])
+                    ],
+                ),
+                ImageToVideoTask(
+                    log_dir.joinpath(name, "acc_part"),
+                    loggers=[
+                        LambdaLogger(video_to_wandb, [KeySuffix(".acc_part", logs)])
+                    ],
+                ),
+            ]
         )
 
         # langsim setup
-        langsim_path = log_dir.joinpath(f"{name}_langsim")
+        langsim_path = log_dir.joinpath(name, "langsim")
         langsim_heatmap_logger = HeatmapLogger(
             langsim_path, heatmap_option=heatmap_option
+        )
+        langsim_logger = LanguageSimilarityLogger[RecoNetworkGameResult](
+            list(agents.keys()),
+            loggers=logs,
+            heatmap_logger=langsim_heatmap_logger,
         )
         video_tasks.append(
             ImageToVideoTask(
@@ -196,32 +203,55 @@ def train_reco_network(
                 loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".langsim", logs)])],
             )
         )
-        langsim_logger = LanguageSimilarityLogger[RecoNetworkGameResult](
-            list(agents.keys()),
-            loggers=logs,
-            heatmap_logger=langsim_heatmap_logger,
+
+        net_comp_eval = Evaluator(
+            agents=agents.values(),
+            input=input,
+            game=game_comp,
+            loggers=[acc_heatmap_logger],
+            intervals=[acc_heatmap_interval],
         )
 
-        evaluators.append(
-            Evaluator(
-                agents=agents.values(),
-                input=input,
-                game=game_comp,
-                loggers=[metrics, topsim, acc_heatmap_logger, langsim_logger],
-                intervals=[
-                    metrics_interval,
-                    topsim_interval,
-                    acc_heatmap_interval,
-                    lansim_interval,
-                ],
-            )
+        msg_logger = MessageMetricsLogger(logs)
+        topsim_logger = TopographicSimilarityLogger[RecoNetworkGameResult](logs)
+        net_none_eval = Evaluator(
+            agents=agents.values(),
+            input=input,
+            game=game_none,
+            loggers=[msg_logger, topsim_logger, langsim_logger],
+            intervals=[metrics_interval, topsim_interval, lansim_interval],
+        )
+
+        net_train_eval = Evaluator(
+            agents=agents.values(),
+            input=input,
+            game=game,
+            loggers=[
+                AccuracyLogger([KeySuffix(".train_net", logs)]),
+                LossLogger(loss, [KeySuffix(".train_net", logs)]),
+            ],
+            intervals=[metrics_interval, metrics_interval],
+        )
+        net_diff_eval = Evaluator(
+            agents=agents.values(),
+            input=input,
+            game=game_diff,
+            loggers=[
+                AccuracyLogger([KeySuffix(".diff_net", logs)]),
+                LossLogger(loss, [KeySuffix(".diff_net", logs)]),
+            ],
+            intervals=[metrics_interval, metrics_interval],
+        )
+        evaluators.extend(
+            [
+                net_comp_eval,
+                net_none_eval,
+                net_train_eval,
+                net_diff_eval,
+            ]
         )
 
     # lang logger setup
-    net_none = nx.DiGraph()
-    net_none.add_nodes_from(agents)
-    game_none = RecoNetworkGame(agents, net_none)
-
     def lang_to_wandb(p: Path) -> Dict[str, Any]:
         return {"lang": wandb.Table(dataframe=pd.read_csv(p))}
 

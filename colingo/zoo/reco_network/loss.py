@@ -87,7 +87,7 @@ class Loss:
         loss = self.receiver_loss_weight * loss_r + self.sender_loss_weight * loss_s
 
         if not math.isclose(self.receiver_imitation_loss_weight, 0.0):
-            loss_ris = self.receiver_imitation_loss(result)
+            loss_ris = self.sender_imitation_loss(result)
             loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
             loss += self.receiver_imitation_loss_weight * loss_ri
 
@@ -99,7 +99,7 @@ class Loss:
             dim=-1,
         ).mean(dim=-1)
 
-    def receiver_imitation_loss(
+    def sender_imitation_loss(
         self, result: RecoNetworkSubGameResult
     ) -> Dict[str, TensorType[..., float]]:
         losses = {}
