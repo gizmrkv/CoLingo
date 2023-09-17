@@ -49,6 +49,7 @@ def train_reconstruction(
     metrics_interval: int,
     additional_tasks: Iterable[Task] | None = None,
 ) -> None:
+    # model setup
     models: List[nn.Module] = [encoder, decoder]
     optimizers = [optim.Adam(model.parameters(), lr=lr) for model in models]
 
@@ -56,6 +57,7 @@ def train_reconstruction(
         model.to(device)
         model.apply(init_weights)
 
+    # data setup
     dataset = (
         torch.Tensor(list(product(torch.arange(values), repeat=length)))
         .long()
@@ -69,6 +71,7 @@ def train_reconstruction(
         valid_dataset, batch_size=len(valid_dataset), shuffle=False
     )
 
+    # training setup
     game = ReconstructionGame(encoder, decoder)
     trainer = Trainer(
         agents=models,
@@ -78,6 +81,7 @@ def train_reconstruction(
         optimizers=optimizers,
     )
 
+    # evaluation setup
     wandb_logger = WandbLogger(project=wandb_project)
     key_checker = KeyChecker()
     early_stopper = DictStopper(
@@ -107,6 +111,7 @@ def train_reconstruction(
             )
         )
 
+    # run
     runner_callbacks = [
         *(additional_tasks or []),
         trainer,

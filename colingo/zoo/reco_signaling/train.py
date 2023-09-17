@@ -66,6 +66,7 @@ def train_reco_signaling(
     log_dir: Path,
     additional_tasks: Iterable[Task] | None = None,
 ) -> None:
+    # model setup
     models: List[nn.Module] = [
         concept_encoder,
         message_decoder,
@@ -78,6 +79,7 @@ def train_reco_signaling(
         model.to(device)
         model.apply(init_weights)
 
+    # data setup
     dataset = (
         torch.Tensor(list(product(torch.arange(concept_values), repeat=concept_length)))
         .long()
@@ -91,6 +93,7 @@ def train_reco_signaling(
         valid_dataset, batch_size=len(valid_dataset), shuffle=False
     )
 
+    # training setup
     game = RecoSignalingGame(
         concept_encoder, message_decoder, message_encoder, concept_decoder
     )
@@ -119,6 +122,7 @@ def train_reco_signaling(
         optimizers=optimizers,
     )
 
+    # evaluation setup
     wandb_logger = WandbLogger(project=wandb_project)
     key_checker = KeyChecker()
     early_stopper = DictStopper(
@@ -167,6 +171,7 @@ def train_reco_signaling(
         )
     )
 
+    # run
     runner_callbacks = [
         *(additional_tasks or []),
         trainer,

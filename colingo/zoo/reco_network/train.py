@@ -72,6 +72,7 @@ def train_reco_network(
     log_dir: Path,
     additional_tasks: Iterable[Task] | None = None,
 ) -> None:
+    # model setup
     optimizers = {
         name: optim.Adam(agent.parameters(), lr=lr) for name, agent in agents.items()
     }
@@ -80,6 +81,7 @@ def train_reco_network(
         agent.to(device)
         agent.apply(init_weights)
 
+    # data setup
     dataset = (
         torch.Tensor(list(product(torch.arange(concept_values), repeat=concept_length)))
         .long()
@@ -92,6 +94,9 @@ def train_reco_network(
     valid_dataloader = DataLoader(
         valid_dataset, batch_size=len(valid_dataset), shuffle=False
     )
+
+    # training setup
+    game = RecoNetworkGame(agents, network)
 
     def baseline(x: TensorType[..., float]) -> TensorType[..., float]:
         return x.detach().mean(dim=0)
@@ -110,7 +115,6 @@ def train_reco_network(
         receiver_imitation_loss_weight=receiver_imitation_loss_weight,
     )
 
-    game = RecoNetworkGame(agents, network)
     trainer = Trainer(
         agents=agents.values(),
         input=train_dataloader,
@@ -119,6 +123,7 @@ def train_reco_network(
         optimizers=optimizers.values(),
     )
 
+    # evaluation setup
     wandb_logger = WandbLogger(project=wandb_project)
     key_checker = KeyChecker()
     loggers: List[Loggable[Mapping[str, Any]]] = [wandb_logger, key_checker]
@@ -150,6 +155,7 @@ def train_reco_network(
         metrics = MetricsLogger(loss, logs)
         topsim = TopographicSimilarityLogger[RecoNetworkGameResult](logs)
 
+        # acc comp setup
         acc_comp_path = log_dir.joinpath(f"{name}_acc_comp")
         acc_comp_heatmap_logger = HeatmapLogger(
             acc_comp_path, heatmap_option=heatmap_option
@@ -161,6 +167,7 @@ def train_reco_network(
             )
         )
 
+        # acc part setup
         acc_part_path = log_dir.joinpath(f"{name}_acc_part")
         acc_part_heatmap_logger = HeatmapLogger(
             acc_part_path, heatmap_option=heatmap_option
@@ -172,11 +179,13 @@ def train_reco_network(
             )
         )
 
+        # acc heatmap setup
         acc_heatmap_logger = AccuracyHeatmapLogger(
             acc_comp_heatmap_logger=acc_comp_heatmap_logger,
             acc_part_heatmap_logger=acc_part_heatmap_logger,
         )
 
+        # langsim setup
         langsim_path = log_dir.joinpath(f"{name}_langsim")
         langsim_heatmap_logger = HeatmapLogger(
             langsim_path, heatmap_option=heatmap_option
@@ -187,7 +196,7 @@ def train_reco_network(
                 loggers=[LambdaLogger(video_to_wandb, [KeySuffix(".langsim", logs)])],
             )
         )
-        lansim_logger = LanguageSimilarityLogger[RecoNetworkGameResult](
+        langsim_logger = LanguageSimilarityLogger[RecoNetworkGameResult](
             list(agents.keys()),
             loggers=logs,
             heatmap_logger=langsim_heatmap_logger,
@@ -198,7 +207,7 @@ def train_reco_network(
                 agents=agents.values(),
                 input=input,
                 game=game_comp,
-                loggers=[metrics, topsim, acc_heatmap_logger, lansim_logger],
+                loggers=[metrics, topsim, acc_heatmap_logger, langsim_logger],
                 intervals=[
                     metrics_interval,
                     topsim_interval,
@@ -208,6 +217,7 @@ def train_reco_network(
             )
         )
 
+    # lang logger setup
     net_none = nx.DiGraph()
     net_none.add_nodes_from(agents)
     game_none = RecoNetworkGame(agents, net_none)
@@ -228,6 +238,7 @@ def train_reco_network(
         )
     )
 
+    # run
     runner_callbacks = [
         *(additional_tasks or []),
         trainer,
