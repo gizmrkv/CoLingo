@@ -43,7 +43,7 @@ value = 1.0
 [parameters.sender_loss_weight]
 value = 1.0
 
-[parameters.receiver_imitation_loss_weight]
+[parameters.sender_imitation_loss_weight]
 values = [0.0, 1.0]
 
 [parameters.n_epochs]

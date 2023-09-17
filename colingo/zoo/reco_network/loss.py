@@ -1,5 +1,5 @@
 import math
-from typing import Callable, Dict
+from typing import Callable, Dict, Literal
 
 import torch
 import torch.nn.functional as F
@@ -24,7 +24,9 @@ class Loss:
         | None = None,
         receiver_loss_weight: float = 1.0,
         sender_loss_weight: float = 1.0,
+        sender_imitation_loss_weight: float = 0.0,
         receiver_imitation_loss_weight: float = 0.0,
+        sender_imitation_mask: Literal["complete", "partial", "none"] = "complete",
     ) -> None:
         super().__init__()
         self.concept_length = concept_length
@@ -37,7 +39,9 @@ class Loss:
         self.length_baseline = length_baseline
         self.receiver_loss_weight = receiver_loss_weight
         self.sender_loss_weight = sender_loss_weight
+        self.sender_imitation_loss_weight = sender_imitation_loss_weight
         self.receiver_imitation_loss_weight = receiver_imitation_loss_weight
+        self.sender_imitation_mask = sender_imitation_mask
 
         self.reinforce_loss = ReinforceLoss(
             max_len=message_max_len,
@@ -86,10 +90,10 @@ class Loss:
         loss_s = self.sender_loss(result, loss_r)
         loss = self.receiver_loss_weight * loss_r + self.sender_loss_weight * loss_s
 
-        if not math.isclose(self.receiver_imitation_loss_weight, 0.0):
+        if not math.isclose(self.sender_imitation_loss_weight, 0.0):
             loss_ris = self.sender_imitation_loss(result)
             loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
-            loss += self.receiver_imitation_loss_weight * loss_ri
+            loss += self.sender_imitation_loss_weight * loss_ri
 
         return loss
 
@@ -104,7 +108,6 @@ class Loss:
     ) -> Dict[str, TensorType[..., float]]:
         losses = {}
         for name, receiver in result.receivers.items():
-            correct_mask = (result.outputs[name] == result.input).all(dim=-1).float()
             feature = receiver.concept_encoder(result.outputs[name])
             _, message_logits = receiver.message_decoder(
                 feature, message=result.message
@@ -116,7 +119,23 @@ class Loss:
                 result.message.view(-1),
                 reduction="none",
             ).view(-1, self.message_max_len)
-            loss = correct_mask * loss.mean(dim=-1)
+            acc_mask = self.accuracy_mask(
+                result.outputs[name], result.input, self.sender_imitation_mask
+            )
+            loss = acc_mask * loss.mean(dim=-1)
             losses[name] = loss
 
         return losses
+
+    def accuracy_mask(
+        self,
+        input: TensorType[..., int],
+        target: TensorType[..., int],
+        mask_mode: Literal["complete", "partial", "none"],
+    ) -> TensorType[..., float]:
+        if mask_mode == "complete":
+            return (input == target).all(dim=-1).float()
+        elif mask_mode == "partial":
+            return (input == target).float().mean(dim=-1)
+        elif mask_mode == "none":
+            return torch.ones_like(input)

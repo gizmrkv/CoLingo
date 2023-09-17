@@ -63,7 +63,8 @@ def train_reco_network(
     length_weight: float,
     receiver_loss_weight: float,
     sender_loss_weight: float,
-    receiver_imitation_loss_weight: float,
+    sender_imitation_loss_weight: float,
+    sender_imitation_mask: Literal["complete", "partial", "none"],
     n_epochs: int,
     batch_size: int,
     lr: float,
@@ -118,7 +119,8 @@ def train_reco_network(
         length_baseline=baseline,
         receiver_loss_weight=receiver_loss_weight,
         sender_loss_weight=sender_loss_weight,
-        receiver_imitation_loss_weight=receiver_imitation_loss_weight,
+        sender_imitation_loss_weight=sender_imitation_loss_weight,
+        sender_imitation_mask=sender_imitation_mask,
     )
 
     trainer = Trainer(
@@ -296,7 +298,8 @@ class RecoNetworkConfig:
     length_weight: float
     receiver_loss_weight: float
     sender_loss_weight: float
-    receiver_imitation_loss_weight: float
+    sender_imitation_loss_weight: float
+    sender_imitation_mask: Literal["complete", "partial", "none"]
     n_epochs: int
     batch_size: int
     lr: float
@@ -388,7 +391,8 @@ def train_reco_network_from_config(
         length_weight=cfg.length_weight,
         receiver_loss_weight=cfg.receiver_loss_weight,
         sender_loss_weight=cfg.sender_loss_weight,
-        receiver_imitation_loss_weight=cfg.receiver_imitation_loss_weight,
+        sender_imitation_loss_weight=cfg.sender_imitation_loss_weight,
+        sender_imitation_mask=cfg.sender_imitation_mask,
         n_epochs=cfg.n_epochs,
         batch_size=cfg.batch_size,
         lr=cfg.lr,

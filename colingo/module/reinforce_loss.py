@@ -1,3 +1,4 @@
+import math
 from typing import Callable
 
 from torch import nn
@@ -65,11 +66,11 @@ class ReinforceLoss(nn.Module):
             reward -= self.baseline(reward)
         loss = -reward * log_prob
 
-        if entropy is not None:
+        if entropy is not None and not math.isclose(self.entropy_weight, 0.0):
             ent_loss = self.entropy_weight * entropy.sum(dim=-1)
             loss -= ent_loss
 
-        if length is not None:
+        if length is not None and not math.isclose(self.length_weight, 0.0):
             len_loss = self.length_weight * length.float() / self.max_len
             if self.length_baseline is not None:
                 len_loss -= self.length_baseline(len_loss)
