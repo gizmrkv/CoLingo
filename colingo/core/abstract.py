@@ -24,6 +24,10 @@ class Task(ABC):
     def on_end(self) -> None:
         pass
 
+    @abstractmethod
+    def priority(self) -> int:
+        ...
+
 
 class Stoppable(ABC):
     @abstractmethod

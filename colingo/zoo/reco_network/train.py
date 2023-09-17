@@ -271,13 +271,13 @@ def train_reco_network(
     # run
     runner_callbacks = [
         *(additional_tasks or []),
-        trainer,
-        *evaluators,
-        StepCounter(loggers),
         Stopwatch(loggers),
         *video_tasks,
         wandb_logger,
         key_checker,
+        trainer,
+        *evaluators,
+        StepCounter(loggers),
     ]
     # runner_callbacks = [TimeDebugger(runner_callbacks)]
     runner = TaskRunner(runner_callbacks, use_tqdm=use_tqdm)

@@ -56,3 +56,6 @@ class Trainer(Task, Generic[T, U]):
             for optimizer in self.optimizers:
                 self.scaler.step(optimizer)
                 self.scaler.update()
+
+    def priority(self) -> int:
+        return 20000

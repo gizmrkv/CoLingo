@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, List
 
 import tqdm
 
@@ -8,11 +8,12 @@ from .abstract import Stoppable, Task
 class TaskRunner:
     def __init__(
         self,
-        tasks: Iterable[Task],
+        tasks: List[Task],
         stopper: Stoppable | None = None,
         use_tqdm: bool = True,
     ):
         self.tasks = tasks
+        self.tasks.sort(key=lambda task: task.priority(), reverse=True)
         self.use_tqdm = use_tqdm
 
         class DefaultStopper(Stoppable):
@@ -33,7 +34,7 @@ class TaskRunner:
             if self.stopper.stop(step):
                 break
 
-            for i, task in enumerate(self.tasks):
+            for task in self.tasks:
                 task.on_update(step)
 
         for task in self.tasks:

@@ -20,9 +20,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import torch
-import wandb
 from moviepy.editor import ImageSequenceClip
 from numpy.typing import NDArray
+
+import wandb
 
 from .analysis import language_similarity, topographic_similarity
 from .core import Language, Loggable, Stoppable, Task
@@ -81,6 +82,9 @@ class WandbLogger(Task, Loggable[Mapping[str, Any]]):
     def on_end(self) -> None:
         self.flush()
         wandb.finish()
+
+    def priority(self) -> int:
+        return 100
 
 
 T = TypeVar("T")
@@ -154,6 +158,9 @@ class ImageToVideoTask(Task):
             # Delete the frames
             shutil.rmtree(self.src_dir)
 
+    def priority(self) -> int:
+        return 10000
+
 
 class DictStopper(Task, Loggable[Mapping[str, Any]], Stoppable):
     def __init__(self, pred: Callable[[Mapping[str, Any]], bool]) -> None:
@@ -177,6 +184,9 @@ class DictStopper(Task, Loggable[Mapping[str, Any]], Stoppable):
     def on_end(self) -> None:
         self.inputs.clear()
 
+    def priority(self) -> int:
+        return 100
+
 
 class KeyChecker(Task, Loggable[Mapping[str, Any]]):
     def __init__(self) -> None:
@@ -197,6 +207,9 @@ class KeyChecker(Task, Loggable[Mapping[str, Any]]):
     def on_end(self) -> None:
         self.seen.clear()
 
+    def priority(self) -> int:
+        return 100
+
 
 class StepCounter(Task):
     def __init__(self, loggers: Iterable[Loggable[Mapping[str, int]]]) -> None:
@@ -205,6 +218,9 @@ class StepCounter(Task):
     def on_update(self, step: int) -> None:
         for logger in self.loggers:
             logger.log({"step": step})
+
+    def priority(self) -> int:
+        return 10000
 
 
 class Stopwatch(Task):
@@ -217,6 +233,9 @@ class Stopwatch(Task):
         elapsed_time = time.time() - self.start_time
         for logger in self.loggers:
             logger.log({"elapsed_time": elapsed_time})
+
+    def priority(self) -> int:
+        return 10000
 
 
 class TimeDebugger(Task):
@@ -231,6 +250,9 @@ class TimeDebugger(Task):
             torch.cuda.synchronize()
             end = time.time()
             print(f"{i}st time: {end - start:.3f} sec")
+
+    def priority(self) -> int:
+        return 10000
 
 
 def drop_padding(x: NDArray[np.int32]) -> NDArray[np.int32]:

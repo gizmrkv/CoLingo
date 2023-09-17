@@ -46,3 +46,6 @@ class Evaluator(Task, Generic[T, U]):
             for flag, logger in zip(flags, self.loggers):
                 if flag:
                     logger.log(output, step=step)
+
+    def priority(self) -> int:
+        return 10000
