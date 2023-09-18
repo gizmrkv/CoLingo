@@ -113,7 +113,7 @@ class Loss:
 
         if not math.isclose(self.sender_imitation_loss_weight, 0.0):
             loss_sis = self.sender_imitation_loss(result)
-            loss_si = torch.stack(list(loss_sis.values()), dim=-1).mean(dim=-1)
+            loss_si = torch.stack(list(loss_sis.values()), dim=-1).sum(dim=-1)
             loss += self.sender_imitation_loss_weight * loss_si
 
         if not math.isclose(self.receiver_imitation_loss_weight, 0.0):
