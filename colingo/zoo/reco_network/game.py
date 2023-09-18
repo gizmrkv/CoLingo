@@ -27,6 +27,7 @@ class RecoNetworkAgent(nn.Module):
 
 @dataclass
 class RecoNetworkSubGameResult:
+    sender_name: str
     sender: RecoNetworkAgent
     receivers: Mapping[str, RecoNetworkAgent]
     input: TensorType[..., int]
@@ -45,9 +46,11 @@ class RecoNetworkSubGameResult:
 class RecoNetworkSubGame(Playable[TensorType[..., int], RecoNetworkSubGameResult]):
     def __init__(
         self,
+        sender_name: str,
         sender: RecoNetworkAgent,
         receivers: Mapping[str, RecoNetworkAgent],
     ) -> None:
+        self.sender_name = sender_name
         self.sender = sender
         self.receivers = receivers
 
@@ -84,6 +87,7 @@ class RecoNetworkSubGame(Playable[TensorType[..., int], RecoNetworkSubGameResult
             outputs_logits[name] = output_logits
 
         return RecoNetworkSubGameResult(
+            sender_name=self.sender_name,
             sender=self.sender,
             receivers=self.receivers,
             input=input,
@@ -123,6 +127,7 @@ class RecoNetworkGame(Playable[TensorType[..., int], RecoNetworkGameResult]):
 
         self.games = {
             name_s: RecoNetworkSubGame(
+                name_s,
                 agent_s,
                 {name_r: self.agents[name_r] for name_r in self.network.succ[name_s]},
             )

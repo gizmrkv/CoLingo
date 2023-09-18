@@ -1,3 +1,4 @@
+import math
 import shutil
 import time
 from pathlib import Path
@@ -279,10 +280,14 @@ class TopographicSimilarityLogger(Loggable[L], Generic[L]):
             for k, msg in messages.items()
         }
 
-        topsims[f"topsim.mean"] = fmean(topsims.values())
-        topsims[f"topsim.std"] = stdev(topsims.values())
-        topsims[f"topsim.max"] = max(topsims.values())
-        topsims[f"topsim.min"] = min(topsims.values())
+        topsims = {k: (0.0 if math.isnan(v) else v) for k, v in topsims.items()}
+
+        topsims |= {
+            f"topsim.mean": fmean(topsims.values()),
+            f"topsim.std": stdev(topsims.values()),
+            f"topsim.max": max(topsims.values()),
+            f"topsim.min": min(topsims.values()),
+        }
 
         for logger in self.loggers:
             logger.log(topsims)

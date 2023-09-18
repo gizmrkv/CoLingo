@@ -61,10 +61,13 @@ def train_reco_network(
     message_vocab_size: int,
     entropy_weight: float,
     length_weight: float,
+    length_accuracy_mask: Literal["complete", "partial", "none"],
     receiver_loss_weight: float,
     sender_loss_weight: float,
     sender_imitation_loss_weight: float,
     sender_imitation_mask: Literal["complete", "partial", "none"],
+    receiver_imitation_loss_weight: float,
+    receiver_imitation_mask: Literal["complete", "partial", "none"],
     n_epochs: int,
     batch_size: int,
     lr: float,
@@ -117,10 +120,13 @@ def train_reco_network(
         length_weight=length_weight,
         baseline=baseline,
         length_baseline=baseline,
+        length_accuracy_mask=length_accuracy_mask,
         receiver_loss_weight=receiver_loss_weight,
         sender_loss_weight=sender_loss_weight,
         sender_imitation_loss_weight=sender_imitation_loss_weight,
+        receiver_imitation_loss_weight=receiver_imitation_loss_weight,
         sender_imitation_mask=sender_imitation_mask,
+        receiver_imitation_mask=receiver_imitation_mask,
     )
 
     trainer = Trainer(
@@ -296,10 +302,13 @@ class RecoNetworkConfig:
     message_vocab_size: int
     entropy_weight: float
     length_weight: float
+    length_accuracy_mask: Literal["complete", "partial", "none"]
     receiver_loss_weight: float
     sender_loss_weight: float
     sender_imitation_loss_weight: float
+    receiver_imitation_loss_weight: float
     sender_imitation_mask: Literal["complete", "partial", "none"]
+    receiver_imitation_mask: Literal["complete", "partial", "none"]
     n_epochs: int
     batch_size: int
     lr: float
@@ -389,10 +398,13 @@ def train_reco_network_from_config(
         message_vocab_size=cfg.message_vocab_size,
         entropy_weight=cfg.entropy_weight,
         length_weight=cfg.length_weight,
+        length_accuracy_mask=cfg.length_accuracy_mask,
         receiver_loss_weight=cfg.receiver_loss_weight,
         sender_loss_weight=cfg.sender_loss_weight,
         sender_imitation_loss_weight=cfg.sender_imitation_loss_weight,
+        receiver_imitation_loss_weight=cfg.receiver_imitation_loss_weight,
         sender_imitation_mask=cfg.sender_imitation_mask,
+        receiver_imitation_mask=cfg.receiver_imitation_mask,
         n_epochs=cfg.n_epochs,
         batch_size=cfg.batch_size,
         lr=cfg.lr,

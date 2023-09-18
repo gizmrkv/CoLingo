@@ -63,11 +63,14 @@ class LossLogger(Loggable[RecoNetworkGameResult]):
             loss_s = self.loss.sender_loss(result_s, loss_r)
             loss_sis = self.loss.sender_imitation_loss(result_s)
             loss_si = torch.stack(list(loss_sis.values()), dim=-1).mean(dim=-1)
+            loss_ris = self.loss.receiver_imitation_loss(result_s)
+            loss_ri = torch.stack(list(loss_ris.values()), dim=-1).mean(dim=-1)
             total_loss = loss_r + loss_s + loss_si
             agent_metrics[name_s] = {
                 f"sender_loss": loss_s.mean().item(),
                 f"receiver_loss.mean": loss_r.mean().item(),
                 f"sender_imitation_loss.mean": loss_si.mean().item(),
+                f"receiver_imitation_loss.mean": loss_ri.mean().item(),
                 f"total_loss": total_loss.mean().item(),
             }
 
